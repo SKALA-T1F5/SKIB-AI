@@ -1,0 +1,22 @@
+# LangChain 핵심
+langchain>=0.1.14
+openai>=1.14.3
+
+# 임베딩 사용 (OpenAI or 로컬 대체 가능)
+tiktoken>=0.5.1
+
+# 문서 파싱 (PDF 등)
+pymupdf>=1.22.0
+unstructured>=0.11.7  # Docling 내부적으로 사용할 경우 대비
+
+# Weaviate 클라이언트
+weaviate-client>=4.0.0
+
+
+# 기본 도구
+python-dotenv>=1.0.1
+requests>=2.31.0
+
+# 선택: 로컬 테스트 및 데이터 처리
+pandas>=2.2.2
+numpy>=1.26.4
