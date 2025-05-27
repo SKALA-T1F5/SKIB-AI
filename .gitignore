@@ -1,0 +1,11 @@
+# Python
+__pycache__/
+*.pyc
+
+# Conda / virtualenv
+.env
+venv/
+.env.*
+
+# Outputs
+data/outputs/
