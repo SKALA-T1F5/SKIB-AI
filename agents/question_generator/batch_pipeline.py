@@ -1,9 +1,9 @@
 # code/batch_pipeline.py
 # -----------------------------
 import os
-from code.run_pipeline import run_pipeline
-from code.change_name import normalize_collection_name
-from vectorDB.weaviate_utils import get_client
+from agents.question_generator.run_pipeline import run_pipeline
+from agents.question_generator.change_name import normalize_collection_name
+from db.vectorDB.weaviate_utils import get_client
 
 RAW_DOCS_DIR = "data/raw_docs"
 

@@ -12,8 +12,7 @@ docker-compose up -d
 curl -X DELETE http://localhost:8080/v1/schema/{{컬렉션명}}
 
 # 코드 실행
-python -m code.batch_pipeline
-python -m code.run_pipeline "data/raw_docs/SKCP-3003-프로그램설계서(프로세스및화면)_10.세금계산서)_v1.0_20230410.pdf"
+python -m agents.question_generator.run_pipeline "data/raw_docs/SKCP-3003-프로그램설계서(프로세스및화면)_10.세금계산서)_v1.0_20230410.pdf"
 
 
 

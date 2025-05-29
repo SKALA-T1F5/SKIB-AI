@@ -9,12 +9,12 @@ GPT-4o Vision 메시지 포맷으로 변환 (docling_blocks_to_vision_messages)
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from code.docling_parser import parse_pdf_to_docling_blocks
-from code.chunking import block_to_documents, split_docs
-from code.generate_questions import generate_question
-from code.save_results import save_question_result
-from code.preprocess_docling import docling_blocks_to_vision_messages
-from code.change_name import normalize_collection_name
+from agents.question_generator.docling_parser import parse_pdf_to_docling_blocks
+from agents.question_generator.chunking import block_to_documents, split_docs
+from agents.question_generator.generate_questions import generate_question
+from agents.question_generator.save_results import save_question_result
+from agents.question_generator.preprocess_docling import docling_blocks_to_vision_messages
+from agents.question_generator.change_name import normalize_collection_name
 from sentence_transformers import SentenceTransformer
 import os
 import sys
@@ -67,7 +67,7 @@ def run_pipeline(pdf_path: str, collection_name: str):
 # 터미널에서 직접 실행하는 경우
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("Usage: python -m code.run_pipeline <pdf_path>")
+        print("Usage: python -m agents.question_generator.run_pipeline <pdf_path>")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
