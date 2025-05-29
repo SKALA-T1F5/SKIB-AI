@@ -1,3 +1,18 @@
+annotated-types
+anyio
+click
+exceptiongroup
+fastapi
+h11
+idna
+pydantic
+pydantic_core
+python-dotenv
+sniffio
+starlette
+typing_extensions
+uvicorn
+
 # LangChain 핵심
 langchain>=0.1.14
 openai>=1.14.3
