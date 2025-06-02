@@ -46,9 +46,9 @@ def localize_enum_fields(question: Dict) -> Dict:
         "subjective": "서술형"
     }
     difficulty_map = {
-        "easy": "하",
-        "medium": "중",
-        "hard": "상"
+        "easy": "EASY",
+        "medium": "NORMAL",
+        "hard": "HARD"
     }
 
     question["type"] = type_map.get(question["type"], question["type"])
