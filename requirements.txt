@@ -19,14 +19,16 @@ openai>=1.14.3
 
 # 임베딩 사용 (OpenAI or 로컬 대체 가능)
 tiktoken>=0.5.1
+sentence-transformers>=2.5.1
 
 # 문서 파싱 (PDF 등)
-pymupdf>=1.22.0
-unstructured>=0.11.7  # Docling 내부적으로 사용할 경우 대비
+docling>=2.34.0
+pdf2image>=1.16.3  # docling의 의존성
+pytesseract>=0.3.10  # docling의 의존성
+Pillow>=10.0.0  # docling의 의존성
 
 # Weaviate 클라이언트
 weaviate-client>=4.0.0
-
 
 # 기본 도구
 python-dotenv>=1.0.1
