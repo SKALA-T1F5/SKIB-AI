@@ -24,7 +24,10 @@ import time
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
 
 
-def run_pipeline(pdf_path: str, collection_name: str):
+def run_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3):
+    # 0. PDF 파일 경로와 컬렉션 이름 설정
+    filename = os.path.splitext(os.path.basename(pdf_path))[0]
+    collection_name = normalize_collection_name(filename)
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
     blocks = parse_pdf_to_docling_blocks(pdf_path)
 
@@ -77,8 +80,8 @@ def run_pipeline(pdf_path: str, collection_name: str):
             messages=messages_for_api, 
             source=source_file_name, 
             page=page_info_for_chunk,
-            num_objective=3,  # 예시: 객관식 3개
-            num_subjective=3  # 예시: 주관식 3개
+            num_objective=num_objective,  # 예시: 객관식 3개
+            num_subjective=num_subjective  # 예시: 주관식 3개
             # difficulty는 generate_question의 기본값(3) 사용 또는 chunk_obj_for_saving 등에서 가져올 수 있음
         )
         
@@ -100,4 +103,4 @@ if __name__ == "__main__":
     pdf_path = sys.argv[1]
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
-    run_pipeline(pdf_path, collection_name)
+    run_pipeline(pdf_path)
