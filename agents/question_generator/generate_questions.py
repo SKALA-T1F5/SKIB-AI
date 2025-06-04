@@ -21,73 +21,138 @@ openai_client = OpenAI(api_key=api_key)
 # LLM 응답에서 JSON 리스트를 추출하고 파싱하는 함수 (새로운 함수)
 def parse_json_response(raw_content: str) -> List[Dict]:
     """
-    LLM 응답에서 JSON 리스트를 추출하고 파싱하는 함수
+    Extracts and parses a JSON list from the LLM's raw response string.
+    Handles cases with or without markdown code blocks and surrounding text.
     """
-    # 코드 블록 제거 (```json 또는 ``` 포함 여부)
-    match = re.search(r"```(?:json)?\\s*(\\[\\s*{.*?}\\s*])\\s*```", raw_content, re.DOTALL)
-    if match:
-        json_str = match.group(1).strip()
+    text_to_parse = raw_content.strip()
+    json_candidate_str = None
+
+    # Attempt 1: Check if the entire string is a markdown code block.
+    # ^ and $ ensure the entire string matches this pattern.
+    code_block_match_full = re.search(r"^```(?:json)?\\s*(.*?)\\s*```$", text_to_parse, re.DOTALL | re.IGNORECASE)
+    if code_block_match_full:
+        json_candidate_str = code_block_match_full.group(1).strip()
+        print(f"Info: Extracted from fully matched markdown code block: '{json_candidate_str[:100]}...'")
     else:
-        # fallback: 코드 블록 없이 JSON 배열이 그냥 왔을 경우
-        # 응답이 리스트로 시작하고 리스트로 끝나는지 간단히 확인
-        if raw_content.startswith("[") and raw_content.endswith("]"):
-            json_str = raw_content
+        # Attempt 2: Try to find an embedded markdown code block (e.g., surrounded by other text).
+        code_block_match_embedded = re.search(r"```(?:json)?\\s*(.*?)\\s*```", text_to_parse, re.DOTALL | re.IGNORECASE)
+        if code_block_match_embedded:
+            json_candidate_str = code_block_match_embedded.group(1).strip()
+            print(f"Info: Extracted from embedded markdown code block: '{json_candidate_str[:100]}...'")
         else:
-            # 만약 전체가 하나의 JSON 객체로 감싸져 있고, 그 안에 리스트가 있다면 처리 (예: {"questions": [...]})
-            # 이 부분은 현재 프롬프트와는 맞지 않지만, 더 유연한 파싱을 위해 남겨둘 수 있습니다.
-            # 지금 프롬프트는 직접 리스트를 반환하도록 요청하고 있습니다.
-            # 좀 더 견고하게 하려면, 여기서 다양한 예외 케이스를 처리해야 합니다.
-            print(f"Warning: Response does not seem to be a direct JSON array nor wrapped in ```json ... ```. Trying to parse as is: {raw_content[:200]}...")
-            json_str = raw_content # 일단 그대로 시도
+            # Attempt 3: No clear code block found. Fallback to finding the outermost JSON structure based on brackets/curlies.
+            first_bracket_idx = text_to_parse.find('[')
+            first_curly_idx = text_to_parse.find('{')
+
+            start_idx = -1
+            if first_bracket_idx != -1 and (first_curly_idx == -1 or first_bracket_idx < first_curly_idx):
+                start_idx = first_bracket_idx
+            elif first_curly_idx != -1:
+                start_idx = first_curly_idx
+
+            if start_idx != -1:
+                # Found a potential start. Now find the corresponding end.
+                # This heuristic assumes the main JSON content is between the first relevant opening bracket/curly
+                # and its corresponding last closing bracket/curly.
+                # It's not foolproof for all complex/malformed strings but works for many LLM outputs.
+                last_bracket_idx = text_to_parse.rfind(']')
+                last_curly_idx = text_to_parse.rfind('}')
+                
+                end_idx = -1
+                # If it starts with '[', look for the last ']'.
+                if text_to_parse[start_idx] == '[' and last_bracket_idx > start_idx:
+                    end_idx = last_bracket_idx
+                # If it starts with '{', look for the last '}'.
+                elif text_to_parse[start_idx] == '{' and last_curly_idx > start_idx:
+                    end_idx = last_curly_idx
+                
+                # If couldn't find a specific match, try a more general last bracket/curly
+                if end_idx == -1 :
+                    potential_ends = []
+                    if last_bracket_idx > start_idx : potential_ends.append(last_bracket_idx)
+                    if last_curly_idx > start_idx : potential_ends.append(last_curly_idx)
+                    if potential_ends: end_idx = max(potential_ends)
+
+                if end_idx != -1:
+                    json_candidate_str = text_to_parse[start_idx : end_idx + 1]
+                    print(f"Info: Heuristically extracted by finding first/last brackets/curlies: '{json_candidate_str[:100]}...'")
+                else:
+                    print(f"Warning: Found JSON start but no corresponding end. Raw text: '{text_to_parse[:200]}...'")
+                    json_candidate_str = text_to_parse # Fallback to trying to parse the (stripped) original text
+            else:
+                print(f"Warning: No JSON start ('[' or '{{') found. Raw text: '{text_to_parse[:200]}...'")
+                json_candidate_str = text_to_parse # Fallback
+    
+    if json_candidate_str is None: # Should ideally not be None if text_to_parse was not empty
+        json_candidate_str = text_to_parse
+
+    json_final_str_to_parse = json_candidate_str.strip()
+    if not json_final_str_to_parse:
+        raise ValueError("❌ JSON 파싱 실패: 최종 추출된 문자열이 비어 있습니다.")
 
     try:
-        parsed = json.loads(json_str)
-        if not isinstance(parsed, list):
-            # 때때로 LLM이 리스트 대신 단일 객체를 반환할 수 있음. 이 경우 리스트로 감싸줌.
-            if isinstance(parsed, dict) and all(key in parsed for key in ["type", "difficulty_level", "question"]): # 간단한 검증
-                print("Warning: LLM returned a single JSON object, wrapping it in a list.")
-                return [parsed]
-            raise ValueError("JSON 응답은 리스트 형식이어야 합니다.")
-        return parsed
+        parsed_data = json.loads(json_final_str_to_parse)
     except json.JSONDecodeError as e:
-        # 파싱 실패 시, LLM이 JSON 객체 안에 "generated_questions" 키로 리스트를 반환했는지 확인 (이전 로직 호환성)
+        print(f"Initial parsing failed for: '{json_final_str_to_parse[:200]}...'. Error: {e}. Trying 'generated_questions' fallback.")
         try:
-            outer_obj = json.loads(raw_content)
+            outer_obj = json.loads(raw_content.strip()) # Try parsing original raw_content for the fallback structure
             if isinstance(outer_obj, dict) and "generated_questions" in outer_obj and isinstance(outer_obj["generated_questions"], list):
-                print("Info: Parsed using 'generated_questions' fallback.")
+                print("Info: Parsed using 'generated_questions' key fallback on raw_content.")
                 return outer_obj["generated_questions"]
         except json.JSONDecodeError:
-            pass # 이중 실패는 아래에서 처리
+            pass 
+        raise ValueError(f"❌ JSON 파싱 실패: {e}\\n\\n최종 파싱 시도 문자열 (앞 200자):\\n{json_final_str_to_parse[:200]}\\n\\n원본 LLM 응답 (앞 200자):\\n{raw_content.strip()[:200]}")
 
-        raise ValueError(f"❌ JSON 파싱 실패: {e}\n\n응답 (앞 200자):\n{json_str[:200]}")
+    if isinstance(parsed_data, list):
+        return parsed_data
+    elif isinstance(parsed_data, dict):
+        if all(key in parsed_data for key in ["type", "difficulty_level", "question"]): 
+            print("Warning: LLM returned a single JSON object, but a list was expected. Wrapping it in a list.")
+            return [parsed_data]
+        elif "generated_questions" in parsed_data and isinstance(parsed_data["generated_questions"], list):
+             print("Info: LLM returned an object with 'generated_questions' list.")
+             return parsed_data["generated_questions"]
+        else:
+            raise ValueError(f"JSON 파싱은 성공했으나, 결과가 리스트 또는 예상된 객체 형식이 아닙니다. 얻은 타입: {type(parsed_data)}")
+    else:
+        raise ValueError(f"JSON 파싱은 성공했으나, 결과가 리스트 또는 딕셔너리 형식이 아닙니다. 얻은 타입: {type(parsed_data)}")
 
 # type 및 difficulty_level 필드를 한글로 변환하는 함수 (새로운 함수)
 def localize_enum_fields(question: Dict) -> Dict:
     # 영어 → 한글 매핑
     type_map = {
-        "multiple_choice": "객관식",
-        "subjective": "서술형",
-        "MULTIPLE_CHOICE": "객관식", # 이전 프롬프트 호환성
-        "SUBJECTIVE": "서술형"      # 이전 프롬프트 호환성
+        "OBJECTIVE": "객관식",       # 변경: "multiple_choice" -> "OBJECTIVE"
+        "SUBJECTIVE": "서술형",      # 변경: "subjective" 유지 또는 "SUBJECTIVE"로 통일
+        # 이전 버전 호환성 또는 다양한 LLM 출력에 대응하기 위한 추가 매핑
+        "multiple_choice": "객관식", 
+        "MULTIPLE_CHOICE": "객관식"
     }
     difficulty_map = {
+        "EASY": "하",               # 변경: "easy" -> "EASY" (대문자 통일)
+        "MEDIUM": "중",             # 변경: "medium" -> "MEDIUM"
+        "HARD": "상",               # 변경: "hard" -> "HARD"
+        # 소문자 입력도 처리 (LLM이 소문자로 반환할 경우 대비)
         "easy": "하",
         "medium": "중",
-        "hard": "상",
-        "EASY": "하",   # 이전 프롬프트 호환성
-        "MEDIUM": "중", # 이전 프롬프트 호환성
-        "HARD": "상"    # 이전 프롬프트 호환성
+        "hard": "상"
     }
 
     # API 응답 키가 difficulty_level 또는 difficultyLevel 일 수 있음
-    difficulty_key = "difficulty_level" if "difficulty_level" in question else "difficultyLevel"
+    difficulty_key_original = None
+    if "difficulty_level" in question:
+        difficulty_key_original = "difficulty_level"
+    elif "difficultyLevel" in question:
+        difficulty_key_original = "difficultyLevel"
 
     if "type" in question:
       question["type"] = type_map.get(question["type"], question["type"])
-    if difficulty_key in question:
-      question["difficulty_level"] = difficulty_map.get(question[difficulty_key], question[difficulty_key])
-      if difficulty_key != "difficulty_level": # 키 통일
-          del question[difficulty_key]
+    
+    if difficulty_key_original:
+      # difficulty_level 키로 통일해서 저장 (한글화 이후)
+      question["difficulty_level"] = difficulty_map.get(question[difficulty_key_original], question[difficulty_key_original])
+      if difficulty_key_original != "difficulty_level" and difficulty_key_original in question: # 이미 difficulty_level로 바뀌었으면 삭제 불필요
+          del question[difficulty_key_original]
+          
     return question
 
 
@@ -98,45 +163,41 @@ def generate_question(
     page: str,
     num_objective: int = 3,
     num_subjective: int = 3,
-    difficulty: int = 3,
+    difficulty: str = "MEDIUM",
 ) -> List[Dict]:
     if page == "N/A" or page is None:
         page = "알 수 없음"
 
     VISION_PROMPT = f"""
 당신은 교육용 문제를 생성하는 AI입니다. 아래 문단은 PDF 문서 "{source}"의 {page}페이지에서 추출된 내용입니다.  
-이 내용을 바탕으로:
-- 객관식 문제 {num_objective}개
-- 주관식 문제 {num_subjective}개
+이 내용을 바탕으로 요청된 난이도 '{difficulty}' 수준으로 다음 문제들을 생성해주세요:
+- 객관식 문제 ({num_objective}개)
+- 서술형 문제 ({num_subjective}개)
 총 {num_objective + num_subjective}개의 문제를 **반드시 다음 명세에 따른 JSON 리스트 형식**으로 생성해주세요.
 다른 어떤 설명이나 추가 텍스트 없이, 순수한 JSON 배열 문자열만 응답해야 합니다.
 
 요청 형식 (JSON 배열):
 [
   {{
-    "type": "multiple_choice" or "subjective",
-    "difficulty_level": "easy" | "medium" | "hard", 
+    "type": "OBJECTIVE" or "SUBJECTIVE",                  # 변경: "multiple_choice" -> "OBJECTIVE"
+    "difficulty_level": "{difficulty}",                    # 변경: LLM이 직접 "EASY", "MEDIUM", "HARD" 중 입력된 값을 사용
     "question": "문제의 본문 내용입니다.",
-    "options": ["선택지 1번", "선택지 2번", "선택지 3번", "선택지 4번"],  # 객관식 문제일 경우에만 이 필드를 포함합니다. 주관식 문제에는 이 필드를 포함하지 마세요.
+    "options": ["선택지 1번", "선택지 2번", "선택지 3번", "선택지 4번"],  # 객관식(OBJECTIVE) 문제일 경우에만 이 필드를 포함합니다. 주관식(SUBJECTIVE) 문제에는 이 필드를 포함하지 마세요.
     "answer": "문제의 정답입니다.",
     "explanation": "문제에 대한 해설입니다.",
-    "tags": ["태그1", "태그2"]  # 문제 내용과 관련된 태그를 1개 이상 포함하세요. 예: ["문해력", "논리적 사고"]
+    "tags": ["태그1"]  # 문제 내용과 관련된 태그를 1개 포함하세요. 예: ["문해력"], ["추론력"], ["이해력"]
   }}
   // 여기에 추가 문제 객체들이 올 수 있습니다.
 ]
 
-난이도 매핑:
-- 입력된 난이도 점수 {difficulty} (1~5점)를 기준으로 "easy", "medium", "hard" 중 하나로 변환하여 `difficulty_level` 필드에 넣어주세요.
-  - 1-2점: "easy"
-  - 3점: "medium"
-  - 4-5점: "hard"
-
 필수 조건:
 1.  응답은 반드시 유효한 JSON 배열 (리스트) 형식이어야 합니다. JSON 객체로 감싸지 마세요.
-2.  객관식 문제는 `options` 필드 (선택지 4개 포함)를 가져야 합니다.
-3.  주관식 문제는 `options` 필드를 포함하지 않아야 합니다. (필드 자체가 없어야 함)
-4.  모든 문제는 `type`, `difficulty_level`, `question`, `answer`, `explanation`, `tags` 필드를 가져야 합니다.
-5.  `tags`는 문제의 핵심 내용을 나타내는 키워드를 ["분석력", "문제해결력", "추론력", "이해력", "논리력", "문해력", "수리력", "창의력"] 중에서 1개 이상 선택하여 리스트로 제공해주세요.
+2.  `type` 필드는 "OBJECTIVE" 또는 "SUBJECTIVE" 중 하나여야 합니다.
+3.  `difficulty_level` 필드는 반드시 입력된 난이도 값인 '{difficulty}' (EASY, MEDIUM, HARD 중 하나)를 그대로 사용해야 합니다.
+4.  객관식 문제("OBJECTIVE")는 `options` 필드 (선택지 4개 포함)를 가져야 합니다.
+5.  주관식 문제("SUBJECTIVE")는 `options` 필드를 포함하지 않아야 합니다. (필드 자체가 없어야 함)
+6.  모든 문제는 `type`, `difficulty_level`, `question`, `answer`, `explanation`, `tags` 필드를 가져야 합니다.
+7.  `tags`는 문제의 핵심 내용을 나타내는 키워드를 ["분석력", "문제해결력", "추론력", "이해력", "논리력", "문해력", "수리력", "창의력"] 중에서 1개 선택하여 리스트로 제공해주세요.
 """
 
     full_prompt = [{"type": "text", "text": VISION_PROMPT}] + messages
@@ -151,43 +212,35 @@ def generate_question(
 
     print(f"LLM 응답 (앞 200자):\n{raw_content[:200]}")
 
-    # JSON 파싱 로직 변경 (새로운 함수 사용)
     try:
         parsed_questions = parse_json_response(raw_content)
     except ValueError as e:
         print(f"Error during parsing, returning raw data: {e}")
-        # 파싱 실패 시, 이전처럼 raw 데이터를 반환할 수 있지만, save_results.py가 리스트를 기대하므로 빈 리스트나 에러 객체 반환 고려
         return [{"error": str(e), "raw_response": raw_content}]
 
-
-    # 후처리 로직 추가 (새로운 코드 내용)
     processed_questions = []
     for q_idx, q_item in enumerate(parsed_questions):
         if not isinstance(q_item, dict):
             print(f"Warning: Skipping non-dict item in parsed list at index {q_idx}: {str(q_item)[:100]}...")
             continue
 
-        # 필수 필드 검증 강화
-        required_keys = ["type", "question", "answer", "explanation", "tags"]
-        # difficulty_level은 localize_enum_fields에서 difficultyLevel도 처리하므로 일단 여기서 제외
-        
+        required_keys = ["type", "difficulty_level", "question", "answer", "explanation", "tags"]
         missing_keys = [key for key in required_keys if key not in q_item]
         if missing_keys:
             print(f"Warning: Skipping question due to missing keys {missing_keys} in item: {str(q_item)[:100]}...")
             continue
         
-        if q_item.get("type") == "multiple_choice" and "options" not in q_item:
-            print(f"Warning: Skipping multiple_choice question due to missing 'options': {str(q_item)[:100]}...")
+        if q_item.get("type") == "OBJECTIVE" and "options" not in q_item:
+            print(f"Warning: Skipping OBJECTIVE question due to missing 'options': {str(q_item)[:100]}...")
             continue
 
-        q_item["document_id"] = source # document_id 추가 (기존 documentId에서 변경됨)
-        q_item["page_number"] = page # 페이지 번호 추가 (선택적)
-        q_item["question_id"] = f"{source}_{page}_{q_idx}" # 고유 ID 생성 (선택적)
+        q_item["document_id"] = source
+        q_item["page_number"] = page
+        q_item["question_id"] = f"{source}_{page}_{q_idx}"
 
-        localized_item = localize_enum_fields(q_item)
-        processed_questions.append(localized_item)
+        processed_questions.append(q_item)
     
-    if not processed_questions and parsed_questions: # 파싱은 성공했으나 모든 항목이 필터링된 경우
+    if not processed_questions and parsed_questions:
         print("Warning: All parsed questions were filtered out during post-processing.")
         return [{"error": "All parsed questions were filtered out during post-processing.", "raw_response": raw_content}]
         
