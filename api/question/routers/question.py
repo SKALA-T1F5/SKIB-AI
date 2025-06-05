@@ -15,7 +15,7 @@ def generate_questions(
 ):
     # 문제 생성 실행
     questions = run_pipeline(
-        pdf_path=request.documentPath,
+        pdf_path=request.documentId,
         num_objective=request.configuredObjectiveCount,
         num_subjective=request.configuredSubjectiveCount,
     )
