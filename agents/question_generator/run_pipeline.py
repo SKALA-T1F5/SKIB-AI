@@ -24,8 +24,10 @@ import time
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
 
 
-def run_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3):
+def run_pipeline(pdf_path: int, num_objective: int = 3, num_subjective: int = 3):
     # 0. PDF 파일 경로와 컬렉션 이름 설정
+    if pdf_path == 1:
+        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/SKCP-3003-프로그램설계서(프로세스및화면)_10.세금계산서)_v1.0_20230410.pdf"
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
@@ -42,8 +44,26 @@ def run_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3)
 
     source_file_name = os.path.basename(pdf_path)
 
+    processed_vision_chunks = docling_blocks_to_vision_messages(blocks)
+    n_chunks = len(processed_vision_chunks)
+
+        # 분배 계산
+    def distribute(total, n):
+        base = total // n
+        remainder = total % n
+        return [base + 1 if i < remainder else base for i in range(n)]
+
+    obj_per_chunk = distribute(num_objective, n_chunks)
+    subj_per_chunk = distribute(num_subjective, n_chunks)
+
+    results = []
+    objective_count = 0
+    subjective_count = 0
+
     # 4. 각 processed_vision_chunk에 대해 질문 생성 및 저장 반복
     for i, vision_data in enumerate(processed_vision_chunks):
+        if objective_count >= num_objective and subjective_count >= num_subjective:
+            break
         messages_for_api = vision_data['messages']
         chunk_metadata = vision_data['metadata']
 
@@ -73,6 +93,13 @@ def run_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3)
         else:
             vector = [] # 빈 텍스트의 경우 빈 벡터
 
+        # 각 chunk별로 할당된 개수만큼만 요청
+        num_obj = obj_per_chunk[i]
+        num_subj = subj_per_chunk[i]
+
+        if num_obj == 0 and num_subj == 0:
+            continue
+
         # GPT-4o Vision API를 통해 질문 생성
         # generate_question 호출 시 source와 page는 chunk_obj_for_saving의 값을 사용
         # num_objective와 num_subjective는 generate_question 함수의 기본값을 사용하거나 여기서 지정할 수 있습니다.
@@ -80,18 +107,44 @@ def run_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3)
             messages=messages_for_api, 
             source=source_file_name, 
             page=page_info_for_chunk,
-            num_objective=num_objective,  # 예시: 객관식 3개
-            num_subjective=num_subjective  # 예시: 주관식 3개
-            # difficulty는 generate_question의 기본값(3) 사용 또는 chunk_obj_for_saving 등에서 가져올 수 있음
+            num_objective=num_obj,
+            num_subjective=num_subj,
         )
-        
+        print(len(questions_list), "questions generated for chunk", i)
+        for question_data in questions_list:
+            q_type = question_data["type"]
+            if q_type == "OBJECTIVE" and objective_count >= num_objective:
+                continue
+            if q_type != "SUBJECTIVE" and subjective_count >= num_subjective:
+                continue
+
+            if q_type == "OBJECTIVE":
+                objective_count += 1
+            else:
+                subjective_count += 1
+
+            result = {
+                "type": question_data["type"],
+                "difficulty_level": question_data["difficulty_level"],
+                "question": question_data["question"],
+                "options": question_data.get("options"),
+                "answer": question_data["answer"],
+                "explanation": question_data.get("explanation"),
+                "document_id": 1,  # 문서 ID는 1로 고정 (나중에 실제 문서 ID로 변경 필요)
+                "tags": question_data.get("tags", []),
+                "grading_criteria": question_data.get("grading_criteria")  # 새 필드 추가
+            }
+
+            results.append(result)
+
         # 생성된 문항과 메타데이터 저장
         # save_question_result는 이제 chunk_info와 questions_list를 받습니다.
         save_question_result(chunk_info=chunk_obj_for_saving, questions_list=questions_list)
         
         time.sleep(1) # API 호출 간 지연 시간 유지
 
-    print(f"✅ 문서 '{collection_name}' 문제 생성 완료")
+    print(f"✅ 문서 '{collection_name}' 문제 생성 완료: 총 {len(results)}개")
+    return results
 
 
 # 터미널에서 직접 실행하는 경우

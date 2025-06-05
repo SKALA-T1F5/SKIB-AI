@@ -2,6 +2,7 @@ import os
 import openai
 from typing import List, Tuple
 from api.grading.schemas.subjective_grading import GradingCriterion
+from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
 
@@ -45,28 +46,19 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
         }}
     """
 
-    # response = openai_client.chat.completions.create(
-    #     model="gpt-4",
-    #     messages=[
-    #         {"role": "system", "content": "당신은 정직하고 논리적인 채점 AI입니다."},
-    #         {"role": "user", "content": prompt}
-    #     ],
-    #     temperature=0.2
-    # )
+    response = openai_client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "당신은 정직하고 논리적인 채점 AI입니다."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.2
+    )
 
-    # content = response['choices'][0]['message']['content']
-    import json
-    sample_response = {
-        "score": 3,
-        "selected_criteria": {
-            "score": 3,
-            "criteria": "예시 기준",
-            "example": "예시 답변",
-            "note": "예시 비고"
-        }
-    }
+    content = response.choices[0].message.content
+    json_data = parse_json_response(content)
 
-    return parse_response(sample_response)
+    return parse_response(json_data)
 
 # def parse_response(content: str) -> Tuple[float, GradingCriterion]:
 def parse_response(data: dict) -> Tuple[float, GradingCriterion]:
