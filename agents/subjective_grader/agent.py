@@ -27,7 +27,7 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
     # ])
     # 채점 기준을 문자열로 변환 2
     criteria_prompt = "\n".join([
-    f"{c.score}점: {c.criteria}" for c in grading_criteria
+    f"{c.score} | {c.criteria} | ex: {c.example}" for c in grading_criteria
 ])
 
 

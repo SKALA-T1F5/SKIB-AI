@@ -18,10 +18,10 @@ async def run_test():
     ]
 
     # 2. 예시 user_answer
-    # test_user_answer = "잘 모르겠어요" # 0점 수준
+    test_user_answer = "잘 모르겠어요" # 0점 수준
     # test_user_answer = "AI는 사람처럼 생각하는 기술이고, 요즘 많이 쓰여요." # 1점 수준
     # test_user_answer = "AI는 넓은 개념이고 머신러닝은 AI 안에 포함되는 기술이에요." # 3점 수준
-    test_user_answer = "AI는 인간의 지능을 모방하는 기술 전반을 말하고, 머신러닝은 그 중 데이터를 학습해서 스스로 규칙을 찾아내는 알고리즘 기반 기술입니다." # 5점 수준
+    # test_user_answer = "AI는 인간의 지능을 모방하는 기술 전반을 말하고, 머신러닝은 그 중 데이터를 학습해서 스스로 규칙을 찾아내는 알고리즘 기반 기술입니다." # 5점 수준
 
     # 3. 채점 실행
     start_time = time.time()
