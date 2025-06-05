@@ -6,9 +6,8 @@ from typing import List
 # 1. 시스템 프롬프트 정의
 # AI의 역할과 응답 형식을 지정합니다.
 SYSTEM_PROMPT = """
-You are an assistant that evaluates subjective answers based on provided grading criteria.
-You will return a score out of 100 based on how well the answer meets the criteria.
-Respond ONLY in JSON format with 'score' and 'selected_criteria' (the criteria that were met).
+Score the answer (0–5) based on the grading criteria.
+Respond in JSON with 'score' only.
 """
 
 # 2. 사용자 프롬프트 생성 함수
