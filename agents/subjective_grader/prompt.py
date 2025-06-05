@@ -14,15 +14,15 @@ Respond in JSON with 'score' only.
 # 사용자 답변과 채점 기준을 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성합니다.
 def build_user_prompt(user_answer: str, criteria_text: str) -> str:
     return f"""
-다음은 사용자 답변입니다:
+Here is the user's answer:
 \"\"\"{user_answer}\"\"\"
 
-다음은 채점 기준입니다:
+Here are the grading criteria:
 {criteria_text}
 
-사용자 답변이 어떤 기준에 가장 부합하는지 판단하고,
-score만 JSON 형식으로 반환하세요.
+Evaluate which criterion the answer best matches,  
+and return **only** the score in JSON format.
 
-예시:
+Example:
 {{ "score": 3 }}
 """
