@@ -1,39 +1,128 @@
-annotated-types
-anyio
-click
-exceptiongroup
-fastapi
-h11
-idna
-pydantic
-pydantic_core
-python-dotenv
-sniffio
-starlette
-typing_extensions
-uvicorn
+# ✅ FastAPI 기반 웹 서버 구축
+fastapi==0.112.2                 # 웹 프레임워크
+uvicorn==0.34.2                  # ASGI 서버
+starlette==0.38.2                # FastAPI 내부 기반 (비동기 웹 라이브러리)
+httpx==0.28.1                    # 비동기 HTTP 클라이언트
+python-multipart==0.0.20         # multipart/form-data 업로드 지원
+anyio==4.7.0                     # 비동기 지원
+sniffio==1.3.0                   # async context 식별
+h11==0.16.0                      # HTTP/1.1 프로토콜 지원
 
-# LangChain 핵심
-langchain>=0.1.14
-openai>=1.14.3
+# ✅ 데이터베이스 및 환경 설정
+pymongo==4.11                    # MongoDB 클라이언트
+python-dotenv==1.1.0             # .env 환경변수 로드
 
-# 임베딩 사용 (OpenAI or 로컬 대체 가능)
-tiktoken>=0.5.1
-sentence-transformers>=2.5.1
+# ✅ 문서/이미지 파싱 및 OCR
+docling==2.36.0                  # 문서 기반 질문 생성용 라이브러리
+docling-core==2.33.0
+docling-ibm-models==3.4.4
+docling-parse==4.0.1
+easyocr==1.7.2                   # 이미지에서 텍스트 추출 (OCR)
+pymupdf==1.26.0                  # PDF 파싱 (PyMuPDF)
+python-docx==1.1.2               # Word 문서 파싱
+python-pptx==1.0.2               # PPT 문서 파싱
+openpyxl==3.1.5                  # 엑셀 읽기/쓰기
+xlsxwriter==3.2.3                # 엑셀 생성
+et-xmlfile==2.0.0                # 엑셀 내부 XML 처리용
 
-# 문서 파싱 (PDF 등)
-docling>=2.34.0
-pdf2image>=1.16.3  # docling의 의존성
-pytesseract>=0.3.10  # docling의 의존성
-Pillow>=10.0.0  # docling의 의존성
+# ✅ AI / LLM / 벡터 검색 관련
+openai==1.82.1                   # OpenAI API
+langchain==0.3.25                # LLM 파이프라인 구축
+langchain-core==0.3.63
+langchain-text-splitters==0.3.8
+langsmith==0.3.43                # LangChain 실험 추적
+sentence-transformers==4.1.0     # 임베딩 모델 (예: BERT 기반)
+transformers==4.52.4             # Hugging Face 트랜스포머 모델
+tokenizers==0.21.1               # Tokenizer 지원
+torch==2.7.0                     # PyTorch (딥러닝 프레임워크)
+torchvision==0.22.0              # 이미지 관련 PyTorch 모델
 
-# Weaviate 클라이언트
-weaviate-client>=4.0.0
+# ✅ 컴퓨터 비전 / 이미지 처리
+opencv-python-headless==4.11.0.86  # 이미지 처리 (GUI 없는 버전)
+imageio==2.37.0                   # 이미지 입출력
+scikit-image==0.25.2              # 이미지 처리
+shapely==2.1.1                    # 벡터 지오메트리 연산
+tifffile==2025.5.10               # TIFF 이미지 지원
+pyclipper==1.3.0.post6            # 폴리곤 클리핑
 
-# 기본 도구
-python-dotenv>=1.0.1
-requests>=2.31.0
+# ✅ 데이터 분석 / 수학 / 과학 연산
+numpy==2.2.6                      # 배열 연산
+pandas==2.2.3                     # 데이터프레임 분석
+scikit-learn==1.6.1               # 머신러닝
+scipy==1.15.3                     # 과학계산
+sympy==1.14.0                     # 수학 심볼릭 계산
+mpmath==1.3.0                     # 고정밀 수학 연산
+tabulate==0.9.0                   # 테이블 출력
+threadpoolctl==3.6.0              # 병렬 연산 제어
+joblib==1.5.1                     # 병렬 처리
 
-# 선택: 로컬 테스트 및 데이터 처리
-pandas>=2.2.2
-numpy>=1.26.4
+# ✅ JSON, 문서 처리, 유틸 도구
+pyyaml==6.0.2                     # YAML 파일 파싱
+jsonlines==3.1.0                  # JSONL 처리
+jsonpatch==1.33                   # JSON patch 연산
+jsonpointer==3.0.0
+jsonref==1.1.0
+jsonschema==4.24.0                # JSON 스키마 검증
+jsonschema-specifications==2025.4.1
+orjson==3.10.18                   # 빠른 JSON 직렬화
+pydantic==2.10.3                  # 데이터 검증 및 설정
+pydantic-settings==2.9.1
+typing-extensions==4.12.2         # 타입 지원 확장
+typing-inspection==0.4.1
+
+# ✅ CLI / 유틸성
+click==8.1.8                      # CLI 개발용
+typer==0.15.4                     # CLI 프레임워크 (click 기반)
+validators==0.34.0                # 입력값 검증
+shellingham==1.5.4                # CLI 셸 감지
+rich==14.0.0                      # 컬러 터미널 출력
+tqdm==4.67.1                      # 프로그레스 바
+filelock==3.18.0                  # 파일 잠금
+
+# ✅ 웹 인증 및 보안
+authlib==1.3.1                    # OAuth 등 인증 지원
+cryptography==45.0.3             # 암호화 모듈
+cffi==1.17.1                      # C API 연동
+pycparser==2.22                   # C 파서
+urllib3==2.4.0                    # HTTP 통신
+requests==2.32.3                  # HTTP 요청
+requests-toolbelt==1.0.0          # requests 보완 도구
+certifi==2025.4.26                # 인증서 번들
+
+# ✅ 구조화된 문서 마크업
+jinja2==3.1.6                     # 템플릿 엔진
+markdown-it-py==3.0.0             # 마크다운 파싱
+marko==2.1.3
+markupsafe==3.0.2
+mdurl==0.1.2
+pygments==2.19.1                  # 코드 하이라이팅
+
+# ✅ 기타 유틸 / OS 정보 / 로깅 등
+distro==1.9.0                     # 배포판 정보
+attrs==25.3.0                     # 클래스 속성 자동화
+deprecation==2.1.0                # 사용중단 경고
+dill==0.4.0                       # 객체 직렬화
+multiprocess==0.70.18             # 멀티프로세싱
+packaging==24.2                   # 버전 비교 등
+lazy-loader==0.4                  # 지연 로딩
+regex==2024.11.6                  # 정규표현식
+six==1.17.0                       # Python 2/3 호환성
+
+# ✅ Geo/공간 관련
+rtree==1.4.0                      # R트리 (공간 인덱스)
+shapely==2.1.1                    # 지리 좌표 연산
+
+# ✅ 기타
+referencing==0.36.2               # JSON 참조 관리
+hf-xet==1.1.2                     # HuggingFace 용 유틸?
+semchunk==2.2.2                   # Chunking 유틸
+ninja==1.11.1.4                   # C++ 빌드 툴 (PyTorch 등에서 사용)
+zstandard==0.23.0                 # 고속 압축
+
+# ✅ 시계열/시간 관련
+tzdata==2025.2                   # 타임존 데이터
+pytz==2025.2                     # 타임존 지원
+
+# ✅ 보조 도구
+annotated-types==0.6.0           # Pydantic v2에 사용
+jiter==0.10.0                     # 빠른 JSON 파서
