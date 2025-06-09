@@ -4,3 +4,6 @@ class DocumentMetaRequest(BaseModel):
     document_id: str
     project_id: str
     name: str
+
+class DocumentUploadResponse(BaseModel):
+    message: str
