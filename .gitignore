@@ -9,3 +9,4 @@ venv/
 
 # Outputs
 data/outputs/
+.DS_Store
