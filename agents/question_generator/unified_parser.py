@@ -14,6 +14,7 @@ from typing import List, Dict, Tuple
 from PIL import Image
 import io
 import numpy as np
+from .change_name import normalize_collection_name
 
 
 def parse_pdf_unified(pdf_path: str, collection_name: str = None) -> List[Dict]:
@@ -31,7 +32,8 @@ def parse_pdf_unified(pdf_path: str, collection_name: str = None) -> List[Dict]:
         raise FileNotFoundError(f"PDF 파일을 찾을 수 없습니다: {pdf_path}")
     
     if collection_name:
-        IMAGE_SAVE_DIR = f"data/images/{collection_name}_unified"
+        normalized_name = normalize_collection_name(collection_name)
+        IMAGE_SAVE_DIR = f"data/images/{normalized_name}"
     else:
         IMAGE_SAVE_DIR = "data/images/unified"
     
