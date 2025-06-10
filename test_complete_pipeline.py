@@ -15,6 +15,7 @@ import time
 from typing import List, Dict
 from agents.question_generator.unified_parser import parse_pdf_unified
 from agents.question_generator.keyword_summary import extract_keywords_and_summary
+from agents.question_generator.change_name import normalize_collection_name
 
 
 def test_document(pdf_path: str, document_name: str) -> Dict:
@@ -36,7 +37,8 @@ def test_document(pdf_path: str, document_name: str) -> Dict:
         source_file = os.path.basename(pdf_path)
         collection_name = os.path.splitext(source_file)[0]
         
-        blocks = parse_pdf_unified(pdf_path, f"{collection_name}_test")
+        normalized_name = normalize_collection_name(collection_name)
+        blocks = parse_pdf_unified(pdf_path, normalized_name)
         
         # 2. 블록 분석
         text_blocks = [b for b in blocks if b.get('type') in ['paragraph', 'section', 'heading']]
@@ -56,7 +58,7 @@ def test_document(pdf_path: str, document_name: str) -> Dict:
         output_dir = "data/outputs"
         os.makedirs(output_dir, exist_ok=True)
         
-        output_filename = f"{collection_name}_complete_test.json"
+        output_filename = f"{normalized_name}.json"
         output_path = os.path.join(output_dir, output_filename)
         
         with open(output_path, 'w', encoding='utf-8') as f:
@@ -84,7 +86,7 @@ def test_document(pdf_path: str, document_name: str) -> Dict:
                 "technical_terms_count": len(content_analysis.get('technical_terms', []))
             },
             "output_file": output_path,
-            "image_directory": f"data/images/{collection_name}_test_unified"
+            "image_directory": f"data/images/{normalized_name}"
         }
         
         print(f"✅ 키워드 추출 완료")
