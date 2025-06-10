@@ -7,6 +7,9 @@ __pycache__/
 venv/
 .env.*
 
-# Outputs
-data/
+# Generated data files
+weaviate_data/
+data/images/
+
+# System files
 .DS_Store
