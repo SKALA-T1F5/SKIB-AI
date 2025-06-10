@@ -8,6 +8,7 @@ import os
 from typing import List, Dict
 from openai import OpenAI
 from dotenv import load_dotenv
+from .change_name import normalize_collection_name
 
 # 환경 변수 로드
 load_dotenv(override=True)
@@ -188,8 +189,9 @@ if __name__ == "__main__":
             print(f"🔍 키워드 추출 및 요약 중...")
             result = extract_keywords_and_summary(blocks, source_file)
             
-            # JSON 파일로 저장
-            output_filename = f"{collection_name}_keywords_summary.json"
+            # JSON 파일로 저장 (컬렉션명 정규화)
+            normalized_name = normalize_collection_name(collection_name)
+            output_filename = f"{normalized_name}_keywords_summary.json"
             output_path = os.path.join(output_dir, output_filename)
             
             with open(output_path, 'w', encoding='utf-8') as f:
