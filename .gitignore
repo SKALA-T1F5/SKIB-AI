@@ -8,4 +8,4 @@ venv/
 .env.*
 
 # Outputs
-data/outputs/
+data/

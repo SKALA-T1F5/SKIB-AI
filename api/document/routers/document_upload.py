@@ -1,32 +1,18 @@
 from fastapi import APIRouter, UploadFile, File, Form
-from api.document.schemas.document_upload import DocumentMetaRequest
-from api.document.crud.document_crud import save_file_locally
-from fastapi.responses import JSONResponse
+from api.document.schemas.document_upload import DocumentUploadResponse
+from api.document.crud.document import save_document_locally
 
 router = APIRouter()
 
-@router.post("/api/document")
+@router.post("/api/document", response_model=DocumentUploadResponse)
 async def upload_document(
+    file: UploadFile = File(...),
     document_id: str = Form(...),
     project_id: str = Form(...),
-    name: str = Form(...),
-    file: UploadFile = File(...)
+    name: str = Form(...)
 ):
-    # 파일 읽기
-    contents = await file.read()
-    filename = f"{document_id}_{file.filename}"
-
-    try:
-        path = save_file_locally(contents, filename)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
+    content = await file.read()
+    result = save_document_locally(content, document_id, project_id, name)
     return {
-        "message": "File uploaded successfully",
-        "file_path": path,
-        "meta": {
-            "document_id": document_id,
-            "project_id": project_id,
-            "name": name
-        }
+        "message": "파일 처리 완료",
     }
