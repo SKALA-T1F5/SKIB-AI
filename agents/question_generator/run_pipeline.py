@@ -9,14 +9,13 @@ GPT-4o Vision 메시지 포맷으로 변환 (docling_blocks_to_vision_messages)
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from agents.question_generator.docling_parser import parse_pdf_to_docling_blocks
-from agents.question_generator.selective_image_parser import extract_selective_elements
+from agents.question_generator.unified_parser import parse_pdf_unified
 from agents.question_generator.chunking import block_to_documents, split_docs
 from agents.question_generator.generate_questions import generate_question
 from agents.question_generator.save_results import save_question_result
 from agents.question_generator.preprocess_docling import docling_blocks_to_vision_messages
 from agents.question_generator.change_name import normalize_collection_name
-from db.vectorDB.upload_weaviate import upload_chunk_to_collection
+from db.vectorDB.weaviate_utils import upload_chunk_to_collection
 from sentence_transformers import SentenceTransformer
 import os
 import sys
@@ -26,23 +25,16 @@ import time
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
 
 
-def run_pipeline(pdf_path: str, collection_name: str, use_selective_parser: bool = False):
-    # 1. PDF를 블록으로 변환 (선택적 파서 또는 기본 Docling 파서 사용)
-    if use_selective_parser:
-        print("🎯 선택적 이미지 파서 사용")
-        blocks = extract_selective_elements(pdf_path, collection_name)
-    else:
-        print("📄 기본 Docling 파서 사용")
-        blocks = parse_pdf_to_docling_blocks(pdf_path, collection_name)
+def run_pipeline(pdf_path: str, collection_name: str):
+    # 1. PDF를 통합 파서로 변환
+    print("📄 통합 파서 사용")
+    blocks = parse_pdf_unified(pdf_path, collection_name)
 
     # 2. Docling 블록을 Vision API 입력 형식의 메시지 청크와 메타데이터로 변환
     # 이 함수는 이제 각 청크에 대한 메시지 리스트와 메타데이터 딕셔너리를 포함하는 딕셔너리 리스트를 반환합니다.
     # 예: [{'messages': [...], 'metadata': {'pages': [...], 'source_text_combined': "..."}}, ...]
     processed_vision_chunks = docling_blocks_to_vision_messages(blocks)
 
-    # 3. (선택 사항) LangChain 문서 객체 및 고정 크기 청킹 로직은 여기서는 직접 사용하지 않음
-    # docs = block_to_documents(blocks) # 필요시 유지 또는 제거
-    # chunks_split_docs = split_docs(docs, chunk_size=40, chunk_overlap=10) # 이 부분은 RateLimit의 원인이므로 제거 또는 수정
 
     source_file_name = os.path.basename(pdf_path)
 
@@ -98,22 +90,17 @@ def run_pipeline(pdf_path: str, collection_name: str, use_selective_parser: bool
     print(f"✅ 문서 '{collection_name}' 문제 생성 완료")
 
 
-# 선택적 파서를 사용하는 편의 함수
-def run_selective_pipeline(pdf_path: str, collection_name: str):
-    """선택적 이미지 파서를 사용하는 파이프라인"""
-    return run_pipeline(pdf_path, collection_name, use_selective_parser=True)
 
 
 # 터미널에서 직접 실행하는 경우
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python -m agents.question_generator.run_pipeline <pdf_path> [--selective]")
+        print("Usage: python -m agents.question_generator.run_pipeline <pdf_path>")
         sys.exit(1)
 
     pdf_path = sys.argv[1]
-    use_selective = "--selective" in sys.argv
     
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
     
-    run_pipeline(pdf_path, collection_name, use_selective_parser=use_selective)
+    run_pipeline(pdf_path, collection_name)
