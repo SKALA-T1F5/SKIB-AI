@@ -14,4 +14,4 @@ services:
       ENABLE_MODULES: "none"
       CLUSTER_HOSTNAME: "node1"
     volumes:
-      - ./weaviate_data:/var/lib/weaviate
+      - ./weaviate_data:/data

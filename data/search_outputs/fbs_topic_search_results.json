@@ -1,0 +1,224 @@
+{
+  "json_file": "data/outputs/FBS_To_Be_UI_v0_66.json",
+  "collection_name": "FBS_To_Be_UI_v0_66",
+  "topics_searched": 5,
+  "topics_with_results": 5,
+  "total_results_found": 15,
+  "search_results": {
+    "지급대상 조회": [
+      {
+        "uuid": "800441c1-d773-4591-8e29-7c6de77ac185",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_2",
+          "section_title": "",
+          "source_text": "전자어음 지급대상 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "지급대상 조회"
+      },
+      {
+        "uuid": "5f355863-d21f-4c61-a760-e0137213003d",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_0",
+          "section_title": "",
+          "source_text": "지급대상 조회 상신 전송",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "지급대상 조회"
+      },
+      {
+        "uuid": "c033bf3e-700e-443d-a39d-5f3df79f8b50",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_53",
+          "section_title": "",
+          "source_text": "대금 지급 > 대량 성명 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "지급대상 조회"
+      }
+    ],
+    "급여이체": [
+      {
+        "uuid": "c06d3d86-750c-4216-b418-f23b391692a0",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_1",
+          "section_title": "",
+          "source_text": "급여이체 조회 상신 전송",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "급여이체"
+      },
+      {
+        "uuid": "39970ed4-cdce-43fe-83dc-a7d7796a1e2e",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_47",
+          "section_title": "",
+          "source_text": "급여외 대금지급 사내이체 전자어음",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "급여이체"
+      },
+      {
+        "uuid": "800441c1-d773-4591-8e29-7c6de77ac185",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_2",
+          "section_title": "",
+          "source_text": "전자어음 지급대상 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "급여이체"
+      }
+    ],
+    "전자어음": [
+      {
+        "uuid": "800441c1-d773-4591-8e29-7c6de77ac185",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_2",
+          "section_title": "",
+          "source_text": "전자어음 지급대상 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "전자어음"
+      },
+      {
+        "uuid": "6696b608-8626-4f12-a7e3-6e624ae5135e",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_164",
+          "section_title": "",
+          "source_text": "외화 입금 예정 통지 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "전자어음"
+      },
+      {
+        "uuid": "c033bf3e-700e-443d-a39d-5f3df79f8b50",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_53",
+          "section_title": "",
+          "source_text": "대금 지급 > 대량 성명 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "전자어음"
+      }
+    ],
+    "계좌간 이체": [
+      {
+        "uuid": "41a7f285-e8f9-48d4-800e-c441215753e4",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_5",
+          "section_title": "",
+          "source_text": "계좌간 이체 상신 전송",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "계좌간 이체"
+      },
+      {
+        "uuid": "0955a52b-2ace-4b92-96d4-9200454f98e4",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_234",
+          "section_title": "",
+          "source_text": "배치 이력 조회 화면",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "계좌간 이체"
+      },
+      {
+        "uuid": "210a227c-19d5-43e0-84ed-2b91339603b1",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_6",
+          "section_title": "",
+          "source_text": "계좌간 이체 결과 조회",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "계좌간 이체"
+      }
+    ],
+    "결재 승인": [
+      {
+        "uuid": "f561f22b-1af5-413b-89e3-3a7c2059fc5c",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_23",
+          "section_title": "",
+          "source_text": "결재자 결재 승인 번호 저장",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "결재 승인"
+      },
+      {
+        "uuid": "3297a148-68c7-44f2-9424-bf16ec7edbcf",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_38",
+          "section_title": "",
+          "source_text": "결재 진행 조회 및 승인 처리",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "결재 승인"
+      },
+      {
+        "uuid": "b8918aae-8f61-4eaf-8191-fae43ceeba06",
+        "score": 0.0,
+        "properties": {
+          "chunk_id": "FBS_To_Be_UI_v0_66_block_41",
+          "section_title": "",
+          "source_text": "결재 진행 조회 화면",
+          "chunk_type": "heading",
+          "source": "FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf",
+          "project": "FBS_To_Be_UI_v0_66"
+        },
+        "keyword": "결재 승인"
+      }
+    ]
+  },
+  "summary": {
+    "successful_topics": [
+      "지급대상 조회",
+      "급여이체",
+      "전자어음",
+      "계좌간 이체",
+      "결재 승인"
+    ],
+    "empty_topics": []
+  }
+}

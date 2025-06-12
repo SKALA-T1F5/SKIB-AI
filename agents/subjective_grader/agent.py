@@ -1,66 +1,62 @@
+# agents/subjective_grader/agent.py
 import os
 import openai
-from typing import List, Tuple
+import json
+
+from openai import AsyncOpenAI
+from typing import List
 from api.grading.schemas.subjective_grading import GradingCriterion
 from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
+from agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
 
-# .env 파일에서 환경 변수 로드
-load_dotenv(override=True)
 
-# 환경 변수에서 API 키 불러오기
-api_key = os.getenv("OPENAI_API_KEY")
+#openai 로드
+load_dotenv(override=True) 
+api_key = os.getenv("OPENAI_API_KEY") 
+openai_client = AsyncOpenAI(api_key=api_key) 
+AGENT_MODEL = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL") #.env에 모델명 저장 (AGENT_SUBJECTIVE_GRADER_MODEL=gpt-4)✅
 
-# OpenAI 클라이언트 생성
-openai_client = openai.OpenAI(api_key=api_key)
-
-async def subjective_grader(user_answer: str, grading_criteria: List[GradingCriterion]) -> Tuple[float, GradingCriterion]:
+async def subjective_grader(user_answer: str, grading_criteria: List[GradingCriterion]) -> float:
     """
-    OpenAI를 이용하여 사용자 답변을 기준들과 비교하고 가장 적절한 기준을 선택해 점수를 반환
+    OpenAI를 이용하여 사용자 답변을 기준들과 비교하고 점수만 반환
     """
-    criteria_prompt = "\n\n".join([
-        f"점수: {c.score}\n기준: {c.criteria}\n예시: {c.example}\n비고: {c.note}" for c in grading_criteria
-    ])
+    # 채점 기준을 문자열로 변환
+    # criteria_prompt = "\n\n".join([
+    #     f"점수: {c.score}\n기준: {c.criteria}\n예시: {c.example}\n비고: {c.note}" for c in grading_criteria
+    # ])
 
-    prompt = f"""
-        당신은 채점 보조 AI입니다.
+    # 1. 채점 기준을 문자열로 변환
+    criteria_prompt = "\n".join([
+    f"{c.score} | {c.criteria} | ex: {c.example}" for c in grading_criteria
+])
 
-        다음은 사용자 답변입니다:
-        "{user_answer}"
 
-        아래는 채점 기준입니다:
-        {criteria_prompt}
+    # 2. 최종 프롬프트 구성
+    prompt = build_user_prompt(user_answer, criteria_prompt)
 
-        사용자의 답변이 어떤 기준에 가장 부합하는지 판단하여 점수(score)와 선택된 기준(criteria 전체)를 JSON 형식으로 반환하세요.
+    # 3. MODEL 호출
+    try:
+        response = await openai_client.chat.completions.create(
+            model=AGENT_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.2,
+        )
 
-        예시 출력:
-        {{
-        "score": 0.5,
-        "selected_criteria": {{
-            "score": 0.5,
-            "criteria": "...",
-            "example": "...",
-            "note": "..."
-        }}
-        }}
-    """
+        content = response.choices[0].message.content.strip()
+        result = json.loads(content)
 
-    response = openai_client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "당신은 정직하고 논리적인 채점 AI입니다."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.2
-    )
+        # 토큰 사용량 (차후 주석처리 ✅ )
+        usage = response.usage
+        print("🟨 사용 토큰:", usage.total_tokens)
+        print("└─ prompt_tokens:", usage.prompt_tokens)
+        print("└─ completion_tokens:", usage.completion_tokens)
+        
+        return float(result["score"]) 
 
-    content = response.choices[0].message.content
-    json_data = parse_json_response(content)
-
-    return parse_response(json_data)
-
-# def parse_response(content: str) -> Tuple[float, GradingCriterion]:
-def parse_response(data: dict) -> Tuple[float, GradingCriterion]:
-    criteria = GradingCriterion(**data['selected_criteria'])
-    return data['score'], criteria
+    except Exception as e:
+        raise RuntimeError(f"주관식 채점 오류: {str(e)}")

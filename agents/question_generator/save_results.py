@@ -2,13 +2,15 @@
 
 import os
 import json
+from .change_name import normalize_collection_name
 
 
 # 문제 생성 결과 저장
 def save_question_result(chunk_info: dict, questions_list: list, output_dir="data/outputs/"):
     os.makedirs(output_dir, exist_ok=True)
-    # 파일 확장자를 .jsonl로 변경
-    file_path = os.path.join(output_dir, f"questions_{chunk_info['project']}.jsonl")
+    # 컬렉션명을 정규화하여 파일명 생성
+    normalized_project = normalize_collection_name(chunk_info['project'])
+    file_path = os.path.join(output_dir, f"{normalized_project}.jsonl")
 
     with open(file_path, "a", encoding="utf-8") as f:
         for question_item in questions_list:
