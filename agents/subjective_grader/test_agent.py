@@ -18,10 +18,19 @@ async def run_test():
     ]
 
     # 2. 예시 user_answer
-    test_user_answer = "잘 모르겠어요" # 0점 수준
+    # test_user_answer = "잘 모르겠어요" # 0점 수준
     # test_user_answer = "AI는 사람처럼 생각하는 기술이고, 요즘 많이 쓰여요." # 1점 수준
     # test_user_answer = "AI는 넓은 개념이고 머신러닝은 AI 안에 포함되는 기술이에요." # 3점 수준
     # test_user_answer = "AI는 인간의 지능을 모방하는 기술 전반을 말하고, 머신러닝은 그 중 데이터를 학습해서 스스로 규칙을 찾아내는 알고리즘 기반 기술입니다." # 5점 수준
+    # test_user_answer = "I don't know."  # Level 0
+    # test_user_answer = "AI is a technology that thinks like humans, and it's widely used these days."  # Level 1
+    # test_user_answer = "AI is a broad concept, and machine learning is a technology included within AI."  # Level 3
+    # test_user_answer = "AI refers to technologies that mimic human intelligence, and machine learning is a type of algorithm-based technology that learns from data and finds patterns on its own."  # Level 5
+    # test_user_answer = "Tôi không biết."  # Level 0
+    # test_user_answer = "AI là một công nghệ suy nghĩ giống con người và hiện đang được sử dụng rộng rãi."  # Level 1
+    # test_user_answer = "AI là một khái niệm rộng và học máy là một công nghệ nằm trong AI."  # Level 3
+    test_user_answer = "AI đề cập đến các công nghệ mô phỏng trí thông minh của con người, và học máy là một loại công nghệ dựa trên thuật toán có khả năng học từ dữ liệu và tự tìm ra các mẫu."  # Level 5
+
 
     # 3. 채점 실행
     start_time = time.time()
