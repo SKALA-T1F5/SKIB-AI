@@ -36,6 +36,14 @@ def ensure_collection_exists(collection_name: str):
         print(f"ℹ️ 이미 존재하는 컬렉션: {collection_name}")
 
 
+def delete_collection(collection_name: str):
+    if collection_name in _client.collections.list_all():
+        _client.collections.delete(collection_name)
+        print(f"✅ 컬렉션 삭제: {collection_name}")
+    else:
+        print(f"⚠️ 존재하지 않는 컬렉션: {collection_name}")
+
+
 def upload_chunk_to_collection(chunk: dict, vector: list, collection_name: str):
     # # 컬렉션 존재 확인 및 필요시 생성
     ensure_collection_exists(collection_name)
