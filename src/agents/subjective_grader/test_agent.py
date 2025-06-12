@@ -5,7 +5,7 @@ import time
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 import asyncio
-from agents.subjective_grader.agent import subjective_grader
+from src.agents.subjective_grader.agent import subjective_grader
 from api.grading.schemas.subjective_grading import GradingCriterion
 
 async def run_test():

@@ -163,7 +163,7 @@ def search_topics_from_json(json_file_path: str, collection_name: str = None,
     
     # 2. 컬렉션명 자동 추정 (파일명 기반)
     if collection_name is None:
-        from agents.question_generator.change_name import normalize_collection_name
+        from src.agents.question_generator.change_name import normalize_collection_name
         
         filename = os.path.splitext(os.path.basename(json_file_path))[0]
         # "_complete_test" 같은 접미사 제거

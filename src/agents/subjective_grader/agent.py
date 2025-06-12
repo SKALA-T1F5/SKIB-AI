@@ -9,7 +9,7 @@ from api.grading.schemas.subjective_grading import GradingCriterion
 from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
-from agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
+from src.agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
 
 
 #openai 로드

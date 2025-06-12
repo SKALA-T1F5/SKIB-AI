@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List
 import os
 from api.question.schemas.question import QuestionResponse, QuestionConfig
-from agents.question_generator.run_pipeline import run_pipeline
+from src.agents.question_generator.run_pipeline import run_pipeline
 
 router = APIRouter(prefix="/api", tags=["Question Generator"])
 

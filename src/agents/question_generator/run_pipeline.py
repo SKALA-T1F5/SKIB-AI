@@ -9,12 +9,12 @@ GPT-4o Vision 메시지 포맷으로 변환 (docling_blocks_to_vision_messages)
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from agents.question_generator.docling_parser import parse_pdf_to_docling_blocks
-from agents.question_generator.chunking import block_to_documents, split_docs
-from agents.question_generator.generate_questions import generate_question
-from agents.question_generator.save_results import save_question_result
-from agents.question_generator.preprocess_docling import docling_blocks_to_vision_messages
-from agents.question_generator.change_name import normalize_collection_name
+from src.agents.question_generator.docling_parser import parse_pdf_to_docling_blocks
+from src.agents.question_generator.chunking import block_to_documents, split_docs
+from src.agents.question_generator.generate_questions import generate_question
+from src.agents.question_generator.save_results import save_question_result
+from src.agents.question_generator.preprocess_docling import docling_blocks_to_vision_messages
+from src.agents.question_generator.change_name import normalize_collection_name
 from sentence_transformers import SentenceTransformer
 import os
 import sys
@@ -23,11 +23,16 @@ import time
 # 임베딩 모델 로딩 (bge 모델 사용)
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
 
-
 def run_pipeline(pdf_path: int, num_objective: int = 3, num_subjective: int = 3):
     # 0. PDF 파일 경로와 컬렉션 이름 설정
     if pdf_path == 1:
-        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/SKCP-3003-프로그램설계서(프로세스및화면)_10.세금계산서)_v1.0_20230410.pdf"
+        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/2.연말정산시스템(YETA) 매뉴얼.pdf"
+    elif pdf_path == 2:
+        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/2_AGS Trouble shooting 가이드_v1.1.pdf"
+    elif pdf_path == 3:
+        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/alopex_UI_1.1.2_개발가이드.pdf"
+    elif pdf_path == 4:
+        pdf_path = "/Users/domwis/VSCode/SKIB/SKIB-AI/data/raw_docs/To-Be 재무Portal_Process 정의서_FP-07_탄소배출권_v1.0.pdf"
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
