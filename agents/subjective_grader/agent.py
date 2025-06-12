@@ -6,6 +6,7 @@ import json
 from openai import AsyncOpenAI
 from typing import List
 from api.grading.schemas.subjective_grading import GradingCriterion
+from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
 from agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
@@ -21,7 +22,6 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
     """
     OpenAI를 이용하여 사용자 답변을 기준들과 비교하고 점수만 반환
     """
-
     # 채점 기준을 문자열로 변환
     # criteria_prompt = "\n\n".join([
     #     f"점수: {c.score}\n기준: {c.criteria}\n예시: {c.example}\n비고: {c.note}" for c in grading_criteria
