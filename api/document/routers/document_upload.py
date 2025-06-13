@@ -15,4 +15,5 @@ async def upload_document(
     result = save_document_locally(content, document_id, project_id, name)
     return {
         "message": "파일 처리 완료",
+        "file_path": str(result["project_path"])
     }
