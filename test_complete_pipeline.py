@@ -13,9 +13,9 @@ import os
 import json
 import time
 from typing import List, Dict
-from src.agents.question_generator.unified_parser import parse_pdf_unified
+from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
 from src.agents.question_generator.keyword_summary import extract_keywords_and_summary
-from src.agents.question_generator.change_name import normalize_collection_name
+from utils.change_name import normalize_collection_name
 
 
 def test_document(pdf_path: str, document_name: str) -> Dict:

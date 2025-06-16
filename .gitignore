@@ -10,6 +10,8 @@ venv/
 # Generated data files
 weaviate_data/
 data/images/
+data
+logs/
 
 # System files
 .DS_Store
