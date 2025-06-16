@@ -11,4 +11,8 @@ async def upload_document(
 ):
     content = await file.read()
     result = save_document_locally(content, metadata.document_id, metadata.project_id, metadata.name)
-    return {"message": "파일 처리 완료"}
+    return {
+        "message": "파일 처리 완료",
+        "file_path": str(result["project_path"])
+    }
+
