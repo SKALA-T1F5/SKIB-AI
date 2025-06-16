@@ -9,12 +9,12 @@ GPT-4o Vision 메시지 포맷으로 변환 (docling_blocks_to_vision_messages)
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from src.agents.question_generator.docling_parser import parse_pdf_to_docling_blocks
+from src.document_pipeline.unified_parser import parse_pdf_unified
 from src.agents.question_generator.chunking import block_to_documents, split_docs
 from src.agents.question_generator.generate_questions import generate_question
 from src.agents.question_generator.save_results import save_question_result
 from src.agents.question_generator.preprocess_docling import docling_blocks_to_vision_messages
-from src.agents.question_generator.change_name import normalize_collection_name
+from utils.change_name import normalize_collection_name
 from sentence_transformers import SentenceTransformer
 import os
 import sys
@@ -36,7 +36,7 @@ def run_pipeline(pdf_path: int, num_objective: int = 3, num_subjective: int = 3)
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
-    blocks = parse_pdf_to_docling_blocks(pdf_path)
+    blocks = parse_pdf_unified(pdf_path)
 
     # 2. Docling 블록을 Vision API 입력 형식의 메시지 청크와 메타데이터로 변환
     # 이 함수는 이제 각 청크에 대한 메시지 리스트와 메타데이터 딕셔너리를 포함하는 딕셔너리 리스트를 반환합니다.

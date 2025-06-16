@@ -9,8 +9,8 @@ python upload_to_vectordb.py "data/raw_docs/자동차 리포트.pdf"
 import os
 import sys
 from sentence_transformers import SentenceTransformer
-from src.agents.question_generator.unified_parser import parse_pdf_unified
-from src.agents.question_generator.change_name import normalize_collection_name
+from src.document_pipeline.unified_parser import parse_pdf_unified
+from utils.change_name import normalize_collection_name
 from weaviate_utils import upload_chunk_to_collection
 
 # 임베딩 모델 로딩

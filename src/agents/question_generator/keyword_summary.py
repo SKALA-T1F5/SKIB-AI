@@ -8,7 +8,7 @@ import os
 from typing import List, Dict
 from openai import OpenAI
 from dotenv import load_dotenv
-from src.agents.question_generator.change_name import normalize_collection_name
+from utils.change_name import normalize_collection_name
 
 # 환경 변수 로드
 load_dotenv(override=True)
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     import sys
     
     if len(sys.argv) > 1:
-        from src.agents.question_generator.unified_parser import parse_pdf_unified
+        from src.document_pipeline.unified_parser import parse_pdf_unified
         
         pdf_path = sys.argv[1]
         output_dir = sys.argv[2] if len(sys.argv) > 2 else "data/outputs"
