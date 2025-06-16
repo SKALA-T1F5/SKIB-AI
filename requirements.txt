@@ -19,6 +19,8 @@ docling-ibm-models==3.4.4
 docling-parse==4.0.1
 easyocr==1.7.2                   # 이미지에서 텍스트 추출 (OCR)
 pymupdf==1.26.0                  # PDF 파싱 (PyMuPDF)
+pdfminer-six==20250506           # PDF 텍스트 추출 라이브러리
+pdfplumber==0.11.7               # PDF 텍스트/표 구조 파서 (pdfminer 기반)
 python-docx==1.1.2               # Word 문서 파싱
 python-pptx==1.0.2               # PPT 문서 파싱
 openpyxl==3.1.5                  # 엑셀 읽기/쓰기
@@ -28,13 +30,15 @@ et-xmlfile==2.0.0                # 엑셀 내부 XML 처리용
 # ✅ AI / LLM / 벡터 검색 관련
 openai==1.82.1                   # OpenAI API
 langchain==0.3.25                # LLM 파이프라인 구축
-langchain-core==0.3.63
+langchain-core==0.3.65           # LangChain의 핵심 기능 모듈
+langchain-openai==0.3.22         # LangChain과 OpenAI 연동
 langchain-text-splitters==0.3.8
-langsmith==0.3.43                # LangChain 실험 추적
-sentence-transformers==4.1.0     # 임베딩 모델 (예: BERT 기반)
+langsmith==0.3.45                # LangChain 실험 추적 도구
+sentence-transformers==4.1.0     # 임베딩 모델 (BERT 기반 등)
 transformers==4.52.4             # Hugging Face 트랜스포머 모델
-tokenizers==0.21.1               # Tokenizer 지원
-torch==2.7.0                     # PyTorch (딥러닝 프레임워크)
+tokenizers==0.21.1               # Hugging Face tokenizer 지원
+tiktoken==0.9.0                  # OpenAI tokenizer 지원
+torch==2.5.1                     # PyTorch (딥러닝 프레임워크)
 torchvision==0.22.0              # 이미지 관련 PyTorch 모델
 
 # ✅ 컴퓨터 비전 / 이미지 처리
@@ -72,6 +76,7 @@ typing-inspection==0.4.1
 
 # ✅ CLI / 유틸성
 click==8.1.8                      # CLI 개발용
+colorlog==6.9.0                   # 터미널용 컬러 로그 출력
 typer==0.15.4                     # CLI 프레임워크 (click 기반)
 validators==0.34.0                # 입력값 검증
 shellingham==1.5.4                # CLI 셸 감지
@@ -81,7 +86,8 @@ filelock==3.18.0                  # 파일 잠금
 
 # ✅ 웹 인증 및 보안
 authlib==1.3.1                    # OAuth 등 인증 지원
-cryptography==45.0.3             # 암호화 모듈
+chardet==5.2.0                    # 문자 인코딩 자동 감지기
+cryptography==45.0.3              # 암호화 모듈
 cffi==1.17.1                      # C API 연동
 pycparser==2.22                   # C 파서
 urllib3==2.4.0                    # HTTP 통신
@@ -126,3 +132,7 @@ pytz==2025.2                     # 타임존 지원
 # ✅ 보조 도구
 annotated-types==0.6.0           # Pydantic v2에 사용
 jiter==0.10.0                     # 빠른 JSON 파서
+
+# ✅ 테스트 도구
+pytest==8.4.0                        # 기본 테스트 프레임워크
+pytest-asyncio==1.0.0                # 비동기 코드용 pytest 확장
