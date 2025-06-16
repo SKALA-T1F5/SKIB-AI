@@ -9,7 +9,7 @@ GPT-4o Vision 메시지 포맷으로 변환 (docling_blocks_to_vision_messages)
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from src.document_pipeline.unified_parser import parse_pdf_unified
+from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
 from src.agents.question_generator.chunking import block_to_documents, split_docs
 from src.agents.question_generator.generate_questions import generate_question
 from src.agents.question_generator.save_results import save_question_result
