@@ -2,7 +2,7 @@
 
 import os
 import json
-from .change_name import normalize_collection_name
+from utils.change_name import normalize_collection_name
 
 
 # 문제 생성 결과 저장

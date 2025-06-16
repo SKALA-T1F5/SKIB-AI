@@ -88,7 +88,17 @@ SKIB-ai/
 
 ## ⚙️ 2. 환경 구성
 
-### Conda 기반 가상환경
+
+### 사전 요구 사항
+
+- Python 3.10 설치
+  - **Mac (Homebrew):** `brew install python@3.10`
+  - **Windows:** [Python 3.10 다운로드](https://www.python.org/downloads/release/python-3100/)  
+    설치 시 `"Add Python to PATH"` 옵션을 반드시 체크하세요.
+
+---
+
+### 🐍 Conda 기반 가상환경
 
 ```bash
 conda env create -f environment.yml
@@ -101,12 +111,55 @@ conda activate skib
 conda env export --no-builds | grep -v "prefix" > environment.yml
 ```
 
-### `.env` 예시 (직접 생성 필요)
+#### `.env` 예시 (직접 생성 필요)
 
 ```env
 MONGO_URL=mongodb://localhost:27017
 ```
+---
+### 🖥️ Mac / Linux
 
+#### 1. 가상환경 생성 (Python 3.10 기준)
+
+```bash
+/opt/homebrew/opt/python@3.10/libexec/bin/python -m venv .venv
+```
+
+#### 2. 가상환경 활성화
+
+```bash
+source .venv/bin/activate
+```
+
+#### 3. `uv` 설치 및 의존성 설치
+
+```bash
+pip install uv
+uv pip install -r requirements.txt
+```
+
+---
+
+### 🪟 Windows
+
+#### 1. 가상환경 생성
+
+```powershell
+python -m venv .venv
+```
+
+#### 2. 가상환경 활성화
+
+```powershell
+.venv\Scripts\activate
+```
+
+#### 3. `uv` 설치 및 의존성 설치
+
+```powershell
+pip install uv
+uv pip install -r requirements.txt
+```
 ---
 
 ## 🚀 3. 실행 방법

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from api.grading.schemas.subjective_grading import SubjectiveGradingRequest, SubjectiveGradingResponse
-from agents.subjective_grader.agent import subjective_grader
+from src.agents.subjective_grader.agent import subjective_grader
 
 router = APIRouter(prefix="/api/grading", tags=["Grading"])
 
