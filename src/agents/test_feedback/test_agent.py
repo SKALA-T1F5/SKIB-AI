@@ -22,8 +22,6 @@ async def run_test():
     # 3. 결과 출력
     print(f"🟨 응답 시간: {elapsed_time:.2f}초")
     print("\n" + "="*80)
-    print("📊 시험 결과 분석")
-    print("="*80)
     
     print(f"\n1️⃣ 전체 평가:")
     print(f"  {result['overallEvaluation']}")

@@ -35,14 +35,14 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
     # 3. MODEL 호출
     try:
         # RAW INPUT 출력 #########################################
-        print("\n" + "="*80)
-        print("🤖 MODEL INPUT (RAW)")
-        print("="*80)
-        print("📋 SYSTEM PROMPT:")
-        print(SYSTEM_PROMPT)
-        print("\n📝 USER PROMPT:")
-        print(USER_PROMPT)
-        print("="*80)
+        # print("\n" + "="*80)
+        # print("🤖 MODEL INPUT (RAW)")
+        # print("="*80)
+        # print("📋 SYSTEM PROMPT:")
+        # print(SYSTEM_PROMPT)
+        # print("\n📝 USER PROMPT:")
+        # print(USER_PROMPT)
+        # print("="*80)
         ########################################################
         
         response = await openai_client.chat.completions.create(
@@ -57,11 +57,11 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
         content = response.choices[0].message.content.strip()
         
         # RAW OUTPUT 출력 #########################################
-        print("\n" + "="*80)
-        print("🤖 MODEL OUTPUT (RAW)")
-        print("="*80)
-        print(content)
-        print("="*80)
+        # print("\n" + "="*80)
+        # print("🤖 MODEL OUTPUT (RAW)")
+        # print("="*80)
+        # print(content)
+        # print("="*80)
         ########################################################
 
         result = json.loads(content)
