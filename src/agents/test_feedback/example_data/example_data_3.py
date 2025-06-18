@@ -8,7 +8,7 @@ exam_goal = "사내 연말정산 프로세스 및 시스템 활용 능력을 평
 question_results = [
     {
         "questionId": 1,
-        "documentName": "3.국세청 연말정산간소화자료 다운로드 매뉴얼",
+        "documentName": "국세청 연말정산간소화자료 다운로드 매뉴얼",
         "questionText": "연말정산 간소화 서비스에서 제공되는 항목이 아닌 것은 무엇인가요?",
         "difficulty": "EASY",
         "type": "OBJECTIVE",
@@ -19,7 +19,7 @@ question_results = [
     },
     {
         "questionId": 2,
-        "documentName": "3.국세청 연말정산간소화자료 다운로드 매뉴얼",
+        "documentName": "국세청 연말정산간소화자료 다운로드 매뉴얼",
         "questionText": "간소화 자료를 내려받기 위해 필요한 인증 방식은 무엇인가요?",
         "difficulty": "NORMAL",
         "type": "OBJECTIVE",
@@ -30,7 +30,7 @@ question_results = [
     },
     {
         "questionId": 3,
-        "documentName": "3.국세청 연말정산간소화자료 다운로드 매뉴얼",
+        "documentName": "국세청 연말정산간소화자료 다운로드 매뉴얼",
         "questionText": "간소화 자료가 제공되지 않는 대표적인 항목 한 가지를 작성하세요.",
         "difficulty": "NORMAL",
         "type": "SUBJECTIVE",
@@ -41,7 +41,7 @@ question_results = [
     },
     {
         "questionId": 4,
-        "documentName": "3.국세청 연말정산간소화자료 다운로드 매뉴얼",
+        "documentName": "국세청 연말정산간소화자료 다운로드 매뉴얼",
         "questionText": "자료 다운로드 후 제출서류를 확인하는 과정에서 가장 먼저 확인해야 할 사항은 무엇인가요?",
         "difficulty": "NORMAL",
         "type": "OBJECTIVE",
@@ -52,7 +52,7 @@ question_results = [
     },
     {
         "questionId": 5,
-        "documentName": "3.국세청 연말정산간소화자료 다운로드 매뉴얼",
+        "documentName": "국세청 연말정산간소화자료 다운로드 매뉴얼",
         "questionText": "간소화 자료에 누락된 의료비 내역을 확인했을 때의 처리 방법을 작성하세요.",
         "difficulty": "HARD",
         "type": "SUBJECTIVE",
@@ -63,7 +63,7 @@ question_results = [
     },
     {
         "questionId": 6,
-        "documentName": "2.연말정산시스템(YETA) 매뉴얼",
+        "documentName": "연말정산시스템(YETA) 매뉴얼",
         "questionText": "YETA 시스템에 로그인 후 가장 먼저 진행해야 하는 절차는 무엇인가요?",
         "difficulty": "EASY",
         "type": "OBJECTIVE",
@@ -74,7 +74,7 @@ question_results = [
     },
     {
         "questionId": 7,
-        "documentName": "2.연말정산시스템(YETA) 매뉴얼",
+        "documentName": "연말정산시스템(YETA) 매뉴얼",
         "questionText": "YETA 시스템 입력 시 부양가족 공제 항목에서 고려해야 할 대표 조건은 무엇인가요?",
         "difficulty": "NORMAL",
         "type": "OBJECTIVE",
@@ -85,7 +85,7 @@ question_results = [
     },
     {
         "questionId": 8,
-        "documentName": "2.연말정산시스템(YETA) 매뉴얼",
+        "documentName": "연말정산시스템(YETA) 매뉴얼",
         "questionText": "YETA에서 간소화자료 자동반영 기능의 이점 한 가지를 작성하세요.",
         "difficulty": "NORMAL",
         "type": "SUBJECTIVE",
@@ -96,7 +96,7 @@ question_results = [
     },
     {
         "questionId": 9,
-        "documentName": "2.연말정산시스템(YETA) 매뉴얼",
+        "documentName": "연말정산시스템(YETA) 매뉴얼",
         "questionText": "YETA에 수동으로 입력해야 하는 항목의 예시 한 가지를 작성하세요.",
         "difficulty": "NORMAL",
         "type": "SUBJECTIVE",
@@ -107,7 +107,7 @@ question_results = [
     },
     {
         "questionId": 10,
-        "documentName": "2.연말정산시스템(YETA) 매뉴얼",
+        "documentName": "연말정산시스템(YETA) 매뉴얼",
         "questionText": "연말정산 입력 완료 후 제출 전 최종 검토 단계에서 확인해야 할 핵심 사항은 무엇인가요?",
         "difficulty": "HARD",
         "type": "OBJECTIVE",
