@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: public-nginx
   rules:
-    - host: skib-backend.skala25a.project.skala-ai.com
+    - host: skib-ai.skala25a.project.skala-ai.com
       http:
         paths:
           - backend:
