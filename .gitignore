@@ -4,7 +4,7 @@ __pycache__/
 
 # Conda / virtualenv
 .env
-venv/
+.venv
 .env.*
 
 # Generated data files
