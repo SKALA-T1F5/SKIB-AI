@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GIT_URL = 'https://github.com/SKALA-T1F5/SKIB-AI.git'
-        GIT_BRANCH = 'main'
+        GIT_BRANCH = 'prod'
         GIT_ID = 'skala-github-yoonali'
         GIT_USER_NAME = 'yoonali'
         GIT_USER_EMAIL = 'yoonalim2003@gmail.com'
@@ -22,40 +22,54 @@ pipeline {
             }
         }
 
-        stage('Install Python Dependencies') {
+       stage('Test (Optional)') {
             steps {
-                sh """
-                    python3 -m venv venv
-                    source venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                """
+                script {
+                    def containerName = "test-container-${BUILD_NUMBER}"
+                    def imageFullName = "${IMAGE_REGISTRY}/${IMAGE_NAME}:${env.FINAL_IMAGE_TAG}"
+
+                    sh """
+                        docker run --rm --name ${containerName} ${imageFullName} /bin/bash -c "
+                            if [ -f requirements.txt ]; then
+                                echo '⚠️ requirements.txt는 base 이미지에 포함되어야 합니다.'
+                            fi
+                            if [ -d tests ]; then
+                                pytest || echo '⚠️ 테스트 실패: 무시하고 계속 진행'
+                            else
+                                echo '✅ 테스트 디렉토리가 존재하지 않아 생략됨'
+                            fi
+                        "
+                    """
+                }
             }
         }
 
-        stage('Test (Optional)') {
-            steps {
-                sh """
-                    source venv/bin/activate
-                    pytest || echo '⚠️ 테스트 실패: 무시하고 계속 진행'
-                """
-            }
-        }
 
         stage('Docker Build & Push') {
             steps {
                 script {
-                    def hashcode = sh(script: "date +%s%N | sha256sum | cut -c1-12", returnStdout: true).trim()
+                    // 해시코드 12자리 생성
+                    def hashcode = sh(
+                        script: "date +%s%N | sha256sum | cut -c1-12",
+                        returnStdout: true
+                    ).trim()
+
+                    // Build Number + Hash Code 조합 (IMAGE_TAG는 유지)
                     def FINAL_IMAGE_TAG = "${IMAGE_TAG}-${BUILD_NUMBER}-${hashcode}"
-                    env.FINAL_IMAGE_TAG = FINAL_IMAGE_TAG
+                    echo "Final Image Tag: ${FINAL_IMAGE_TAG}"
 
                     docker.withRegistry("https://${IMAGE_REGISTRY}", "${DOCKER_CREDENTIAL_ID}") {
                         def appImage = docker.build("${IMAGE_REGISTRY}/${IMAGE_NAME}:${FINAL_IMAGE_TAG}", "--platform linux/amd64 .")
                         appImage.push()
                     }
+
+                    // 최종 이미지 태그를 env에 등록 (나중에 deploy.yaml 수정에 사용)
+                    env.FINAL_IMAGE_TAG = FINAL_IMAGE_TAG
                 }
             }
         }
+
+
 
         stage('Update deploy.yaml and Git Push') {
             steps {
