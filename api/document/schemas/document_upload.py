@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-class DocumentMetaRequest(BaseModel):
+class DocumentUploadMetaRequest(BaseModel):
     document_id: str
     project_id: str
     name: str
