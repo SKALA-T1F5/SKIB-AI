@@ -33,21 +33,25 @@ SYSTEM_PROMPT = """당신은 시험 결과를 종합적으로 분석하고 피�
 
 # 2. 사용자 프롬프트 생성 함수
 # 시험목표와 문항별응시결과를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성합니다.
-def build_user_prompt(test_goal: str, question_results: List[Dict[str, Any]]) -> str:
+def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]]) -> str:
     # 문항별 결과를 문자열로 변환
     questions_text = ""
-    for i, result in enumerate(question_results, 1):
+    for result in question_results:
         questions_text += f"""
-        문항 {i}:
-        - 학생 답변: {result.get('student_answer', 'N/A')}
-        - 정답: {result.get('correct_answer', 'N/A')}
-        - 점수: {result.get('score', 'N/A')}
-        - 채점 기준: {result.get('criteria', 'N/A')}
+        문항 {result.get('questionId', 'N/A')}:
+        - 문서: {result.get('documentName', 'N/A')}
+        - 문제: {result.get('questionText', 'N/A')}
+        - 난이도: {result.get('difficulty', 'N/A')}
+        - 유형: {result.get('type', 'N/A')}
+        - 정답: {result.get('answer', 'N/A')}
+        - 태그: {', '.join(result.get('tags', []))}
+        - 키워드: {result.get('keyword', 'N/A')}
+        - 정답률: {result.get('correctRate', 'N/A')}%
         """
     
     prompt = f"""
         시험 목표:
-        \"\"\"{test_goal}\"\"\"
+        \"\"\"{exam_goal}\"\"\"
 
         문항별 응시 결과:
         {questions_text}

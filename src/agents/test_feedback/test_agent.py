@@ -2,53 +2,25 @@
 import sys
 import os
 import time
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
 import asyncio
 from src.agents.test_feedback.agent import test_feedback
+from src.agents.test_feedback.example_data import exam_goal, question_results
 # from api.grading.schemas.subjective_grading import GradingCriterion
 
 async def run_test():
-    # 1. 시험 목표
-    test_goal = "AI와 머신러닝의 기본 개념과 관계를 이해하고 설명할 수 있는지 평가"
+    # 1. 시험 목표와 문항별 응시 결과는 example_data.py에서 가져옴
+    print(f"🟨 시험 목표: {exam_goal}")
+    print(f"🟨 문항 수: {len(question_results)}개")
 
-    # 2. 문항별 응시 결과
-    question_results = [
-        {
-            "student_answer": "AI는 사람처럼 생각하는 기술이고, 요즘 많이 쓰여요.",
-            "correct_answer": "AI(인공지능)는 인간의 지능을 모방하는 기술 전반을 의미하는 포괄적인 개념입니다.",
-            "score": 25,
-            "criteria": "AI와 ML의 구분이 없는 설명 - 25점"
-        },
-        {
-            "student_answer": "머신러닝은 AI 안에 포함되는 기술이에요.",
-            "correct_answer": "머신러닝은 AI의 한 분야로, 데이터를 학습하여 패턴을 발견하고 예측을 수행하는 알고리즘 기반 기술입니다.",
-            "score": 50,
-            "criteria": "AI와 ML의 기본적 구분 설명 - 50점"
-        },
-        {
-            "student_answer": "AI는 인간의 지능을 모방하는 기술 전반을 말하고, 머신러닝은 그 중 데이터를 학습해서 스스로 규칙을 찾아내는 알고리즘 기반 기술입니다.",
-            "correct_answer": "AI(인공지능)는 인간의 지능을 모방하는 기술 전반을 의미하는 포괄적인 개념입니다. 머신러닝은 AI의 한 분야로, 데이터를 학습하여 패턴을 발견하고 예측을 수행하는 알고리즘 기반 기술입니다.",
-            "score": 85,
-            "criteria": "AI와 ML의 관계 및 차이를 구체적으로 설명 - 85점"
-        },
-        {
-            "student_answer": "딥러닝에 대해서는 잘 모르겠어요.",
-            "correct_answer": "딥러닝은 머신러닝의 하위 분야로, 신경망을 사용하여 복잡한 패턴을 학습합니다.",
-            "score": 0,
-            "criteria": "딥러닝 개념 미이해 - 0점"
-        }
-    ]
-
-    # 3. 테스트 실행
+    # 2. 테스트 실행
     start_time = time.time()
-    result = await test_feedback(test_goal, question_results)
+    result = await test_feedback(exam_goal, question_results)
     elapsed_time = time.time() - start_time
 
-    # 4. 결과 출력
+    # 3. 결과 출력
     print(f"🟨 응답 시간: {elapsed_time:.2f}초")
-    print(f"🟨 시험 목표: {test_goal}")
-    print(f"🟨 문항 수: {len(question_results)}개")
     print("\n" + "="*60)
     print("📊 시험 결과 분석")
     print("="*60)

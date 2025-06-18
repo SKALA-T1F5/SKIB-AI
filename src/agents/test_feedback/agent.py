@@ -18,7 +18,7 @@ api_key = os.getenv("OPENAI_API_KEY")
 openai_client = AsyncOpenAI(api_key=api_key) 
 AGENT_MODEL = os.getenv("AGENT_TEST_FEEDBACK_MODEL") #.env에 모델명 저장 (AGENT_TEST_FEEDBACK_MODEL=gpt-4)✅
 
-async def test_feedback(test_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     OpenAI를 이용하여 시험목표와 문항별 응시 결과를 분석하고 종합적인 피드백을 반환
     """
@@ -30,10 +30,21 @@ async def test_feedback(test_goal: str, question_results: List[Dict[str, Any]]) 
     #     ])
 
     # 2. 최종 프롬프트 구성
-    USER_PROMPT = build_user_prompt(test_goal, question_results)
+    USER_PROMPT = build_user_prompt(exam_goal, question_results)
 
     # 3. MODEL 호출
     try:
+        # RAW INPUT 출력 #########################################
+        print("\n" + "="*80)
+        print("🤖 MODEL INPUT (RAW)")
+        print("="*80)
+        print("📋 SYSTEM PROMPT:")
+        print(SYSTEM_PROMPT)
+        print("\n📝 USER PROMPT:")
+        print(USER_PROMPT)
+        print("="*80)
+        ########################################################
+        
         response = await openai_client.chat.completions.create(
             model=AGENT_MODEL,
             messages=[
@@ -44,6 +55,15 @@ async def test_feedback(test_goal: str, question_results: List[Dict[str, Any]]) 
         )
 
         content = response.choices[0].message.content.strip()
+        
+        # RAW OUTPUT 출력 #########################################
+        print("\n" + "="*80)
+        print("🤖 MODEL OUTPUT (RAW)")
+        print("="*80)
+        print(content)
+        print("="*80)
+        ########################################################
+
         result = json.loads(content)
 
         # 토큰 사용량 (차후 주석처리 ✅ )
