@@ -1,4 +1,5 @@
-# agents/test_feedback/example_data.py
+# agents/test_feedback/example_data/example_data_1.py
+# 프론트엔드 개발 환경 구축 역량 평가 시험
 
 # 시험 목표
 exam_goal = '효율적인 프론트엔드 개발 환경 구축 역량을 확인하는 시험입니다. 주요 빌드 도구, 패키지 관리, 최적화 전략을 중심으로 객관식과 주관식 혼합형으로 생성하겠습니다.'
@@ -171,3 +172,4 @@ question_results = [
         "correctRate": 84.6
     }
 ] 
+
