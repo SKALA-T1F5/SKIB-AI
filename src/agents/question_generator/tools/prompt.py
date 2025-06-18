@@ -2,17 +2,20 @@
 Question Generator Prompts
 """
 
-def get_vision_prompt(source: str, page: str, difficulty: str, num_objective: int, num_subjective: int) -> str:
+
+def get_vision_prompt(
+    source: str, page: str, difficulty: str, num_objective: int, num_subjective: int
+) -> str:
     """
     GPT-4 Vision용 문제 생성 프롬프트
-    
+
     Args:
         source: 문서 파일명
         page: 페이지 번호
         difficulty: 난이도 (EASY, NORMAL, HARD)
         num_objective: 객관식 문제 수
         num_subjective: 주관식 문제 수
-    
+
     Returns:
         str: 프롬프트 문자열
     """

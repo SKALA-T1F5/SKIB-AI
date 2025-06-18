@@ -142,7 +142,7 @@ def run_question_generation_pipeline(
             ).tolist()
             # upload_chunk_to_collection(chunk_obj_for_saving, vector, collection_name) # 필요시 DB 업로드
         else:
-            vector = []
+            pass
 
         # 각 chunk별로 할당된 개수만큼만 요청
         num_obj = obj_per_chunk[i]

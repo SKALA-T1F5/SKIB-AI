@@ -1,7 +1,8 @@
 import logging
-from logging.handlers import RotatingFileHandler
-from colorlog import ColoredFormatter
 import os
+from logging.handlers import RotatingFileHandler
+
+from colorlog import ColoredFormatter
 
 # 로그 디렉토리 생성
 os.makedirs("logs", exist_ok=True)
@@ -23,12 +24,14 @@ if not logger.handlers:
             "WARNING": "yellow",
             "ERROR": "red",
             "CRITICAL": "bold_red",
-        }
+        },
     )
     console_handler.setFormatter(console_formatter)
 
     # 파일 핸들러
-    file_handler = RotatingFileHandler("logs/request_time.log", maxBytes=5_000_000, backupCount=3)
+    file_handler = RotatingFileHandler(
+        "logs/request_time.log", maxBytes=5_000_000, backupCount=3
+    )
     file_formatter = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
     )
