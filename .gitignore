@@ -20,3 +20,6 @@ chroma_data/
 #k8s secrets
 k8s/open-ai-secret.yaml
 .pre-commit-config.yaml
+
+#k8s secrets
+k8s/open-ai-secret.yaml
