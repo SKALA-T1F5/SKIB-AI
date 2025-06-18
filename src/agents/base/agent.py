@@ -165,6 +165,8 @@ class BaseAgent(ABC):
                 
                 if is_valid:
                     self.logger.info(f"Agent {self.name} completed successfully on attempt {attempt + 1}")
+                    # 결과를 상태의 output 필드에 저장
+                    self._current_state["output"] = result
                     return result
                 else:
                     self.logger.warning(f"Agent {self.name} validation failed on attempt {attempt + 1}: {feedback}")

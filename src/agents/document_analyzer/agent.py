@@ -1,342 +1,499 @@
 """
-DocumentAnalyzerAgent - 문서 분석 Agent
-
-문서를 분석하여 구조, 내용, 난이도 등을 파악하는 Agent입니다.
+문서 분석 Agent
+- 문서 구조 파싱
+- 질문 생성
+- 키워드 추출
+- 문서 요약
 """
 
-from typing import Dict, Any, Optional, List
-import asyncio
-import logging
-
-from src.agents.base.agent import BaseAgent
-from state import DocumentAnalyzerState
+from typing import List, Dict, Optional
+from .state import DocumentAnalyzerState, create_document_analyzer_state
+from .tools.unified_parser import parse_pdf_unified
 from .tools.text_analyzer import TextAnalyzer
-from .tools.structure_parser import StructureParser
-from .tools.difficulty_assessor import DifficultyAssessor
-from .tools.keyword_extractor import KeywordExtractor
-
-from exceptions.agent_exceptions import (
-    create_agent_execution_error,
-    create_agent_validation_error,
-    create_agent_tool_error
-)
 
 
-class DocumentAnalyzerAgent(BaseAgent):
-    """
-    문서 분석 Agent
+class DocumentAnalyzerAgent:
+    """문서 분석 전문 Agent"""
     
-    주요 기능:
-    - 문서 텍스트 추출 및 정제
-    - 문서 구조 분석 (제목, 섹션, 단락 등)
-    - 내용 난이도 평가
-    - 핵심 키워드 추출
-    - 문서 요약 생성
-    """
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """DocumentAnalyzerAgent 초기화"""
+    def __init__(self, collection_name: str = None, auto_upload_chromadb: bool = True):
+        self.collection_name = collection_name
+        self.auto_upload_chromadb = auto_upload_chromadb
+        # 이미지 저장 디렉토리 설정
+        if collection_name:
+            from utils.change_name import normalize_collection_name
+            normalized_name = normalize_collection_name(collection_name)
+            self.image_save_dir = f"data/images/{normalized_name}"
+        else:
+            self.image_save_dir = "data/images/unified"
+        self.text_analyzer = TextAnalyzer()
         
-        super().__init__(
-            name="document_analyzer",
-            state_class=DocumentAnalyzerState,
-            config=config or {}
-        )
-        
-        # 기본 설정
-        self.config.setdefault("max_text_length", 50000)
-        self.config.setdefault("min_text_length", 100)
-        self.config.setdefault("analysis_depth", "standard")
-        self.config.setdefault("keyword_count", 10)
-        self.config.setdefault("summary_max_length", 500)
-    
-    async def _setup_tools(self) -> None:
-        """도구들을 초기화합니다"""
-        try:
-            self.tools["text_analyzer"] = TextAnalyzer(self.config.get("text_analyzer_config", {}))
-            self.tools["structure_parser"] = StructureParser(self.config.get("structure_parser_config", {}))
-            self.tools["difficulty_assessor"] = DifficultyAssessor(self.config.get("difficulty_assessor_config", {}))
-            self.tools["keyword_extractor"] = KeywordExtractor(self.config.get("keyword_extractor_config", {}))
-            
-            # 도구들 초기화
-            for tool_name, tool in self.tools.items():
-                if hasattr(tool, 'initialize'):
-                    await tool.initialize()
-                    
-        except Exception as e:
-            raise create_agent_tool_error(
-                agent_name=self.name,
-                tool_name="setup",
-                tool_operation="initialization",
-                tool_error=e
-            )
-    
-    async def plan(self, input_data: Dict[str, Any], state: DocumentAnalyzerState) -> Dict[str, Any]:
+    def analyze_document(
+        self, 
+        pdf_path: str, 
+        extract_keywords: bool = True
+    ) -> DocumentAnalyzerState:
         """
-        문서 분석 계획을 수립합니다
+        문서 종합 분석
         
         Args:
-            input_data: 입력 데이터 (document_path, document_id 등)
-            state: 현재 상태
+            pdf_path: PDF 파일 경로
+            extract_keywords: 키워드 추출 여부
             
         Returns:
-            분석 계획
+            DocumentAnalyzerState: 분석 결과
         """
+        state = create_document_analyzer_state(pdf_path, self.collection_name)
+        
         try:
-            # 입력 검증
-            document_path = input_data.get("document_path")
-            document_id = input_data.get("document_id")
+            # 1. 문서 구조 파싱
+            print("📄 1단계: 문서 구조 파싱")
+            blocks = parse_pdf_unified(pdf_path, self.collection_name, generate_questions=False)
+            state["blocks"] = blocks
+            state["total_blocks"] = len(blocks)
             
-            if not document_path:
-                raise ValueError("document_path is required")
-            if not document_id:
-                raise ValueError("document_id is required")
+            # 블록 타입별 통계
+            state["text_blocks"] = len([b for b in blocks if b.get('type') in ['paragraph', 'section', 'heading']])
+            state["table_blocks"] = len([b for b in blocks if b.get('type') == 'table'])
+            state["image_blocks"] = len([b for b in blocks if b.get('type') == 'image'])
             
-            # 분석 옵션 설정
-            analysis_options = input_data.get("analysis_options", {})
-            analysis_depth = analysis_options.get("depth", self.config["analysis_depth"])
+            # 2. 텍스트 분석 및 키워드 추출 (선택적)
+            if extract_keywords:
+                print("\n📝 2단계: 텍스트 분석 및 키워드 추출")
+                # keyword_summary.py 함수 사용 (document_analyzer로 이동)
+                from .tools.keyword_summary import extract_keywords_and_summary
+                
+                try:
+                    analysis_result = extract_keywords_and_summary(blocks, pdf_path.split('/')[-1])
+                    content_analysis = analysis_result.get('content_analysis', {})
+                    
+                    state["keywords"] = content_analysis.get('key_concepts', [])
+                    state["summary"] = content_analysis.get('summary', '')
+                    state["main_topics"] = content_analysis.get('main_topics', [])
+                    
+                    print(f"✅ 키워드 추출 완료:")
+                    print(f"   - 키워드: {len(state['keywords'])}개")
+                    print(f"   - 주제: {len(state['main_topics'])}개")
+                    print(f"   - 요약: {state['summary'][:50]}...")
+                    
+                except Exception as e:
+                    print(f"⚠️ 키워드 추출 실패: {e}")
+                    state["keywords"] = []
+                    state["summary"] = f'키워드 추출 실패: {str(e)}'
+                    state["main_topics"] = []
             
-            # 분석 계획 생성
-            plan = {
-                "document_path": document_path,
-                "document_id": document_id,
-                "analysis_steps": [
-                    "extract_text",
-                    "parse_structure", 
-                    "assess_difficulty",
-                    "extract_keywords",
-                    "generate_summary"
-                ],
-                "analysis_options": {
-                    "depth": analysis_depth,
-                    "keyword_count": analysis_options.get("keyword_count", self.config["keyword_count"]),
-                    "summary_length": analysis_options.get("summary_length", self.config["summary_max_length"]),
-                    "include_metadata": analysis_options.get("include_metadata", True)
+            state["processing_status"] = "completed"
+            state["error_message"] = None
+            
+            # 3. ChromaDB 자동 업로드 (선택적)
+            if self.auto_upload_chromadb and self.collection_name:
+                print("\n📤 3단계: ChromaDB 자동 업로드")
+                uploaded_count = self._upload_to_chromadb(blocks, pdf_path)
+                state["chromadb_uploaded"] = uploaded_count > 0
+                state["chromadb_upload_count"] = uploaded_count
+                if uploaded_count > 0:
+                    print(f"✅ ChromaDB 업로드 완료: {uploaded_count}개 청크")
+                else:
+                    print("⚠️ ChromaDB 업로드 실패")
+            else:
+                state["chromadb_uploaded"] = False
+                state["chromadb_upload_count"] = 0
+            
+            # 4. 결과 저장
+            self._save_results(state, pdf_path, extract_keywords)
+            
+        except Exception as e:
+            state["processing_status"] = "failed"
+            state["error_message"] = str(e)
+            print(f"❌ 문서 분석 실패: {e}")
+        
+        return state
+    
+    def parse_structure_only(self, pdf_path: str) -> List[Dict]:
+        """구조 파싱만 수행"""
+        return parse_pdf_unified(pdf_path, self.collection_name, generate_questions=False)
+    
+    
+    def analyze_text_only(self, text: str, collection_name: str = None) -> Dict:
+        """텍스트 분석만 수행"""
+        return self.text_analyzer.analyze_text(text, collection_name or self.collection_name or "unknown")
+    
+    def _extract_all_text(self, blocks: List[Dict]) -> str:
+        """블록들에서 모든 텍스트 추출"""
+        text_parts = []
+        
+        for block in blocks:
+            block_type = block.get('type', '')
+            content = block.get('content', '')
+            
+            if block_type in ['paragraph', 'heading', 'section'] and content:
+                text_parts.append(str(content))
+            elif block_type == 'table' and isinstance(content, dict):
+                # 표 내용을 텍스트로 변환
+                table_text = self._table_to_text(content)
+                if table_text:
+                    text_parts.append(table_text)
+        
+        return "\n".join(text_parts)
+    
+    def _save_results(self, state: DocumentAnalyzerState, pdf_path: str, extract_keywords: bool):
+        """결과를 구분된 디렉토리에 저장"""
+        import os
+        import json
+        from datetime import datetime
+        
+        filename = os.path.basename(pdf_path).replace('.pdf', '')
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        # 키워드/요약 결과 저장
+        if extract_keywords and (state.get("keywords") or state.get("summary")):
+            keywords_dir = "data/outputs/keywords_summary"
+            os.makedirs(keywords_dir, exist_ok=True)
+            
+            keywords_data = {
+                "document_info": {
+                    "source_file": os.path.basename(pdf_path),
+                    "collection_name": self.collection_name,
+                    "processing_date": datetime.now().isoformat(),
+                    "analysis_type": "keywords_and_summary"
                 },
-                "estimated_duration": self._estimate_duration(analysis_depth)
+                "content_analysis": {
+                    "keywords": state.get("keywords", []),
+                    "main_topics": state.get("main_topics", []),
+                    "summary": state.get("summary", ""),
+                    "keywords_count": len(state.get("keywords", [])),
+                    "topics_count": len(state.get("main_topics", []))
+                },
+                "document_stats": {
+                    "total_blocks": state.get("total_blocks", 0),
+                    "text_blocks": state.get("text_blocks", 0),
+                    "table_blocks": state.get("table_blocks", 0),
+                    "image_blocks": state.get("image_blocks", 0)
+                }
             }
             
-            # 상태 업데이트
-            state["document_path"] = document_path
-            state["document_id"] = document_id
-            state["analysis_options"] = plan["analysis_options"]
-            
-            self.logger.info(f"Analysis plan created for document {document_id}")
-            return plan
-            
-        except Exception as e:
-            raise create_agent_execution_error(
-                agent_name=self.name,
-                operation="planning",
-                reason=str(e),
-                input_data=input_data
-            )
-    
-    async def act(self, plan: Dict[str, Any], state: DocumentAnalyzerState) -> Dict[str, Any]:
-        """
-        분석 계획에 따라 문서를 분석합니다
+            keywords_file = f"{keywords_dir}/{filename}_keywords_summary_{timestamp}.json"
+            with open(keywords_file, 'w', encoding='utf-8') as f:
+                json.dump(keywords_data, f, ensure_ascii=False, indent=2)
+            print(f"💾 키워드/요약 저장: {keywords_file}")
         
-        Args:
-            plan: 분석 계획
-            state: 현재 상태
-            
-        Returns:
-            분석 결과
-        """
-        try:
-            document_path = plan["document_path"]
-            analysis_steps = plan["analysis_steps"]
-            analysis_options = plan["analysis_options"]
-            
-            results = {}
-            total_steps = len(analysis_steps)
-            
-            for i, step in enumerate(analysis_steps):
-                self.logger.info(f"Executing analysis step: {step}")
-                
-                result = None
-                try:
-                    # 각 분석 단계 실행
-                    extracted_text = state.get("extracted_text")
-                    if step == "extract_text":
-                        result = await self._extract_text(document_path, analysis_options)
-                        state["extracted_text"] = result["text"]
-                        state["document_metadata"] = result["metadata"]
-                    elif step == "parse_structure":
-                        if not isinstance(extracted_text, str):
-                            raise create_agent_execution_error(
-                                agent_name=self.name,
-                                operation="parse_structure",
-                                reason="Extracted text is missing or not a string",
-                                input_data=dict(state)
-                            )
-                        result = await self._parse_structure(extracted_text, analysis_options)
-                        state["document_structure"] = result
-                    elif step == "assess_difficulty":
-                        if not isinstance(extracted_text, str):
-                            raise create_agent_execution_error(
-                                agent_name=self.name,
-                                operation="assess_difficulty",
-                                reason="Extracted text is missing or not a string",
-                                input_data=dict(state)
-                            )
-                        result = await self._assess_difficulty(extracted_text, analysis_options)
-                        state["difficulty_assessment"] = result
-                    elif step == "extract_keywords":
-                        if not isinstance(extracted_text, str):
-                            raise create_agent_execution_error(
-                                agent_name=self.name,
-                                operation="extract_keywords",
-                                reason="Extracted text is missing or not a valid string",
-                                input_data=dict(state)
-                            )
-                        result = await self._extract_keywords(extracted_text, analysis_options)
-                        state["keywords"] = result
-                    elif step == "generate_summary":
-                        if not isinstance(extracted_text, str):
-                            raise create_agent_execution_error(
-                                agent_name=self.name,
-                                operation="generate_summary",
-                                reason="Extracted text is missing or not a string",
-                                input_data=dict(state)
-                            )
-                        result = await self._generate_summary(extracted_text, analysis_options)
-                        state["summary"] = result
-
-                    results[step] = result
-
-                    # 진행률 업데이트
-                    progress = (i + 1) / total_steps * 0.9  # 90%까지만 (검증 단계 남겨둠)
-                    self.update_progress(progress, f"Completed {step}")
-
-                except Exception as step_error:
-                    raise create_agent_tool_error(
-                        agent_name=self.name,
-                        tool_name=step,
-                        tool_operation="analysis",
-                        tool_error=step_error
-                    )
-            
-        except Exception as e:
-            raise create_agent_execution_error(
-                agent_name=self.name,
-                operation="analysis_execution",
-                reason=str(e),
-                input_data=plan
-            )
     
-    async def reflect(self, result: Dict[str, Any], state: DocumentAnalyzerState) -> tuple[bool, str]:
-        """
-        분석 결과를 검증합니다
+    def _table_to_text(self, table_data: Dict) -> str:
+        """표 데이터를 텍스트로 변환"""
+        if not isinstance(table_data, dict) or 'data' not in table_data:
+            return ""
         
-        Args:
-            result: 분석 결과
-            state: 현재 상태
-            
-        Returns:
-            (is_valid, feedback) 튜플
-        """
-        try:
-            validation_issues = []
-            
-            # 필수 결과 검증
-            required_results = ["extract_text", "parse_structure", "assess_difficulty", "extract_keywords"]
-            analysis_results = result.get("analysis_results", {})
-            
-            for required_step in required_results:
-                if required_step not in analysis_results:
-                    validation_issues.append(f"Missing analysis result: {required_step}")
-            
-            # 텍스트 길이 검증
-            extracted_text = state.get("extracted_text") or ""
-            if len(extracted_text) < self.config["min_text_length"]:
-                validation_issues.append(f"Extracted text too short: {len(extracted_text)} < {self.config['min_text_length']}")
-            
-            # 키워드 개수 검증
-            keywords = state.get("keywords") or []
-            if len(keywords) == 0:
-                validation_issues.append("No keywords extracted")
-            
-            # 구조 분석 검증
-            document_structure = state.get("document_structure") or {}
-            if not document_structure.get("sections") and not document_structure.get("paragraphs"):
-                validation_issues.append("No document structure detected")
-            
-            # 난이도 평가 검증
-            difficulty_assessment = state.get("difficulty_assessment", {})
-            if not isinstance(difficulty_assessment, dict) or "level" not in difficulty_assessment:
-                validation_issues.append("Difficulty level not assessed")
-            
-            # 검증 결과
-            is_valid = len(validation_issues) == 0
-            
-            if is_valid:
-                feedback = "Document analysis validation successful"
-                self.logger.info(f"Validation passed for document {result.get('document_id')}")
-            else:
-                feedback = f"Validation failed: {'; '.join(validation_issues)}"
-                self.logger.warning(f"Validation failed for document {result.get('document_id')}: {feedback}")
-            
-            return is_valid, feedback
-            
-        except Exception as e:
-            return False, f"Validation error: {str(e)}"
-    
-    # 내부 분석 메서드들
-    async def _extract_text(self, document_path: str, options: Dict[str, Any]) -> Dict[str, Any]:
-        """텍스트 추출"""
-        text_analyzer = self.get_tool("text_analyzer")
-        if not text_analyzer:
-            raise ValueError("TextAnalyzer tool not available")
+        headers = table_data.get('headers', [])
+        data = table_data.get('data', [])
         
-        return await text_analyzer.extract_text(document_path, options)
-    
-    async def _parse_structure(self, text: str, options: Dict[str, Any]) -> Dict[str, Any]:
-        """문서 구조 분석"""
-        structure_parser = self.get_tool("structure_parser")
-        if not structure_parser:
-            raise ValueError("StructureParser tool not available")
+        text_parts = []
+        if headers:
+            text_parts.append(" ".join(str(h) for h in headers))
         
-        return await structure_parser.parse_structure(text, options)
-    
-    async def _assess_difficulty(self, text: str, options: Dict[str, Any]) -> Dict[str, Any]:
-        """난이도 평가"""
-        difficulty_assessor = self.get_tool("difficulty_assessor")
-        if not difficulty_assessor:
-            raise ValueError("DifficultyAssessor tool not available")
+        for row in data:
+            text_parts.append(" ".join(str(cell) for cell in row))
         
-        return await difficulty_assessor.assess_difficulty(text, options)
+        return " ".join(text_parts)
     
-    async def _extract_keywords(self, text: str, options: Dict[str, Any]) -> List[str]:
-        """키워드 추출"""
-        keyword_extractor = self.get_tool("keyword_extractor")
-        if not keyword_extractor:
-            raise ValueError("KeywordExtractor tool not available")
+    def _save_test_summary(self, state: DocumentAnalyzerState, pdf_path: str, questions: List[Dict], timestamp: str):
+        """테스트 요약 파일 저장"""
+        import os
+        import json
+        from datetime import datetime
         
-        return await keyword_extractor.extract_keywords(text, options)
-    
-    async def _generate_summary(self, text: str, options: Dict[str, Any]) -> str:
-        """요약 생성"""
-        text_analyzer = self.get_tool("text_analyzer")
-        if not text_analyzer:
-            raise ValueError("TextAnalyzer tool not available")
+        filename = os.path.basename(pdf_path).replace('.pdf', '')
+        summary_dir = "data/outputs/test_summaries"
+        os.makedirs(summary_dir, exist_ok=True)
         
-        return await text_analyzer.generate_summary(text, options)
-    
-    def _estimate_duration(self, analysis_depth: str) -> float:
-        """분석 예상 소요 시간 계산"""
-        duration_map = {
-            "quick": 30.0,
-            "standard": 60.0,
-            "deep": 120.0
+        # 문제 난이도별 분석
+        objective_questions = [q for q in questions if q.get('type') == 'OBJECTIVE']
+        subjective_questions = [q for q in questions if q.get('type') == 'SUBJECTIVE']
+        
+        # 주요 키워드와 주제 분석
+        keywords = state.get("keywords", [])
+        main_topics = state.get("main_topics", [])
+        
+        # 테스트 요약 데이터 구성
+        test_summary_data = {
+            "test_overview": {
+                "title": f"{filename} - 자동 생성 테스트",
+                "description": f"'{filename}' 문서를 기반으로 AI가 자동 생성한 평가 테스트입니다.",
+                "source_document": os.path.basename(pdf_path),
+                "creation_date": datetime.now().isoformat(),
+                "test_type": "종합 평가",
+                "estimated_duration": "30-45분"
+            },
+            "content_analysis": {
+                "document_summary": state.get("summary", "")[:300] + "..." if len(state.get("summary", "")) > 300 else state.get("summary", ""),
+                "key_concepts": keywords[:10],  # 상위 10개 키워드
+                "main_topics": main_topics[:5],  # 상위 5개 주제
+                "content_complexity": self._analyze_content_complexity(state, questions)
+            },
+            "test_structure": {
+                "total_questions": len(questions),
+                "question_breakdown": {
+                    "objective": {
+                        "count": len(objective_questions),
+                        "percentage": round(len(objective_questions) / len(questions) * 100, 1) if questions else 0,
+                        "focus_areas": self._extract_question_topics(objective_questions)
+                    },
+                    "subjective": {
+                        "count": len(subjective_questions),
+                        "percentage": round(len(subjective_questions) / len(questions) * 100, 1) if questions else 0,
+                        "focus_areas": self._extract_question_topics(subjective_questions)
+                    }
+                },
+                "difficulty_distribution": {
+                    "easy": len([q for q in questions if q.get('difficulty_level') == 'EASY']),
+                    "normal": len([q for q in questions if q.get('difficulty_level') == 'NORMAL']),
+                    "hard": len([q for q in questions if q.get('difficulty_level') == 'HARD'])
+                }
+            },
+            "assessment_guidelines": {
+                "objective_scoring": "각 객관식 문항당 1점, 정답/오답으로 채점",
+                "subjective_scoring": "문항별 배점에 따라 부분 점수 부여 가능",
+                "total_points": len(objective_questions) + len(subjective_questions) * 5,  # 객관식 1점, 주관식 5점
+                "passing_criteria": "총점의 60% 이상 획득 시 합격",
+                "special_instructions": [
+                    "주관식 문항은 키워드 포함 여부와 논리적 구성을 중점 평가",
+                    "문서의 핵심 개념 이해도를 종합적으로 판단",
+                    "실무 적용 가능성을 고려한 평가 권장"
+                ]
+            },
+            "usage_recommendations": {
+                "target_audience": "문서 내용 학습자 및 관련 업무 담당자",
+                "prerequisite_knowledge": "기본적인 문서 내용 이해",
+                "application_scenarios": [
+                    "학습 완료 후 이해도 점검",
+                    "업무 숙련도 평가",
+                    "교육 프로그램 효과 측정"
+                ],
+                "follow_up_actions": [
+                    "오답 문항에 대한 추가 학습",
+                    "약점 영역 집중 보완",
+                    "실무 적용 연습"
+                ]
+            }
         }
-        return duration_map.get(analysis_depth, 60.0)
-    
-    def _calculate_structure_complexity(self, structure: Dict[str, Any]) -> float:
-        """문서 구조 복잡도 계산"""
-        sections = structure.get("sections", [])
-        paragraphs = structure.get("paragraphs", [])
         
-        # 간단한 복잡도 계산 공식
-        complexity = len(sections) * 0.5 + len(paragraphs) * 0.1
-        return min(complexity, 10.0)  # 최대 10.0으로 제한
+        summary_file = f"{summary_dir}/{filename}_test_summary_{timestamp}.json"
+        with open(summary_file, 'w', encoding='utf-8') as f:
+            json.dump(test_summary_data, f, ensure_ascii=False, indent=2)
+        print(f"📋 테스트 요약 저장: {summary_file}")
+    
+    def _save_test_config(self, state: DocumentAnalyzerState, pdf_path: str, questions: List[Dict], timestamp: str):
+        """테스트 설정 파일 저장"""
+        import os
+        import json
+        from datetime import datetime
+        
+        filename = os.path.basename(pdf_path).replace('.pdf', '')
+        config_dir = "data/outputs/test_configs"
+        os.makedirs(config_dir, exist_ok=True)
+        
+        objective_questions = [q for q in questions if q.get('type') == 'OBJECTIVE']
+        subjective_questions = [q for q in questions if q.get('type') == 'SUBJECTIVE']
+        
+        # 테스트 설정 데이터 구성
+        test_config_data = {
+            "test_metadata": {
+                "config_version": "1.0",
+                "test_id": f"auto_test_{timestamp}",
+                "source_document": os.path.basename(pdf_path),
+                "generation_system": "SKIB-AI Document Analyzer",
+                "creation_timestamp": datetime.now().isoformat()
+            },
+            "test_settings": {
+                "time_limit": {
+                    "total_minutes": max(30, len(questions) * 2),  # 최소 30분, 문항당 2분
+                    "warning_at_minutes": max(25, len(questions) * 2 - 5),
+                    "automatic_submit": True
+                },
+                "question_settings": {
+                    "randomize_order": False,
+                    "allow_review": True,
+                    "show_progress": True,
+                    "one_question_per_page": False
+                },
+                "submission_settings": {
+                    "allow_multiple_attempts": False,
+                    "save_progress": True,
+                    "require_all_answers": False
+                }
+            },
+            "scoring_configuration": {
+                "objective_questions": {
+                    "points_per_question": 1,
+                    "negative_marking": False,
+                    "partial_credit": False
+                },
+                "subjective_questions": {
+                    "points_per_question": 5,
+                    "allow_partial_credit": True,
+                    "manual_grading_required": True,
+                    "grading_rubric": "키워드 기반 + 논리적 구성 평가"
+                },
+                "total_points": len(objective_questions) + len(subjective_questions) * 5,
+                "grade_scale": {
+                    "A": {"min_percentage": 90, "description": "우수"},
+                    "B": {"min_percentage": 80, "description": "양호"},
+                    "C": {"min_percentage": 70, "description": "보통"},
+                    "D": {"min_percentage": 60, "description": "미흡"},
+                    "F": {"min_percentage": 0, "description": "불합격"}
+                }
+            },
+            "question_configuration": {
+                "total_questions": len(questions),
+                "question_types": {
+                    "objective": {
+                        "count": len(objective_questions),
+                        "format": "multiple_choice",
+                        "options_per_question": 4,
+                        "scoring_method": "correct_answer_only"
+                    },
+                    "subjective": {
+                        "count": len(subjective_questions),
+                        "format": "essay",
+                        "max_characters": 1000,
+                        "scoring_method": "rubric_based"
+                    }
+                },
+                "difficulty_levels": {
+                    "easy": len([q for q in questions if q.get('difficulty_level') == 'EASY']),
+                    "normal": len([q for q in questions if q.get('difficulty_level') == 'NORMAL']),
+                    "hard": len([q for q in questions if q.get('difficulty_level') == 'HARD'])
+                }
+            },
+            "grading_criteria": {
+                "objective_grading": {
+                    "method": "automatic",
+                    "correct_answer_points": 1,
+                    "incorrect_answer_points": 0
+                },
+                "subjective_grading": {
+                    "method": "manual_with_ai_assistance",
+                    "evaluation_criteria": [
+                        {
+                            "criterion": "내용 정확성",
+                            "weight": 40,
+                            "description": "답변 내용의 사실적 정확성"
+                        },
+                        {
+                            "criterion": "핵심 키워드 포함",
+                            "weight": 30,
+                            "description": "문제와 관련된 핵심 용어 사용"
+                        },
+                        {
+                            "criterion": "논리적 구성",
+                            "weight": 20,
+                            "description": "답변의 논리적 흐름과 구조"
+                        },
+                        {
+                            "criterion": "완성도",
+                            "weight": 10,
+                            "description": "답변의 완전성과 충실도"
+                        }
+                    ]
+                }
+            },
+            "accessibility_settings": {
+                "font_size_adjustable": True,
+                "high_contrast_mode": True,
+                "screen_reader_compatible": True,
+                "keyboard_navigation": True
+            },
+            "security_settings": {
+                "prevent_copy_paste": False,
+                "disable_print_screen": False,
+                "session_timeout_minutes": 120,
+                "ip_restriction": False
+            }
+        }
+        
+        config_file = f"{config_dir}/{filename}_test_config_{timestamp}.json"
+        with open(config_file, 'w', encoding='utf-8') as f:
+            json.dump(test_config_data, f, ensure_ascii=False, indent=2)
+        print(f"⚙️ 테스트 설정 저장: {config_file}")
+    
+    def _analyze_content_complexity(self, state: DocumentAnalyzerState, questions: List[Dict]) -> str:
+        """콘텐츠 복잡도 분석"""
+        keywords_count = len(state.get("keywords", []))
+        topics_count = len(state.get("main_topics", []))
+        hard_questions = len([q for q in questions if q.get('difficulty_level') == 'HARD'])
+        
+        if keywords_count > 10 and topics_count > 5 and hard_questions > 2:
+            return "고급"
+        elif keywords_count > 5 and topics_count > 3:
+            return "중급"
+        else:
+            return "초급"
+    
+    def _extract_question_topics(self, questions: List[Dict]) -> List[str]:
+        """문제에서 주요 주제 추출"""
+        topics = []
+        for q in questions[:3]:  # 상위 3개 문제만 분석
+            question_text = q.get('question', '')
+            # 간단한 키워드 추출 (실제로는 더 정교한 방법 사용 가능)
+            if '프로세스' in question_text:
+                topics.append('프로세스 관리')
+            if '업무' in question_text:
+                topics.append('업무 처리')
+            if '계약' in question_text:
+                topics.append('계약 관리')
+            if '등록' in question_text:
+                topics.append('등록 절차')
+        
+        return list(set(topics))[:3]  # 중복 제거 후 상위 3개 반환
+
+    def _upload_to_chromadb(self, blocks: List[Dict], pdf_path: str) -> int:
+        """블록들을 ChromaDB에 업로드 (새로운 모듈 사용)"""
+        try:
+            from db.vectorDB.chromaDB import upload_documents
+            import os
+            
+            source_file = os.path.basename(pdf_path)
+            uploaded_count = upload_documents(blocks, self.collection_name, source_file)
+            return uploaded_count
+            
+        except ImportError:
+            print("⚠️ ChromaDB 모듈을 찾을 수 없습니다. ChromaDB가 설치되어 있는지 확인하세요.")
+            return 0
+        except Exception as e:
+            print(f"❌ ChromaDB 업로드 실패: {e}")
+            return 0
+
+
+# 편의 함수들
+def analyze_document_complete(
+    pdf_path: str, 
+    collection_name: str = None,
+    extract_keywords: bool = True,
+    auto_upload_chromadb: bool = True
+) -> DocumentAnalyzerState:
+    """
+    문서 종합 분석 편의 함수 (ChromaDB 자동 업로드 포함)
+    
+    Args:
+        pdf_path: PDF 파일 경로
+        collection_name: 컬렉션명
+        extract_keywords: 키워드 추출 여부
+        auto_upload_chromadb: ChromaDB 자동 업로드 여부
+        
+    Returns:
+        DocumentAnalyzerState: 분석 결과
+    """
+    agent = DocumentAnalyzerAgent(collection_name, auto_upload_chromadb)
+    return agent.analyze_document(pdf_path, extract_keywords)
+
+
+def parse_document_structure(pdf_path: str, collection_name: str = None) -> List[Dict]:
+    """
+    문서 구조 파싱 편의 함수
+    
+    Args:
+        pdf_path: PDF 파일 경로
+        collection_name: 컬렉션명
+        
+    Returns:
+        List[Dict]: 구조화된 블록들
+    """
+    return parse_pdf_unified(pdf_path, collection_name, generate_questions=False)
