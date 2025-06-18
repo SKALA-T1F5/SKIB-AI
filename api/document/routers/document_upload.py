@@ -10,11 +10,11 @@ from api.document.schemas.document_upload import (
     DocumentUploadResponse,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/api/document", tags=["Document"])
 logger = logging.getLogger(__name__)
 
 
-@router.post("/api/document", response_model=DocumentUploadResponse)
+@router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
