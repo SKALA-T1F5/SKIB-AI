@@ -7,6 +7,12 @@ def compute_file_hash(file_bytes: bytes) -> str:
     return hashlib.sha256(file_bytes).hexdigest()
 
 def save_document_locally(file_bytes: bytes, document_id: str, project_id: str, name: str) -> dict:
+    """
+    파일을 로컬에 저장 (중복 제거 포함)
+    
+    Returns:
+        dict: {file_hash, global_path, project_path}
+    """
     file_hash = compute_file_hash(file_bytes)
 
     global_path = os.path.join(settings.GLOBAL_DIR, f"{file_hash}.pdf")
