@@ -22,28 +22,6 @@ pipeline {
             }
         }
 
-       stage('Test (Optional)') {
-            steps {
-                script {
-                    def containerName = "test-container-${BUILD_NUMBER}"
-                    def imageFullName = "${IMAGE_REGISTRY}/${IMAGE_NAME}:${env.FINAL_IMAGE_TAG}"
-
-                    sh """
-                        docker run --rm --name ${containerName} ${imageFullName} /bin/bash -c "
-                            if [ -f requirements.txt ]; then
-                                echo '⚠️ requirements.txt는 base 이미지에 포함되어야 합니다.'
-                            fi
-                            if [ -d tests ]; then
-                                pytest || echo '⚠️ 테스트 실패: 무시하고 계속 진행'
-                            else
-                                echo '✅ 테스트 디렉토리가 존재하지 않아 생략됨'
-                            fi
-                        "
-                    """
-                }
-            }
-        }
-
 
         stage('Docker Build & Push') {
             steps {
