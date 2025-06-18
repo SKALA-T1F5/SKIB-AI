@@ -6,16 +6,14 @@ from fastapi import APIRouter, HTTPException
 from api.document.schemas.document_summary import SummaryByDocumentResponse
 from src.pipelines.document_processing.pipeline import DocumentProcessingPipeline
 
-router = APIRouter()
+router = APIRouter(prefix="/api/document", tags=["Document"])
 logger = logging.getLogger(__name__)
 
 # 간단한 결과 저장소 (기존 복잡한 PipelineManager 대신)
 PIPELINE_RESULTS: Dict[int, Dict[str, Any]] = {}
 
 
-@router.get(
-    "/api/document/summary/{document_id}", response_model=SummaryByDocumentResponse
-)
+@router.get("/summary/{document_id}", response_model=SummaryByDocumentResponse)
 async def get_document_summary(document_id: int):
     """
     수정 포인트: 상태별 HTTP 응답 코드 정확히 처리
