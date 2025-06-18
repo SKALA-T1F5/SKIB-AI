@@ -130,5 +130,4 @@ async def process_document_background(
             "error_message": str(e),
             "document_id": document_id
         }
-        print(f"❌ Background processing exception for document_id: {str(e)}")
         logger.error(f"Background processing exception for document_id {document_id}: {str(e)}")
