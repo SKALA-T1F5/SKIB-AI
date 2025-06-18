@@ -1,0 +1,172 @@
+{
+  "sample_documents": [
+    {
+      "name": "process_flow_sample",
+      "blocks": [
+        {
+          "type": "heading",
+          "content": "I. 수주사업 Process",
+          "metadata": {"page": 1}
+        },
+        {
+          "type": "paragraph",
+          "content": "수주사업 프로세스는 계획, 실행, 검토의 3단계로 구성됩니다.",
+          "metadata": {"page": 1}
+        },
+        {
+          "type": "table",
+          "content": {
+            "headers": ["단계", "담당자", "기간", "비고"],
+            "data": [
+              ["계획", "PM", "1주", "요구사항 분석"],
+              ["실행", "개발팀", "4주", "개발 및 구현"],
+              ["검토", "QA팀", "1주", "품질 검증"]
+            ]
+          },
+          "metadata": {"page": 2}
+        }
+      ],
+      "keywords": ["프로세스", "수주사업", "계획", "실행", "검토"],
+      "summary": "수주사업의 전체 프로세스를 계획부터 검토까지 3단계로 나누어 설명한 문서입니다.",
+      "topics": ["프로세스 관리", "프로젝트 관리", "업무 절차"]
+    }
+  ],
+  
+  "sample_test_configs": [
+    {
+      "name": "basic_mixed_test",
+      "config": {
+        "test_info": {
+          "title": "프로세스 기초 평가",
+          "description": "수주사업 프로세스 이해도 평가",
+          "difficulty": "medium",
+          "type": "mixed",
+          "estimated_duration": 30
+        },
+        "question_config": {
+          "total_questions": 5,
+          "objective_questions": 3,
+          "subjective_questions": 2
+        },
+        "scoring_config": {
+          "objective": {"points_per_question": 2, "total_points": 6},
+          "subjective": {"points_per_question": 5, "total_points": 10},
+          "total_points": 16,
+          "passing_score": 9.6
+        }
+      }
+    },
+    {
+      "name": "advanced_test",
+      "config": {
+        "test_info": {
+          "title": "프로세스 고급 평가",
+          "description": "복합적 프로세스 분석 능력 평가",
+          "difficulty": "hard",
+          "type": "mixed",
+          "estimated_duration": 60
+        },
+        "question_config": {
+          "total_questions": 10,
+          "objective_questions": 6,
+          "subjective_questions": 4
+        },
+        "scoring_config": {
+          "objective": {"points_per_question": 2, "total_points": 12},
+          "subjective": {"points_per_question": 5, "total_points": 20},
+          "total_points": 32,
+          "passing_score": 19.2
+        }
+      }
+    }
+  ],
+  
+  "sample_questions": [
+    {
+      "type": "OBJECTIVE",
+      "difficulty_level": "easy",
+      "question": "수주사업 프로세스의 첫 번째 단계는 무엇입니까?",
+      "options": ["계획", "실행", "검토", "완료"],
+      "answer": "계획",
+      "explanation": "문서에 따르면 수주사업 프로세스는 계획 단계부터 시작됩니다.",
+      "tags": ["프로세스", "순서"]
+    },
+    {
+      "type": "OBJECTIVE", 
+      "difficulty_level": "medium",
+      "question": "개발팀이 담당하는 단계의 소요 기간은?",
+      "options": ["1주", "2주", "3주", "4주"],
+      "answer": "4주",
+      "explanation": "표에 따르면 개발팀이 담당하는 실행 단계는 4주가 소요됩니다.",
+      "tags": ["기간", "담당자"]
+    },
+    {
+      "type": "SUBJECTIVE",
+      "difficulty_level": "medium", 
+      "question": "QA팀의 역할과 담당 업무를 설명하세요.",
+      "answer": "QA팀은 검토 단계에서 품질 검증을 담당하며, 1주간 진행됩니다.",
+      "grading_criteria": "QA팀의 역할(품질 검증)과 기간(1주)을 정확히 설명했는지 평가",
+      "tags": ["QA", "역할", "책임"]
+    },
+    {
+      "type": "SUBJECTIVE",
+      "difficulty_level": "hard",
+      "question": "수주사업 프로세스의 각 단계별 중요성과 상호 연관성을 분석하여 설명하세요.",
+      "answer": "계획 단계는 전체 프로젝트의 방향을 설정하고, 실행 단계는 실제 개발을 수행하며, 검토 단계는 품질을 보장합니다. 각 단계는 순차적으로 진행되며 이전 단계의 결과가 다음 단계의 입력이 됩니다.",
+      "grading_criteria": "각 단계의 목적과 중요성을 이해하고, 단계 간 연관성을 논리적으로 설명했는지 평가",
+      "tags": ["분석", "연관성", "프로세스"]
+    }
+  ],
+  
+  "sample_user_prompts": [
+    "프로세스 관련 객관식 3문제, 주관식 2문제 만들어주세요",
+    "수주사업에 대한 중급 난이도 문제 5개 생성해주세요", 
+    "실무 중심의 응용 문제를 만들어주세요",
+    "30분 시험으로 객관식 5개, 주관식 3개 문제 만들어주세요",
+    "어려운 난이도의 분석형 문제를 중심으로 만들어주세요"
+  ],
+  
+  "test_scenarios": [
+    {
+      "name": "basic_workflow",
+      "description": "기본 워크플로우 테스트",
+      "steps": [
+        "문서 분석 Agent 실행",
+        "VectorDB 업로드",
+        "키워드 추출 및 요약",
+        "테스트 설계 Agent 실행", 
+        "GPT-4로 테스트 요약 생성",
+        "테스트 config 생성",
+        "GPT-4o Vision으로 문제 생성"
+      ],
+      "expected_outputs": [
+        "parsed_blocks",
+        "vectordb_upload_success",
+        "extracted_keywords",
+        "document_summary", 
+        "test_config",
+        "generated_questions"
+      ]
+    },
+    {
+      "name": "error_handling",
+      "description": "에러 처리 테스트",
+      "error_scenarios": [
+        "missing_pdf_file",
+        "invalid_user_prompt",
+        "api_failure",
+        "vectordb_connection_error",
+        "insufficient_document_content"
+      ]
+    },
+    {
+      "name": "performance_test",
+      "description": "성능 테스트 시나리오",
+      "test_cases": [
+        {"document_size": "small", "questions": 5, "expected_time": 30},
+        {"document_size": "medium", "questions": 10, "expected_time": 60},
+        {"document_size": "large", "questions": 20, "expected_time": 120}
+      ]
+    }
+  ]
+}

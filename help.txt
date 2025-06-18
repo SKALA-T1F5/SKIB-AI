@@ -8,8 +8,23 @@ pip install -r requirements.txt
 # pytesseract를 사용하기 위한 Tesseract OCR 설치
 conda install -c conda-forge tesseract
 
+# ChromaDB 저장된 데이터 조회 및 관리
+python db/vectorDB/chromadb_browser.py
+
+📋 ChromaDB 브라우저 메뉴
+========================================
+1. 컬렉션 목록 보기
+2. 컬렉션 상세 정보
+3. 문서 검색
+4. 컬렉션 내용 보기
+5. ChromaDB 상태 확인
+6. 컬렉션 삭제
+0. 종료
+========================================
+
 # Weaviate 서버 실행(프로젝트 루트에서)
 docker-compose up -d
+
 
 # Weaviate 컬렉션 수동 삭제
 curl -X DELETE http://localhost:8080/v1/schema/{{컬렉션명}}
