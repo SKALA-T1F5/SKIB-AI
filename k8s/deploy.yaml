@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sk-team-09-ai
+  namespace: sk-team-09
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sk-team-09-ai
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8001"
+        prometheus.io/path: "/actuator/prometheus"
+      labels:
+        app: sk-team-09-ai
+    spec:
+      serviceAccountName: default
+      containers:
+        - name: sk-team-09-ai
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-x
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: open-ai-secret
+                  key: OPENAI_API_KEY
+
+      imagePullSecrets:
+        - name: amdp-registry
