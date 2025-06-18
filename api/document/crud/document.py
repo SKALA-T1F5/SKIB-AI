@@ -1,12 +1,17 @@
-import os
 import hashlib
+import os
 from shutil import copyfile
-from config import settings  # 변경된 경로 사용
+
+from config.settings import settings  # 변경된 경로 사용
+
 
 def compute_file_hash(file_bytes: bytes) -> str:
     return hashlib.sha256(file_bytes).hexdigest()
 
-def save_document_locally(file_bytes: bytes, document_id: str, project_id: str, name: str) -> dict:
+
+def save_document_locally(
+    file_bytes: bytes, document_id: str, project_id: str, name: str
+) -> dict:
     file_hash = compute_file_hash(file_bytes)
 
     global_path = os.path.join(settings.GLOBAL_DIR, f"{file_hash}.pdf")
@@ -30,5 +35,5 @@ def save_document_locally(file_bytes: bytes, document_id: str, project_id: str, 
     return {
         "file_hash": file_hash,
         "global_path": global_path,
-        "project_path": project_path
+        "project_path": project_path,
     }
