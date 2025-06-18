@@ -1,13 +1,15 @@
 # src/pipelines/document_processing/pipeline.py
 import datetime
-import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph
 
+from src.agents.document_analyzer.tools.keyword_summary import (
+    extract_keywords_and_summary,
+)
+
 # 기존 Agents 코드 import
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from src.agents.question_generator.keyword_summary import extract_keywords_and_summary
 from src.pipelines.base.exceptions import PipelineException
 from src.pipelines.base.pipeline import BasePipeline
 from src.pipelines.document_processing.state import DocumentProcessingState
@@ -15,7 +17,7 @@ from src.pipelines.document_processing.state import DocumentProcessingState
 # from db.vectordb.client import get_vector_client
 
 
-class DocumentProcessingPipeline(BasePipeline):
+class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     """문서 처리 LangGraph Pipeline"""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
@@ -267,10 +269,9 @@ class DocumentProcessingPipeline(BasePipeline):
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
         """벡터 저장 노드"""
-        print(self.config.get("enable_vectordb"))
         if not self.config.get("enable_vectordb"):
             self.logger.info("VectorDB storage disabled, skipping")
-            return self._update_progress("vectors_skipped")
+            return {**state, **self._update_progress("vectors_skipped")}
 
         self.logger.info("Storing vectors in VectorDB")
 
@@ -365,76 +366,3 @@ class DocumentProcessingPipeline(BasePipeline):
                 "failed_step": failed_step,
                 "completed_at": datetime.datetime.now().isoformat(),
             }
-
-    # ==================== 유틸리티 메서드 ====================
-
-    def _route_next_step(self, state: DocumentProcessingState) -> str:
-        """다음 단계 라우팅"""
-        current_step = state.get("current_step", "")
-        nodes = self._get_node_list()
-        if state.get("processing_status") == "failed":
-            return "error_handler"
-        if current_step in ["completed", "finalize"]:
-            return END
-        try:
-            idx = nodes.index(current_step.replace("_complete", ""))
-            return nodes[idx + 1] if idx + 1 < len(nodes) else END
-        except ValueError:
-            return END
-
-    def _update_progress(self, current_step: str) -> Dict[str, Any]:
-        """
-        진행률 업데이트 (노드 리스트 기반, 하드코딩 없이)
-        """
-        nodes = self._get_node_list()
-        try:
-            # current_step이 노드 이름이 아닐 경우, 매핑 로직 추가
-            if current_step not in nodes and current_step.endswith("_complete"):
-                # 예: "parse_complete" -> "parse_document"
-                base = current_step.replace("_complete", "")
-                # 가장 유사한 노드 찾기 (prefix 매칭)
-                node_match = next((n for n in nodes if n.startswith(base)), None)
-                current_step = node_match if node_match else current_step
-
-            current_index = nodes.index(current_step) + 1  # 1-based 진행률
-        except ValueError:
-            current_index = 0
-
-        progress = (current_index / len(nodes)) * 100 if nodes else 0
-
-        return {
-            "current_step": current_step,
-            "progress_percentage": progress,
-            "processing_status": "running" if progress < 100 else "completed",
-        }
-
-    def _create_node_wrapper(self, node_func: Callable) -> Callable:
-        """노드 함수 래퍼 (에러 처리, 로깅 등)"""
-
-        async def wrapper(state: DocumentProcessingState) -> Dict[str, Any]:
-            print(f"=== WRAPPER CALLED for {node_func.__name__} ===")
-            try:
-                self.logger.debug(
-                    f"Executing node: {node_func.__name__}", exc_info=True
-                )
-                start_time = time.time()
-
-                result = await node_func(state)
-
-                execution_time = time.time() - start_time
-                self.logger.debug(
-                    f"Node {node_func.__name__} completed in {execution_time:.2f}s",
-                    exc_info=True,
-                )
-                # self.logger.debug(f"STATE AFTER {node_func.__name__}: {result}")
-
-                return result
-
-            except Exception as e:
-                self.logger.error(
-                    f"Node {node_func.__name__} failed: {str(e)}", exc_info=True
-                )
-                self.logger.debug(f"STATE ON ERROR in {node_func.__name__}: {state}")
-                return self._handle_error(e, state)
-
-        return wrapper
