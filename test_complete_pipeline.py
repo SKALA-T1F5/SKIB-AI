@@ -14,7 +14,7 @@ import json
 import time
 from typing import List, Dict
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from src.agents.question_generator.keyword_summary import extract_keywords_and_summary
+from src.agents.document_analyzer.tools.keyword_summary import extract_keywords_and_summary
 from utils.change_name import normalize_collection_name
 
 
@@ -145,8 +145,8 @@ def main():
     # 테스트할 문서 목록
     test_documents = [
         {
-            "name": "FBS UI 정의서",
-            "path": "data/raw_docs/FBS_To-Be UI정의서_펌뱅킹_v0.66.pdf"
+            "name": "Process 흐름도 Sample",
+            "path": "data/raw_docs/Process 흐름도_sample_250527.pdf"
         }
     ]
     
