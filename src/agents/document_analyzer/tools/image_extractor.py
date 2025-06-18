@@ -1,10 +1,14 @@
-from typing import List
-import os
-from PIL import Image
 import io
-import numpy as np
+import os
+from typing import List
 
-def _extract_quality_images(pymupdf_page, pymupdf_doc, page_no: int, image_save_dir: str) -> List[dict]:
+import numpy as np
+from PIL import Image
+
+
+def _extract_quality_images(
+    pymupdf_page, pymupdf_doc, page_no: int, image_save_dir: str
+) -> List[dict]:
     blocks = []
     image_list = pymupdf_page.get_images()
     page_width = pymupdf_page.rect.width
@@ -25,34 +29,47 @@ def _extract_quality_images(pymupdf_page, pymupdf_doc, page_no: int, image_save_
             img_array = np.array(pil_image)
             if len(img_array.shape) >= 2:
                 brightness = np.mean(img_array)
-                unique_colors = len(np.unique(img_array.reshape(-1) if len(img_array.shape) == 2 
-                                            else img_array.reshape(-1, img_array.shape[2]), axis=0))
+                unique_colors = len(
+                    np.unique(
+                        (
+                            img_array.reshape(-1)
+                            if len(img_array.shape) == 2
+                            else img_array.reshape(-1, img_array.shape[2])
+                        ),
+                        axis=0,
+                    )
+                )
                 if brightness < 10 or unique_colors < 5:
                     continue
             image_filename = f"image_page{page_no}_{img_index}.{base_image['ext']}"
             image_path = os.path.join(image_save_dir, image_filename)
             with open(image_path, "wb") as img_file:
                 img_file.write(image_bytes)
-            blocks.append({
-                "type": "image",
-                "path": image_filename,
-                "metadata": {
-                    "page": page_no,
-                    "element_type": "standalone_image",
-                    "element_index": img_index,
-                    "width": img_width,
-                    "height": img_height,
-                    "brightness": float(brightness),
-                    "unique_colors": int(unique_colors),
-                    "extraction_method": "pymupdf_quality_filtered"
+            blocks.append(
+                {
+                    "type": "image",
+                    "path": image_filename,
+                    "metadata": {
+                        "page": page_no,
+                        "element_type": "standalone_image",
+                        "element_index": img_index,
+                        "width": img_width,
+                        "height": img_height,
+                        "brightness": float(brightness),
+                        "unique_colors": int(unique_colors),
+                        "extraction_method": "pymupdf_quality_filtered",
+                    },
                 }
-            })
+            )
             print(f"      ✅ 이미지 추출: {image_filename} ({img_width}×{img_height})")
         except Exception as e:
             print(f"      ❌ 이미지 추출 실패: {e}")
     return blocks
 
-def _is_logo_or_header_image(pil_image: Image.Image, page_width: float, page_height: float, page_no: int) -> bool:
+
+def _is_logo_or_header_image(
+    pil_image: Image.Image, page_width: float, page_height: float, page_no: int
+) -> bool:
     img_width = pil_image.width
     img_height = pil_image.height
     aspect_ratio = img_width / img_height if img_height > 0 else 0

@@ -5,12 +5,12 @@ Question Generation Pipeline
 
 주요 기능:
 - PDF 파싱 및 블록 분해
-- GPT-4o Vision을 사용한 자동 문제 생성  
+- GPT-4o Vision을 사용한 자동 문제 생성
 - 메타데이터 및 결과 저장
 
 사용법:
     from src.pipelines.question_generation import run_question_generation_pipeline
-    
+
     results = run_question_generation_pipeline(
         pdf_path="data/raw_docs/sample.pdf",
         num_objective=5,
@@ -18,6 +18,6 @@ Question Generation Pipeline
     )
 """
 
-from .run_pipeline import run_question_generation_pipeline, run_pipeline
+from .run_pipeline import run_pipeline, run_question_generation_pipeline
 
-__all__ = ['run_question_generation_pipeline', 'run_pipeline']
+__all__ = ["run_question_generation_pipeline", "run_pipeline"]

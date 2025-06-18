@@ -1,15 +1,20 @@
-import os
 import hashlib
+import os
 from shutil import copyfile
+
 from config import settings  # 변경된 경로 사용
+
 
 def compute_file_hash(file_bytes: bytes) -> str:
     return hashlib.sha256(file_bytes).hexdigest()
 
-def save_document_locally(file_bytes: bytes, document_id: str, project_id: str, name: str) -> dict:
+
+def save_document_locally(
+    file_bytes: bytes, document_id: str, project_id: str, name: str
+) -> dict:
     """
     파일을 로컬에 저장 (중복 제거 포함)
-    
+
     Returns:
         dict: {file_hash, global_path, project_path}
     """
@@ -36,5 +41,5 @@ def save_document_locally(file_bytes: bytes, document_id: str, project_id: str, 
     return {
         "file_hash": file_hash,
         "global_path": global_path,
-        "project_path": project_path
+        "project_path": project_path,
     }
