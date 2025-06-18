@@ -18,9 +18,11 @@ spec:
         app: sk-team-09-ai
     spec:
       serviceAccountName: default
+      imagePullSecrets:
+        - name: amdp-registry
       containers:
         - name: sk-team-09-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-5-f3909d07555c
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-x
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -30,6 +32,10 @@ spec:
                 secretKeyRef:
                   name: open-ai-secret
                   key: OPENAI_API_KEY
-
-      imagePullSecrets:
-        - name: amdp-registry
+          volumeMounts:
+            - name: document-volume
+              mountPath: /app/data/documents
+      volumes:
+        - name: document-volume
+          persistentVolumeClaim:
+            claimName: skib-ai-documents-pvc
