@@ -1,8 +1,9 @@
 # Weaviate 로컬 서버에 연결하여 벡터 임베딩 및 메타데이터 업로드를 수행하는 코드
 import os
-from dotenv import load_dotenv
+
 import weaviate
-from weaviate.classes.config import Property, DataType
+from dotenv import load_dotenv
+from weaviate.classes.config import DataType, Property
 
 load_dotenv()
 

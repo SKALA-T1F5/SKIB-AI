@@ -1,24 +1,26 @@
 # agents/subjective_grader/agent.py
-import os
-import openai
 import json
-
-from openai import AsyncOpenAI
+import os
 from typing import List
-from api.grading.schemas.subjective_grading import GradingCriterion
-from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
+
+from api.grading.schemas.subjective_grading import GradingCriterion
 from src.agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
 
+# openai 로드
+load_dotenv(override=True)
+api_key = os.getenv("OPENAI_API_KEY")
+openai_client = AsyncOpenAI(api_key=api_key)
+AGENT_MODEL = os.getenv(
+    "AGENT_SUBJECTIVE_GRADER_MODEL"
+)  # .env에 모델명 저장 (AGENT_SUBJECTIVE_GRADER_MODEL=gpt-4)✅
 
-#openai 로드
-load_dotenv(override=True) 
-api_key = os.getenv("OPENAI_API_KEY") 
-openai_client = AsyncOpenAI(api_key=api_key) 
-AGENT_MODEL = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL") #.env에 모델명 저장 (AGENT_SUBJECTIVE_GRADER_MODEL=gpt-4)✅
 
-async def subjective_grader(user_answer: str, grading_criteria: List[GradingCriterion]) -> float:
+async def subjective_grader(
+    user_answer: str, grading_criteria: List[GradingCriterion]
+) -> float:
     """
     OpenAI를 이용하여 사용자 답변을 기준들과 비교하고 점수만 반환
     """
@@ -28,10 +30,9 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
     # ])
 
     # 1. 채점 기준을 문자열로 변환
-    criteria_prompt = "\n".join([
-    f"{c.score} | {c.criteria} | ex: {c.example}" for c in grading_criteria
-])
-
+    criteria_prompt = "\n".join(
+        [f"{c.score} | {c.criteria} | ex: {c.example}" for c in grading_criteria]
+    )
 
     # 2. 최종 프롬프트 구성
     prompt = build_user_prompt(user_answer, criteria_prompt)
@@ -42,7 +43,7 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
             model=AGENT_MODEL,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": prompt},
             ],
             temperature=0.2,
         )
@@ -55,8 +56,8 @@ async def subjective_grader(user_answer: str, grading_criteria: List[GradingCrit
         print("🟨 사용 토큰:", usage.total_tokens)
         print("└─ prompt_tokens:", usage.prompt_tokens)
         print("└─ completion_tokens:", usage.completion_tokens)
-        
-        return float(result["score"]) 
+
+        return float(result["score"])
 
     except Exception as e:
         raise RuntimeError(f"주관식 채점 오류: {str(e)}")

@@ -3,7 +3,7 @@
 텍스트/이미지 블록으로 분해하고 GPT-4o Vision을 사용한 자동 문제 생성 파이프라인
 
 주요 기능:
-- PDF 문서 파싱 및 블록 분해 
+- PDF 문서 파싱 및 블록 분해
 - Vision API 메시지 포맷 변환
 - 벡터 임베딩 생성
 - GPT-4o Vision 기반 질문 생성
@@ -12,26 +12,31 @@
 최종적으로는 PDF 한 개에 대해 문항 자동 생성 파이프라인을 수행합니다.
 """
 
-from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from src.agents.question_generator.tools.question_generator import QuestionGenerator
-from utils.change_name import normalize_collection_name
-from sentence_transformers import SentenceTransformer
 import os
 import sys
 import time
 
+from sentence_transformers import SentenceTransformer
+
+from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
+from src.agents.question_generator.tools.question_generator import QuestionGenerator
+from utils.change_name import normalize_collection_name
+
 # 임베딩 모델 로딩 (bge 모델 사용)
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
 
-def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_subjective: int = 3):
+
+def run_question_generation_pipeline(
+    pdf_path: str, num_objective: int = 3, num_subjective: int = 3
+):
     """
     문제 생성 파이프라인 실행
-    
+
     Args:
         pdf_path: PDF 파일 경로 (문자열 또는 정수 인덱스)
         num_objective: 생성할 객관식 문제 수
         num_subjective: 생성할 주관식 문제 수
-        
+
     Returns:
         List[Dict]: 생성된 문제들의 리스트
     """
@@ -49,19 +54,19 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
             pdf_path = "data/raw_docs/Process 흐름도_sample_250527.pdf"
         else:
             raise ValueError(f"지원되지 않는 PDF 인덱스: {pdf_path}")
-    
+
     print(f"🚀 문제 생성 파이프라인 시작")
     print(f"📄 처리할 파일: {pdf_path}")
     print(f"🎯 목표: 객관식 {num_objective}개, 주관식 {num_subjective}개")
     print("=" * 80)
-    
+
     if not os.path.exists(pdf_path):
         print(f"❌ 파일을 찾을 수 없습니다: {pdf_path}")
         return []
-    
+
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
     collection_name = normalize_collection_name(filename)
-    
+
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
     print("📄 1단계: PDF 파싱 및 블록 분해")
     blocks = parse_pdf_unified(pdf_path)
@@ -92,7 +97,7 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
 
     obj_per_chunk = distribute(num_objective, n_chunks)
     subj_per_chunk = distribute(num_subjective, n_chunks)
-    
+
     print(f"📊 청크별 문제 분배:")
     print(f"   객관식: {obj_per_chunk}")
     print(f"   주관식: {subj_per_chunk}")
@@ -106,16 +111,16 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
     for i, vision_data in enumerate(processed_vision_chunks):
         if objective_count >= num_objective and subjective_count >= num_subjective:
             break
-            
+
         print(f"  📝 청크 {i+1}/{n_chunks} 처리 중...")
-        
-        messages_for_api = vision_data['messages']
-        chunk_metadata = vision_data['metadata']
+
+        messages_for_api = vision_data["messages"]
+        chunk_metadata = vision_data["metadata"]
 
         # chunk_obj 구성 시, processed_vision_chunks에서 반환된 메타데이터 활용
         page_numbers = chunk_metadata.get("pages", [])
         page_info_for_chunk = str(page_numbers[0]) if page_numbers else "N/A"
-        
+
         section_titles = chunk_metadata.get("sections", [])
         section_info_for_chunk = ", ".join(section_titles) if section_titles else ""
 
@@ -132,10 +137,12 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
 
         # 벡터 임베딩은 source_text_combined 전체에 대해 수행할 수 있음
         if chunk_obj_for_saving["source_text"]:
-            vector = embedding_model.encode(chunk_obj_for_saving["source_text"]).tolist()
+            vector = embedding_model.encode(
+                chunk_obj_for_saving["source_text"]
+            ).tolist()
             # upload_chunk_to_collection(chunk_obj_for_saving, vector, collection_name) # 필요시 DB 업로드
         else:
-            vector = []
+            pass
 
         # 각 chunk별로 할당된 개수만큼만 요청
         num_obj = obj_per_chunk[i]
@@ -151,15 +158,15 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
             # GPT-4o Vision API를 통해 질문 생성
             generator = QuestionGenerator()
             questions_list = generator._generate_question(
-                messages=messages_for_api, 
-                source=source_file_name, 
+                messages=messages_for_api,
+                source=source_file_name,
                 page=page_info_for_chunk,
                 num_objective=num_obj,
                 num_subjective=num_subj,
             )
-            
+
             print(f"    ✅ 청크 {i+1}: {len(questions_list)}개 문제 생성 완료")
-            
+
             # 결과 처리 및 카운트 업데이트
             for question_data in questions_list:
                 q_type = question_data["type"]
@@ -182,17 +189,19 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
                     "explanation": question_data.get("explanation"),
                     "document_id": 1,  # 문서 ID는 1로 고정 (나중에 실제 문서 ID로 변경 필요)
                     "tags": question_data.get("tags", []),
-                    "grading_criteria": question_data.get("grading_criteria")
+                    "grading_criteria": question_data.get("grading_criteria"),
                 }
 
                 results.append(result)
 
             # 생성된 문항과 메타데이터 저장
-            save_question_result(chunk_info=chunk_obj_for_saving, questions_list=questions_list)
-            
+            save_question_result(
+                chunk_info=chunk_obj_for_saving, questions_list=questions_list
+            )
+
         except Exception as e:
             print(f"    ❌ 청크 {i+1} 문제 생성 실패: {e}")
-        
+
         # API 호출 간 지연 시간 유지
         time.sleep(1)
 
@@ -202,7 +211,7 @@ def run_question_generation_pipeline(pdf_path: str, num_objective: int = 3, num_
     print(f"   - 객관식: {objective_count}개 (목표: {num_objective}개)")
     print(f"   - 주관식: {subjective_count}개 (목표: {num_subjective}개)")
     print(f"   - 컬렉션: {collection_name}")
-    
+
     return results
 
 
@@ -216,22 +225,28 @@ def run_pipeline(pdf_path, num_objective: int = 3, num_subjective: int = 3):
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("사용법:")
-        print("  python -m src.pipelines.question_generation.run_pipeline <pdf_path> [num_objective] [num_subjective]")
+        print(
+            "  python -m src.pipelines.question_generation.run_pipeline <pdf_path> [num_objective] [num_subjective]"
+        )
         print()
         print("예시:")
-        print("  python -m src.pipelines.question_generation.run_pipeline 'data/raw_docs/sample.pdf' 5 3")
-        print("  python -m src.pipelines.question_generation.run_pipeline 1  # 사전 정의된 파일 사용")
+        print(
+            "  python -m src.pipelines.question_generation.run_pipeline 'data/raw_docs/sample.pdf' 5 3"
+        )
+        print(
+            "  python -m src.pipelines.question_generation.run_pipeline 1  # 사전 정의된 파일 사용"
+        )
         sys.exit(1)
 
     pdf_path = sys.argv[1]
-    
+
     # 숫자인 경우 정수로 변환
     try:
         pdf_path = int(pdf_path)
     except ValueError:
         pass  # 문자열 경로 그대로 사용
-    
+
     num_objective = int(sys.argv[2]) if len(sys.argv) > 2 else 3
     num_subjective = int(sys.argv[3]) if len(sys.argv) > 3 else 3
-    
+
     run_question_generation_pipeline(pdf_path, num_objective, num_subjective)
