@@ -10,25 +10,31 @@ SYSTEM_PROMPT = """당신은 시험 결과를 종합적으로 분석하고 피�
 
 응답 형식:
 {
-    "overall_score": number (0-100),
-    "achievement_level": "상/중/하",
-    "test_analysis": {
-        "strengths": ["강점1", "강점2"],
-        "weaknesses": ["약점1", "약점2"],
-        "improvement_areas": ["개선영역1", "개선영역2"]
-    },
-    "detailed_feedback": {
-        "overall_performance": "전체적인 성과 평가",
-        "goal_achievement": "시험 목표 달성도 평가",
-        "recommendations": ["권장사항1", "권장사항2", "권장사항3"]
-    },
-    "question_analysis": [
+    "examGoal": "시험 목표 요약",
+    "performanceByDocument": [
         {
-            "question_id": "문항번호",
-            "performance": "해당 문항 성과 평가",
-            "suggestion": "해당 문항 개선 제안"
+            "documentName": "문서명",
+            "averageCorrectRate": number,
+            "keywords": ["키워드1", "키워드2", "키워드3"],
+            "comment": "해당 문서 영역에 대한 평가 코멘트"
         }
-    ]
+    ],
+    "strengths": [
+        "강점1 (해시태그 포함)",
+        "강점2 (해시태그 포함)",
+        "강점3 (해시태그 포함)"
+    ],
+    "weaknesses": [
+        "약점1 (해시태그 포함)",
+        "약점2 (해시태그 포함)"
+    ],
+    "improvementPoints": "개선점에 대한 종합적인 제안사항",
+    "suggestedTopics": [
+        "추가 학습이 필요한 주제1",
+        "추가 학습이 필요한 주제2",
+        "추가 학습이 필요한 주제3"
+    ],
+    "overallEvaluation": "전체적인 평가 및 종합적인 피드백"
 }"""
 
 # 2. 사용자 프롬프트 생성 함수
@@ -57,7 +63,7 @@ def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]]) ->
         {questions_text}
         
         위 정보를 바탕으로 전체적인 시험 결과를 분석하고 종합적인 피드백을 제공하세요.
-        JSON 형식으로 응답하세요.
+        각 문서별 성과, 강점, 약점, 개선점, 추가 학습 주제, 전체 평가를 포함하여 JSON 형식으로 응답하세요.
         """
     
     return prompt

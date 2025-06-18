@@ -21,36 +21,40 @@ async def run_test():
 
     # 3. 결과 출력
     print(f"🟨 응답 시간: {elapsed_time:.2f}초")
-    print("\n" + "="*60)
+    print("\n" + "="*80)
     print("📊 시험 결과 분석")
-    print("="*60)
-    print(f"✅ 전체 점수: {result['overall_score']}/100")
-    print(f"✅ 성취 수준: {result['achievement_level']}")
+    print("="*80)
     
-    print(f"\n🎯 강점:")
-    for strength in result['test_analysis']['strengths']:
+    print(f"\n1️⃣ 전체 평가:")
+    print(f"  {result['overallEvaluation']}")
+
+
+    print(f"2️⃣ 시험 목표: {result['examGoal']}")
+    
+    print(f"\n3️⃣ 문서별 성과:")
+    for doc in result['performanceByDocument']:
+        print(f"  • {doc['documentName']}")
+        print(f"    - 평균 정답률: {doc['averageCorrectRate']}%")
+        print(f"    - 키워드: {', '.join(doc['keywords'])}")
+        print(f"    - 평가: {doc['comment']}")
+    
+    print(f"\n4️⃣ 강약점 분석:")
+    print(f"\n└─ 강점:")
+    for strength in result['strengths']:
         print(f"  • {strength}")
     
-    print(f"\n⚠️  약점:")
-    for weakness in result['test_analysis']['weaknesses']:
+    print(f"\n└─ 약점:")
+    for weakness in result['weaknesses']:
         print(f"  • {weakness}")
     
-    print(f"\n📈 개선 영역:")
-    for area in result['test_analysis']['improvement_areas']:
-        print(f"  • {area}")
+    print(f"\n└─ 개선점:")
+    print(f"  {result['improvementPoints']}")
     
-    print(f"\n💡 상세 피드백:")
-    print(f"  • 전체 성과: {result['detailed_feedback']['overall_performance']}")
-    print(f"  • 목표 달성도: {result['detailed_feedback']['goal_achievement']}")
+    print(f"\n5️⃣ 추가 학습 주제:")
+    for topic in result['suggestedTopics']:
+        print(f"  • {topic}")
     
-    print(f"\n🔍 문항별 분석:")
-    for analysis in result['question_analysis']:
-        print(f"  • 문항 {analysis['question_id']}: {analysis['performance']}")
-        print(f"    제안: {analysis['suggestion']}")
-    
-    print(f"\n📋 권장사항:")
-    for rec in result['detailed_feedback']['recommendations']:
-        print(f"  • {rec}")
+
 
 if __name__ == "__main__":
     asyncio.run(run_test())
