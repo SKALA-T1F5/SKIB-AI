@@ -38,4 +38,4 @@ spec:
       volumes:
         - name: document-volume
           persistentVolumeClaim:
-            claimName: skib-ai-documents-pvc
+            claimName: skib-documents-pvc
