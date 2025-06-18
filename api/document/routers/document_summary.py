@@ -19,7 +19,7 @@ async def get_document_summary(document_id: int):
     """
     try:
         result = PIPELINE_RESULTS.get(document_id)
-        print(f"Retrieving summary for document_id: {document_id}, result: {result}")
+        logger.debug(f"Retrieving summary for document_id: {document_id}, result: {result}")
         
         # 1. 결과 없음 -> 404
         if not result:
