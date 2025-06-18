@@ -1,0 +1,35 @@
+# api/document/schemas/document_summary.py
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any
+
+
+class DocumentContentAnalysisBase(BaseModel):
+    """문서 내용 분석 기본 정보"""
+    summary: str = Field(..., description="문서 요약")
+    main_topics: List[str] = Field(default_factory=list, description="주요 주제")
+    key_concepts: List[str] = Field(default_factory=list, description="핵심 개념")
+    technical_terms: List[str] = Field(default_factory=list, description="기술 용어")
+
+
+class SummaryByDocumentResponse(BaseModel):
+    """SpringBoot 호환 요약 DTO"""
+    summary: str
+    keywords: List[str]  # main_topics + key_concepts 조합
+    document_id: int
+
+
+class DocumentSummaryRequest(BaseModel):
+    """문서 요약 요청"""
+    document_id: int
+
+
+class DocumentSummaryResponse(BaseModel):
+    """문서 요약 응답 (FastAPI 내부용 - 상세)"""
+    document_id: int
+    content_analysis: DocumentContentAnalysisBase
+
+
+class DocumentSummaryListResponse(BaseModel):
+    """문서 요약 목록 응답 (SpringBoot 호환)"""
+    summaries: List[DocumentSummaryResponse]
+    total_count: int
