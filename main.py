@@ -6,6 +6,7 @@ from api.document.routers.document_summary import router as document_summary_rou
 from api.document.routers.document_upload import router as document_router
 from api.grading.routers.subjective_grading import router as grading_router
 from api.question.routers.question import router as question_router
+from api.test.routers.test_plan import router as test_plan_router
 from services.middleware import LoggingMiddleware  # 위 클래스 저장 파일 경로
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -18,3 +19,4 @@ app.include_router(question_router)
 app.include_router(grading_router)
 app.include_router(document_router)
 app.include_router(document_summary_router)
+app.include_router(test_plan_router)
