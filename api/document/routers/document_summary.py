@@ -1,6 +1,8 @@
 import logging
-from typing import Any, Dict
+from typing import Dict
 
+import httpx
+from api.document.status import Status, get_result, get_status, set_result, set_status
 from fastapi import APIRouter, HTTPException
 
 from api.document.schemas.document_summary import SummaryByDocumentResponse
@@ -9,52 +11,40 @@ from src.pipelines.document_processing.pipeline import DocumentProcessingPipelin
 router = APIRouter(prefix="/api/document", tags=["Document"])
 logger = logging.getLogger(__name__)
 
-# 간단한 결과 저장소 (기존 복잡한 PipelineManager 대신)
-PIPELINE_RESULTS: Dict[int, Dict[str, Any]] = {}
-
 
 @router.get("/summary/{document_id}", response_model=SummaryByDocumentResponse)
 async def get_document_summary(document_id: int):
     """
-    수정 포인트: 상태별 HTTP 응답 코드 정확히 처리
+    상태 기반으로 요약 정보 조회
     """
     try:
-        result = PIPELINE_RESULTS.get(document_id)
-        logger.debug(
-            f"Retrieving summary for document_id: {document_id}, result: {result}"
-        )
+        status = get_status(document_id)
+        logger.debug(f"Document {document_id} status: {status}")
 
-        # 1. 결과 없음 -> 404
-        if not result:
-            raise HTTPException(status_code=404, detail="Document summary not found")
-
-        status = result.get("status", "unknown")
-
-        # 2. 처리 중 -> 202 Accepted
-        if status == "processing":
+        # 1. 처리 중 -> 202 Accepted
+        if status == Status.PROCESSING:
             raise HTTPException(
                 status_code=202, detail="Document is still being processed"
             )
 
-        # 3. 실패 -> 500 Error
-        if status == "failed":
-            raise HTTPException(
-                status_code=500,
-                detail=f"Document processing failed: {result.get('error_message', 'Unknown error')}",
-            )
+        # 2. 실패 -> 500 Error
+        if status == Status.FAILED:
+            raise HTTPException(status_code=500, detail="Document processing failed")
 
-        # 4. 완료 -> 200 OK + 데이터
-        if status == "completed":
-            return SummaryByDocumentResponse(
-                summary=result.get("summary", ""),
-                keywords=result.get("keywords", []),
-                document_id=document_id,
-            )
+        # 3. 완료 -> 200 OK + 데이터
+        if status == Status.DONE:
+            result = get_result(document_id)
+            if result:
+                return SummaryByDocumentResponse(
+                    summary=result.get("summary", ""),
+                    keywords=result.get("keywords", []),
+                    document_id=document_id,
+                )
+            else:
+                raise HTTPException(status_code=404, detail="Summary result not found")
 
-        # 기타 상태 -> 500
-        raise HTTPException(
-            status_code=500, detail=f"Unknown processing status: {status}"
-        )
+        # 4. 상태 없음 -> 404
+        raise HTTPException(status_code=404, detail="Document not found")
 
     except HTTPException:
         raise
@@ -65,24 +55,17 @@ async def get_document_summary(document_id: int):
         )
 
 
-# 백그라운드 함수 단순화
 async def process_document_background(
     file_path: str, document_id: int, project_id: int, filename: str
 ):
-    """백그라운드 처리 - 결과 저장 로직 단순화"""
+    """백그라운드 처리 - 간단한 상태 관리"""
     try:
-        # 처리 중 상태 저장
-        PIPELINE_RESULTS[document_id] = {
-            "status": "processing",
-            "document_id": document_id,
-        }
-
         logger.info(f"Starting background processing for document_id: {document_id}")
 
-        # Pipeline 실행 (기존과 동일)
+        # Pipeline 실행
         pipeline = DocumentProcessingPipeline(
             config={
-                "enable_vectordb": False,  # 벡터 DB 사용 유무
+                "enable_vectordb": False,
                 "timeout_seconds": 600,
                 "max_retries": 3,
             }
@@ -97,45 +80,65 @@ async def process_document_background(
             }
         )
 
-        # 결과를 SpringBoot 형식으로 변환하여 저장
+        # 결과 처리
         if result.get("processing_status") == "completed":
             content_analysis = result.get("content_analysis", {})
 
-            # SpringBoot SummaryDto 형식으로 변환
+            # SpringBoot 형식으로 변환
             main_topics = content_analysis.get("main_topics", [])
             key_concepts = content_analysis.get("key_concepts", [])
-            keywords = (main_topics + key_concepts)[:10]  # 상위 10개만
+            keywords = (main_topics + key_concepts)[:10]
 
-            # 최종 결과 저장 (SpringBoot가 GET으로 가져갈 형식)
-            PIPELINE_RESULTS[document_id] = {
-                "status": "completed",
+            summary_data = {
                 "summary": content_analysis.get("summary", ""),
                 "keywords": keywords,
                 "document_id": document_id,
-                "completed_at": result.get("completed_at"),
             }
 
-            logger.info(
-                f"✅ Background processing completed for document_id: {document_id}"
-            )
+            # 1. 결과 저장
+            set_result(document_id, summary_data)
+
+            # 2. SpringBoot에 알림
+            success = await notify_springboot_completion(document_id, summary_data)
+
+            if success:
+                # 3. 완료 상태로 변경
+                set_status(document_id, Status.DONE)
+                logger.info(f"✅ Processing completed for document_id: {document_id}")
+            else:
+                set_status(document_id, Status.FAILED)
+                logger.error(f"SpringBoot 알림 실패: document_id: {document_id}")
         else:
             # 실패 처리
-            PIPELINE_RESULTS[document_id] = {
-                "status": "failed",
-                "error_message": result.get("error_message", "Unknown error"),
-                "document_id": document_id,
-            }
-            logger.error(
-                f"❌ Background processing failed for document_id: {document_id}"
-            )
+            set_status(document_id, Status.FAILED)
+            logger.error(f"❌ Pipeline failed for document_id: {document_id}")
 
     except Exception as e:
-        # 예외 발생 시 실패 상태 저장
-        PIPELINE_RESULTS[document_id] = {
-            "status": "failed",
-            "error_message": str(e),
-            "document_id": document_id,
-        }
+        # 예외 발생 시 실패 상태
+        set_status(document_id, Status.FAILED)
         logger.error(
-            f"Background processing exception for document_id {document_id}: {str(e)}"
+            f"""Exception in background processing for
+                document_id {document_id}: {str(e)}"""
         )
+
+
+async def notify_springboot_completion(document_id: int, summary_data: Dict) -> bool:
+    """SpringBoot에 처리 완료 알림"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"http://localhost:8080/api/document/summary/{document_id}",
+                json=summary_data,
+                headers={"Content-Type": "application/json"},
+            )
+
+            if response.status_code == 200:
+                logger.info(f"✅ SpringBoot 알림 성공: document_id={document_id}")
+                return True
+            else:
+                logger.error(f"SpringBoot 알림 실패: {response.status_code}")
+                return False
+
+    except Exception as e:
+        logger.error(f"SpringBoot 알림 중 오류: {str(e)}")
+        return False
