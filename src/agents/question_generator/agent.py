@@ -14,10 +14,25 @@ from datetime import datetime
 
 
 class QuestionGeneratorAgent:
-    """문제 생성 전문 Agent"""
+    """
+    문제 생성 전문 Agent
+    
+    주요 기능:
+    - GPT-4 Vision을 사용한 자동 문제 생성
+    - 객관식/주관식 문제 생성 및 관리
+    - 테스트 요약 및 설정 파일 생성
+    - 문제 결과 저장 및 관리
+    """
     
     def __init__(self, collection_name: str = None):
+        """
+        QuestionGenerator 초기화
+        
+        Args:
+            collection_name: 컬렉션명 (이미지 저장 경로 결정)
+        """
         self.collection_name = collection_name
+        
         # 이미지 저장 디렉토리 설정
         if collection_name:
             from utils.change_name import normalize_collection_name
@@ -25,6 +40,7 @@ class QuestionGeneratorAgent:
             self.image_save_dir = f"data/images/{normalized_name}"
         else:
             self.image_save_dir = "data/images/unified"
+            
         self.question_generator = QuestionGenerator(self.image_save_dir)
     
     def generate_questions_from_blocks(
@@ -35,10 +51,12 @@ class QuestionGeneratorAgent:
         source_file: str = "document.pdf",
         keywords: List[str] = None,
         main_topics: List[str] = None,
-        summary: str = ""
+        summary: str = "",
+        test_config: Dict = None,
+        use_vectordb_search: bool = True
     ) -> Dict:
         """
-        블록들로부터 문제 생성
+        블록들로부터 문제 생성 (vectorDB 검색 및 테스트 설정 활용)
         
         Args:
             blocks: 문서 블록들
@@ -48,6 +66,8 @@ class QuestionGeneratorAgent:
             keywords: 키워드 목록
             main_topics: 주요 주제 목록
             summary: 문서 요약
+            test_config: 테스트 설정 딕셔너리
+            use_vectordb_search: vectorDB에서 관련 키워드 검색 활용 여부
             
         Returns:
             Dict: 문제 생성 결과
@@ -56,9 +76,26 @@ class QuestionGeneratorAgent:
         print(f"🎯 목표: 객관식 {num_objective}개, 주관식 {num_subjective}개")
         
         try:
-            # 1. 문제 생성
+            # 1. VectorDB에서 관련 키워드 검색 (선택적)
+            enhanced_blocks = blocks
+            if use_vectordb_search and keywords and self.collection_name:
+                enhanced_blocks = self._enhance_blocks_with_vectordb_search(blocks, keywords, main_topics)
+            
+            # 2. 테스트 설정에서 문제 수 조정
+            if test_config:
+                num_objective = test_config.get('num_objective', num_objective)
+                num_subjective = test_config.get('num_subjective', num_subjective)
+                print(f"📊 테스트 설정 적용: 객관식 {num_objective}개, 주관식 {num_subjective}개")
+            
+            # 3. 문제 생성 (향상된 블록과 테스트 설정 활용)
             questions_blocks = self.question_generator.generate_questions_for_blocks(
-                blocks, num_objective, num_subjective
+                blocks=enhanced_blocks,
+                num_objective=num_objective, 
+                num_subjective=num_subjective,
+                keywords=keywords,
+                main_topics=main_topics,
+                summary=summary,
+                test_config=test_config
             )
             
             # 2. 생성된 문제 추출
@@ -97,7 +134,19 @@ class QuestionGeneratorAgent:
         main_topics: List[str],
         summary: str
     ) -> Dict:
-        """문제 생성 결과 저장"""
+        """
+        문제 생성 결과를 파일로 저장
+        
+        Args:
+            questions: 생성된 문제 목록
+            source_file: 원본 파일명
+            keywords: 키워드 목록
+            main_topics: 주요 주제 목록
+            summary: 문서 요약
+            
+        Returns:
+            Dict: 저장 결과 정보
+        """
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = os.path.splitext(os.path.basename(source_file))[0]
         files_created = []
@@ -167,7 +216,20 @@ class QuestionGeneratorAgent:
         summary: str, 
         timestamp: str
     ) -> str:
-        """테스트 요약 파일 저장"""
+        """
+        테스트 요약 파일 저장
+        
+        Args:
+            questions: 생성된 문제 목록
+            source_file: 원본 파일명
+            keywords: 키워드 목록
+            main_topics: 주요 주제 목록
+            summary: 문서 요약
+            timestamp: 타임스탬프
+            
+        Returns:
+            str: 저장된 파일 경로 (실패 시 None)
+        """
         try:
             filename = os.path.splitext(os.path.basename(source_file))[0]
             summary_dir = "data/outputs/test_summaries"
@@ -230,7 +292,17 @@ class QuestionGeneratorAgent:
             return None
     
     def _save_test_config(self, questions: List[Dict], source_file: str, timestamp: str) -> str:
-        """테스트 설정 파일 저장"""
+        """
+        테스트 설정 파일 저장
+        
+        Args:
+            questions: 생성된 문제 목록
+            source_file: 원본 파일명
+            timestamp: 타임스탬프
+            
+        Returns:
+            str: 저장된 파일 경로 (실패 시 None)
+        """
         try:
             filename = os.path.splitext(os.path.basename(source_file))[0]
             config_dir = "data/outputs/test_configs"
@@ -284,7 +356,17 @@ class QuestionGeneratorAgent:
             return None
     
     def _analyze_content_complexity(self, keywords: List[str], main_topics: List[str], questions: List[Dict]) -> str:
-        """콘텐츠 복잡도 분석"""
+        """
+        콘텐츠 복잡도 분석
+        
+        Args:
+            keywords: 키워드 목록
+            main_topics: 주요 주제 목록
+            questions: 생성된 문제 목록
+            
+        Returns:
+            str: 복잡도 등급 ("초급", "중급", "고급")
+        """
         keywords_count = len(keywords)
         topics_count = len(main_topics)
         hard_questions = len([q for q in questions if q.get('difficulty_level') == 'HARD'])
@@ -297,7 +379,15 @@ class QuestionGeneratorAgent:
             return "초급"
     
     def _extract_question_topics(self, questions: List[Dict]) -> List[str]:
-        """문제에서 주요 주제 추출"""
+        """
+        문제에서 주요 주제 추출
+        
+        Args:
+            questions: 문제 목록
+            
+        Returns:
+            List[str]: 추출된 주제 목록 (최대 3개)
+        """
         topics = []
         for q in questions[:3]:  # 상위 3개 문제만 분석
             question_text = q.get('question', '')
@@ -312,6 +402,74 @@ class QuestionGeneratorAgent:
                 topics.append('등록 절차')
         
         return list(set(topics))[:3]  # 중복 제거 후 상위 3개 반환
+    
+    def _enhance_blocks_with_vectordb_search(self, blocks: List[Dict], keywords: List[str], main_topics: List[str]) -> List[Dict]:
+        """
+        VectorDB 검색을 통해 블록을 향상시키는 메서드
+        
+        Args:
+            blocks: 원본 블록들
+            keywords: 검색할 키워드들
+            main_topics: 주요 주제들
+            
+        Returns:
+            List[Dict]: 향상된 블록들 (관련 내용 추가)
+        """
+        try:
+            print("🔍 VectorDB에서 관련 키워드 검색 중...")
+            
+            # ChromaDB 검색 시도
+            try:
+                from db.vectorDB.chromaDB.search import search_documents
+                
+                enhanced_blocks = blocks.copy()
+                related_contents = []
+                
+                # 상위 키워드들로 검색
+                top_keywords = keywords[:5]  # 상위 5개 키워드만 사용
+                for keyword in top_keywords:
+                    try:
+                        search_results = search_documents(
+                            query=keyword,
+                            collection_name=self.collection_name,
+                            n_results=3
+                        )
+                        
+                        if search_results and 'documents' in search_results:
+                            for doc in search_results['documents'][0]:  # 첫 번째 검색 결과 배치
+                                if doc not in related_contents:
+                                    related_contents.append(doc)
+                                    
+                    except Exception as e:
+                        print(f"  ⚠️ 키워드 '{keyword}' 검색 실패: {e}")
+                        continue
+                
+                # 검색된 관련 내용을 블록에 추가
+                if related_contents:
+                    print(f"  ✅ {len(related_contents)}개 관련 내용 발견")
+                    
+                    # 관련 내용을 새로운 텍스트 블록으로 추가
+                    for i, content in enumerate(related_contents[:3]):  # 최대 3개만 추가
+                        related_block = {
+                            'type': 'paragraph',
+                            'content': f"[관련 내용 {i+1}] {content}",
+                            'metadata': {
+                                'source': 'vectordb_search',
+                                'search_keyword': keywords[i % len(keywords)] if keywords else 'unknown',
+                                'page': 'vectordb'
+                            }
+                        }
+                        enhanced_blocks.append(related_block)
+                
+                return enhanced_blocks
+                
+            except ImportError:
+                print("  ⚠️ ChromaDB 모듈을 찾을 수 없습니다. 원본 블록 사용")
+                return blocks
+                
+        except Exception as e:
+            print(f"  ❌ VectorDB 검색 실패: {e}")
+            return blocks
 
 
 # 편의 함수
