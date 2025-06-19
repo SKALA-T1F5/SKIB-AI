@@ -21,6 +21,7 @@ class TestPlanByDocument(BaseModel):
 
 class TestPlanResponse(BaseModel):
     name: str
+    test_summary: str
     difficulty_level: DifficultyLevel
     limited_time: int  # 분 단위
     pass_score: int  # 통과 점수 (%)

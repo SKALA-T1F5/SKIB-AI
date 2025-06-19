@@ -51,7 +51,9 @@ async def generate_test_plan(request: TestPlanRequest):
 
         # Agent 결과에서 필요한 정보 추출
         test_config = result.get("test_config", {})
-        test_summary = result.get("test_summary", "")
+        test_summary = result.get("test_summary", {})
+        test_title = test_summary.get("test_title", "")
+        test_summary = test_summary.get("test_summary", "")
 
         # 난이도 매핑
         difficulty_mapping = {
@@ -92,8 +94,10 @@ async def generate_test_plan(request: TestPlanRequest):
                 )
 
         # 응답 생성
+        # TODO: 현재 state 맞게 출력되고 있는지 확인 X
         response = TestPlanResponse(
-            name=test_summary[:50] + "..." if len(test_summary) > 50 else test_summary,
+            name=test_title,
+            test_summary=test_summary,
             difficulty_level=difficulty_level,
             limited_time=test_config.get("time_limit", 60),
             pass_score=test_config.get("pass_score", 70),
