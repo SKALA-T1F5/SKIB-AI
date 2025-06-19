@@ -28,14 +28,12 @@ async def run_test():
     print(f"\n1️⃣ 전체 평가:")
     print(f"  {result['overallEvaluation']}")
 
-
     print(f"2️⃣ 시험 목표: {result['examGoal']}")
     
     print(f"\n3️⃣ 문서별 성과:")
     for doc in result['performanceByDocument']:
         print(f"  • {doc['documentName']}")
         print(f"    - 평균 정답률: {doc['averageCorrectRate']}%")
-        print(f"    - 키워드: {', '.join(doc['keywords'])}")
         print(f"    - 평가: {doc['comment']}")
     
     print(f"\n4️⃣ 강약점 분석:")
@@ -50,11 +48,13 @@ async def run_test():
     print(f"\n└─ 개선점:")
     print(f"  {result['improvementPoints']}")
     
-    print(f"\n5️⃣ 추가 학습 주제:")
+    print(f"\n5️⃣ 프로젝트 참여 적정성: {result['projectReadiness']}")
+
+    
+    print(f"\n6️⃣ 추가 학습 주제:")
     for topic in result['suggestedTopics']:
         print(f"  • {topic}")
     
-
 
 if __name__ == "__main__":
     asyncio.run(run_test())
