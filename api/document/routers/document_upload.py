@@ -5,6 +5,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Up
 
 from api.document.crud.document import save_document_locally
 from api.document.routers.document_summary import process_document_background
+from api.document.schemas.document_status import StatusEnum, set_status
 from api.document.schemas.document_upload import (
     DocumentUploadMetaRequest,
     DocumentUploadResponse,
@@ -28,6 +29,14 @@ async def upload_document(
     - file_path 반환 (SpringBoot가 response.get("file_path") 호출)
     """
     try:
+        # 1. 초기 상태 설정
+        set_status(metadata.document_id, StatusEnum.PROCESSING)
+        logger.info(
+            f"""Document upload started: {metadata.document_id},
+                project_id: {metadata.project_id},
+                name: {metadata.name}"""
+        )
+
         # 1. 파일 저장
         content = await file.read()
         result = save_document_locally(
