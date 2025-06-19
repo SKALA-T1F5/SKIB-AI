@@ -69,17 +69,21 @@ class TestDesignerAgent(BaseAgent):
     ) -> tuple[bool, str]:
         """결과 검증"""
         required_fields = ["requirements", "test_summary", "test_config"]
-
         for field in required_fields:
             if field not in result:
                 return False, f"필수 필드 '{field}'가 누락되었습니다"
 
-        # 테스트 config 검증
         config = result["test_config"]
-        if not config.get("num_questions") or config["num_questions"] <= 0:
-            return False, "유효하지 않은 문제 수입니다"
-
-        return True, "테스트 설계가 성공적으로 완료되었습니다"
+        # 다양한 형태의 문제 수 확인
+        num_questions = (
+            config.get("num_questions", 0)
+            or config.get("question_config", {}).get("total_questions", 0)
+            or config.get("total_questions", 0)
+        )
+        if num_questions > 0:
+            return True, "테스트 설계가 성공적으로 완료되었습니다."
+        else:
+            return False, "문제 수가 설정되지 않았습니다."
 
     async def _analyze_requirements(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """요구사항 분석"""
@@ -180,7 +184,8 @@ class TestDesignerAgent(BaseAgent):
                     matches = re.findall(r"객관식.*?(\d+)", user_prompt)
                     if matches:
                         num_objective = int(matches[0])
-                except:
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
                     pass
 
         if "주관식" in user_prompt:
@@ -191,7 +196,8 @@ class TestDesignerAgent(BaseAgent):
                     matches = re.findall(r"주관식.*?(\d+)", user_prompt)
                     if matches:
                         num_subjective = int(matches[0])
-                except:
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
                     pass
 
         # 난이도별 조정
@@ -221,50 +227,6 @@ class TestDesignerAgent(BaseAgent):
         }
 
         return config
-
-    # BaseAgent abstract methods 구현
-    async def plan(
-        self, input_data: Dict[str, Any], state: BaseState
-    ) -> Dict[str, Any]:
-        """작업 계획 수립"""
-        return {"action": "analyze_and_design", "input": input_data}
-
-    async def act(self, plan: Dict[str, Any], state: BaseState) -> Dict[str, Any]:
-        """실제 작업 수행"""
-        input_data = plan["input"]
-
-        # 요구사항 분석
-        requirements = await self._analyze_requirements(input_data)
-
-        # 테스트 요약 생성
-        test_summary = await self._generate_test_summary(requirements, input_data)
-
-        # 테스트 설정 생성
-        test_config = await self._create_test_config(test_summary, requirements)
-
-        return {
-            "test_summary": test_summary,
-            "test_config": test_config,
-            "requirements": requirements,
-        }
-
-    async def reflect(
-        self, result: Dict[str, Any], state: BaseState
-    ) -> tuple[bool, str]:
-        """결과 검증"""
-        if "test_summary" in result and "test_config" in result:
-            config = result["test_config"]
-            # 다양한 형태의 문제 수 확인
-            num_questions = (
-                config.get("num_questions", 0)
-                or config.get("question_config", {}).get("total_questions", 0)
-                or config.get("total_questions", 0)
-            )
-            if num_questions > 0:
-                return True, "테스트 설계가 성공적으로 완료되었습니다."
-            else:
-                return False, "문제 수가 설정되지 않았습니다."
-        return False, "테스트 요약이나 설정이 생성되지 않았습니다."
 
 
 def design_test_from_analysis(
