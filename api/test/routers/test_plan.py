@@ -1,0 +1,107 @@
+from fastapi import APIRouter, HTTPException
+
+from api.question.schemas.question import DifficultyLevel
+from api.test.schemas.test_plan import (
+    TestPlanByDocument,
+    TestPlanRequest,
+    TestPlanResponse,
+)
+from src.agents.test_designer.agent import TestDesignerAgent
+
+router = APIRouter(prefix="/api/test", tags=["Test Plan"])
+
+
+@router.post("/plan", response_model=TestPlanResponse)
+async def generate_test_plan(request: TestPlanRequest):
+    """
+    테스트 계획 생성
+    - 문서 요약과 사용자 입력을 바탕으로 테스트 구조 추천
+    """
+    try:
+        # 모든 문서의 키워드와 요약 합치기
+        all_keywords = []
+        all_summaries = []
+
+        for doc_summary in request.document_summaries:
+            all_keywords.extend(doc_summary.keywords)
+            all_summaries.append(
+                f"문서 {doc_summary.document_id}: {doc_summary.summary}"
+            )
+
+        # 중복 키워드 제거
+        unique_keywords = list(set(all_keywords))
+        combined_summary = "\n\n".join(all_summaries)
+
+        # TestDesigner Agent 직접 실행 (asyncio.run 제거)
+        agent = TestDesignerAgent()
+        await agent.initialize()
+
+        # TestDesigner Agent 실행
+        input_data = {
+            "keywords": unique_keywords,
+            "document_summary": combined_summary,
+            "document_topics": unique_keywords[:5],  # 상위 5개 키워드를 주제로 사용
+            "user_prompt": request.user_input,
+            "difficulty": "medium",  # 기본값, Agent가 조정할 수 있음
+            "test_type": "mixed",
+            "time_limit": 60,
+        }
+
+        result = await agent.execute(input_data)
+
+        # Agent 결과에서 필요한 정보 추출
+        test_config = result.get("test_config", {})
+        test_summary = result.get("test_summary", "")
+
+        # 난이도 매핑
+        difficulty_mapping = {
+            "easy": DifficultyLevel.easy,
+            "medium": DifficultyLevel.normal,
+            "hard": DifficultyLevel.hard,
+        }
+
+        difficulty_level = difficulty_mapping.get(
+            test_config.get("difficulty", "medium"), DifficultyLevel.normal
+        )
+
+        # 문서별 문항 수 배분 계산
+        total_objective = test_config.get("num_objective", 5)
+        total_subjective = test_config.get("num_subjective", 3)
+        document_count = len(request.document_summaries)
+
+        document_configs = []
+
+        if document_count > 0:
+            # 문서별로 균등 배분 (나머지는 첫 번째 문서에 추가)
+            base_objective = total_objective // document_count
+            base_subjective = total_subjective // document_count
+            remainder_objective = total_objective % document_count
+            remainder_subjective = total_subjective % document_count
+
+            for i, doc_summary in enumerate(request.document_summaries):
+                obj_count = base_objective + (1 if i < remainder_objective else 0)
+                subj_count = base_subjective + (1 if i < remainder_subjective else 0)
+
+                document_configs.append(
+                    TestPlanByDocument(
+                        document_id=doc_summary.document_id,
+                        keywords=doc_summary.keywords[:3],  # 상위 3개 키워드
+                        recommended_objective=obj_count,
+                        recommended_subjective=subj_count,
+                    )
+                )
+
+        # 응답 생성
+        response = TestPlanResponse(
+            name=test_summary[:50] + "..." if len(test_summary) > 50 else test_summary,
+            difficulty_level=difficulty_level,
+            limited_time=test_config.get("time_limit", 60),
+            pass_score=test_config.get("pass_score", 70),
+            retake=test_config.get("retake_allowed", True),
+            document_configs=document_configs,
+        )
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"테스트 계획 생성 실패: {str(e)}")
