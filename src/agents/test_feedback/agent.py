@@ -2,6 +2,7 @@
 import os
 import openai
 import json
+from collections import defaultdict
 
 from openai import AsyncOpenAI
 from typing import List, Dict, Any
@@ -18,19 +19,33 @@ api_key = os.getenv("OPENAI_API_KEY")
 openai_client = AsyncOpenAI(api_key=api_key) 
 AGENT_MODEL = os.getenv("AGENT_TEST_FEEDBACK_MODEL") #.env에 모델명 저장 (AGENT_TEST_FEEDBACK_MODEL=gpt-4)✅
 
+def calc_performance_by_document(question_results: List[Dict[str, Any]]):
+    doc_map = defaultdict(list)
+    for q in question_results:
+        doc_map[q['documentName']].append(q)
+    performance = []
+    for doc, questions in doc_map.items():
+        avg = sum(q['correctRate'] for q in questions) / len(questions)
+        keywords = list({q['keyword'] for q in questions if 'keyword' in q})
+        performance.append({
+            "documentName": doc,
+            "averageCorrectRate": round(avg, 2),
+            "keywords": keywords
+            # comment는 AI가 생성
+        })
+    return performance
+
 async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     OpenAI를 이용하여 시험목표와 문항별 응시 결과를 분석하고 종합적인 피드백을 반환
     """
-    # 1. 채점 기준을 문자열로 변환 (선택사항)
-    # criteria_prompt = ""
-    # if grading_criteria:
-    #     criteria_prompt = "\n".join([
-    #         f"{c.score} | {c.criteria} | ex: {c.example}" for c in grading_criteria
-    #     ])
+    # 1. 문서별 평균 정답률 계산
+    performance_by_document = calc_performance_by_document(question_results)
 
     # 2. 최종 프롬프트 구성
-    USER_PROMPT = build_user_prompt(exam_goal, question_results)
+    # USER_PROMPT = build_user_prompt(exam_goal, question_results)
+    # 2. 최종 프롬프트 구성 (A: 프롬프트에 포함)
+    USER_PROMPT = build_user_prompt(exam_goal, question_results, performance_by_document)
 
     # 3. MODEL 호출
     try:
@@ -65,6 +80,9 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
         ########################################################
 
         result = json.loads(content)
+
+        # 4. 실제 값으로 덮어쓰기
+        result['performanceByDocument'] = performance_by_document
 
         # 토큰 사용량 (차후 주석처리 ✅ )
         usage = response.usage

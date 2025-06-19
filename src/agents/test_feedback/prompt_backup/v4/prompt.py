@@ -1,8 +1,7 @@
 # agents/test_feedback/prompt.py
-# v5: 시험목표 글자수 제한, insights 로 변경
+# v4: 정답률 기준 수정, 강약점 갯수 수정, questionText 기준 판단
 
 from typing import List, Dict, Any
-import json
 
 
 # 1. 시스템 프롬프트 정의
@@ -14,18 +13,17 @@ SYSTEM_PROMPT = """
 [Task]
 다음 항목을 기준으로 시험 데이터를 분석하고, JSON 형식으로 평가 결과를 생성하세요:
 
-1. examGoal은 최대 90자 이내로 요약하세요.
-2. 각 문서(documentName)별 comment를 정리하세요.
-3. 학습자의 insights는 type:strength/weakness로 총 4개 작성하세요. text에는 #keyword와 함께 제시하고, questionText를 기준으로 판단합니다.
-4. 전체 averageCorrectRate 및 문서별 편차를 분석하여 학습자의 프로젝트 참여 적정성을 판단하세요. 정답률 기준(90% 이상: 우수 / 70~89%: 양호 / 50~69%: 보통 / 50% 미만: 미흡)을 적용해 각 문서 수준의 편차가 큰 경우에도 '진행 가능' 여부를 신중히 판단하세요.
-5. projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
+1. 각 문서(documentName)별 comment를 정리하세요.
+2. 학습자의 strengths과 weaknesses을 각각 1~3개, 총 4개 작성하세요. #keyword와 함께 제시하고, questionText를 기준으로 판단합니다.
+3. 전체 averageCorrectRate 및 문서별 편차를 분석하여 학습자의 프로젝트 참여 적정성을 판단하세요. 정답률 기준(90% 이상: 우수 / 70~89%: 양호 / 50~69%: 보통 / 50% 미만: 미흡)을 적용해 각 문서 수준의 편차가 큰 경우에도 '진행 가능' 여부를 신중히 판단하세요.
+4. projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
    - 개별 문서별 이해도의 편차
    - 실무에 바로 적용 가능한 수준인지 여부
    - 핵심 개념/절차에 대한 오개념 유무
    - 실제 투입 시 리스크 여부  
-6. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: “프로세스 흐름도 작성 실습을 통해 구조적 사고 강화” 등)
-7. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: “법령 적용 사례 비교 학습” 등)
-8. 위 내용을 다음 JSON 형식으로 응답하세요:
+5. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: “프로세스 흐름도 작성 실습을 통해 구조적 사고 강화” 등)
+5. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: “법령 적용 사례 비교 학습” 등)
+6. 위 내용을 다음 JSON 형식으로 응답하세요:
 
 [Output Format]
 {
@@ -38,13 +36,8 @@ SYSTEM_PROMPT = """
         },
         ...
      ],
-    "insights": [
-        {"type": "strength/weakness","text": "..."},
-        ...,
-        ...,
-        ...
-        // 총 4개 (strength/weakness 혼합)
-    ],
+    "strengths": [...],
+    "weaknesses": [...],
     "improvementPoints": "...",
     "suggestedTopics": [...],
     "projectReadiness": "진행 가능 / 보류 / 재학습 필요",
@@ -66,11 +59,13 @@ SYSTEM_PROMPT = """
             "comment": "법적 조항과 그 적용 사례를 잘 연계하여 이해하고 있으며, 실무 판단 능력도 높은 수준입니다."
         }
     ],
-    "insights": [
-    { "type": "strength", "text": "'#작업장안전수칙'에 대한 철저한 이해와 적용 능력" },
-    { "type": "strength", "text": "'#산업안전보건법' 조항을 상황에 맞게 해석하고 적용하는 능력" },
-    { "type": "strength", "text": "전반적으로 높은 '#위기대응력' 및 사고 예방 인식" },
-    { "type": "weakness", "text": "다양한 산업군 간 차별화된 '#고위험작업'에 대한 인식은 보완 필요" }
+    "strengths": [
+        "'#작업장안전수칙'에 대한 철저한 이해와 적용 능력",
+        "'#산업안전보건법' 조항을 상황에 맞게 해석하고 적용하는 능력",
+        "전반적으로 높은 '#위기대응력' 및 사고 예방 인식"
+    ],
+    "weaknesses": [
+        "다양한 산업군 간 차별화된 '#고위험작업'에 대한 인식은 보완 필요"
     ],
     "improvementPoints": "이해도가 매우 우수하므로 실제 상황별 시뮬레이션과 다양한 산업군의 사례 학습을 통해 고난도 작업 대응 역량까지 향상시킬 수 있습니다.",
     "suggestedTopics": [
@@ -97,11 +92,13 @@ SYSTEM_PROMPT = """
             "comment": "의도(Intent) 및 개체(Entity) 인식 개념에 대한 혼동이 많았고, 흐름도 해석에도 어려움을 보였습니다."
         }
     ],
-    "insights": [
-    { "type": "strength", "text": "'#챗봇'의 일반적인 활용 목적 기대효과는 이해하고 있음" },
-    { "type": "weakness", "text": "'#지식베이스'와 검색 알고리즘의 역할 구분이 불명확함" },
-    { "type": "weakness", "text": "'#NLU' 모듈 구성요소 및 작동 방식에 대한 이해 부족" },
-    { "type": "weakness", "text": "대화 흐름 시나리오 작성 시 '#대상별 분기 구조'를 설계하지 못함" }
+    "strengths": [
+        "'#챗봇'의 일반적인 활용 목적 기대효과는 이해하고 있음",
+    ],
+    "weaknesses": [
+        "'#지식베이스'와 검색 알고리즘의 역할 구분이 불명확함",
+        "'#NLU' 모듈 구성요소 및 작동 방식에 대한 이해 부족",
+        "대화 흐름 시나리오 작성 시 '#대상별 분기 구조'를 설계하지 못함"
     ],
     "improvementPoints": "지식 기반 시스템의 구조를 단계별로 시각화하여 반복 학습하고, 간단한 챗봇 시나리오부터 작성해보며 실전 감각을 익히는 것이 필요합니다. 개념→구조→사례→실습 순으로 접근하면 학습 효과가 극대화될 수 있습니다.",
     "suggestedTopics": [
@@ -115,8 +112,8 @@ SYSTEM_PROMPT = """
 """
 
 # 2. 사용자 프롬프트 생성 함수
-# 시험목표와 문항별응시결과, 문서별 집계정보를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성합니다.
-def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]], performance_by_document: List[Dict[str, Any]]) -> str:
+# 시험목표와 문항별응시결과를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성합니다.
+def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]]) -> str:
     # 문항별 결과를 문자열로 변환
     questions_text = ""
     for result in question_results:
@@ -138,9 +135,6 @@ def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]], pe
 
         문항별 응시 결과:
         {questions_text}
-
-        문서별 집계 정보:
-        {json.dumps(performance_by_document, ensure_ascii=False, indent=2)}
         
         위 정보를 바탕으로 전체적인 시험 결과를 분석하고 종합적인 피드백을 제공하세요.
         각 문서별 성과, 강점, 약점, 개선점, 추가 학습 주제, 전체 평가를 포함하여 JSON 형식으로 응답하세요.
