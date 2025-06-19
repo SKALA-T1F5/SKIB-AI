@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v10 업로드 문서명 내용 삭제, return에 포함
+# v9 재학습필요 강화, 40자이내로 변경, 문서제시유도
 
 from typing import List, Dict, Any
 import json
@@ -22,9 +22,10 @@ SYSTEM_PROMPT = """
    - 실무에 바로 적용 가능한 수준인지 여부
    - 핵심 개념/절차에 대한 오개념 유무
    - 실제 투입 시 리스크 여부  
-5. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: "프로세스 흐름도 작성 실습을 통해 구조적 사고 강화" 등)
-6. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: "법령 적용 사례 비교 학습" 등)
-7. 위 내용을 다음 JSON 형식으로 응답하세요:
+5. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: “프로세스 흐름도 작성 실습을 통해 구조적 사고 강화” 등)
+6. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: “법령 적용 사례 비교 학습” 등)
+7. OverallEvaluation에서 '재학습필요'의 경우 추가 문서 학습을 제안하세요. 추가 문서 학습 시 문서 이름과 개념을 제시하세요.
+8. 위 내용을 다음 JSON 형식으로 응답하세요:
 
 [Output Format]
 {
@@ -47,7 +48,6 @@ SYSTEM_PROMPT = """
     "improvementPoints": "...",
     "suggestedTopics": [...],
     "projectReadiness": "진행가능 / 보류 / 재학습필요",
-    "retrainDocuments": "..." 또는 null,
     "overallEvaluation": "..."
 }
 
@@ -79,7 +79,6 @@ SYSTEM_PROMPT = """
         "사고 발생 후 조치 절차 및 보고 체계 실습"
     ],
     "projectReadiness": "진행가능",
-    "retrainDocuments": null,
     "overallEvaluation": "산업안전관리 전반에 대한 이해도가 매우 높아, 프로젝트를 바로 진행해도 무방합니다. 실전 적용에서도 큰 무리가 없을 것으로 보이며, 고난이도 사고 대응 훈련만 병행하면 완성도 높은 실무 수행이 가능합니다."
 }
 

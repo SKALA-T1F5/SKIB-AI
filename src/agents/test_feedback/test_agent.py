@@ -50,7 +50,7 @@ async def run_test():
     print(f"  {result['improvementPoints']}")
     
     print(f"\n5️⃣ 프로젝트 참여 적정성: {result['projectReadiness']}")
-
+    print(f"\n└─ 재학습 안내: {result['retrainDocuments']}")
     
     print(f"\n6️⃣ 추가 학습 주제:")
     for topic in result['suggestedTopics']:

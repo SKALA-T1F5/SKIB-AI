@@ -88,6 +88,12 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
             if name in doc_rate_map:
                 doc['averageCorrectRate'] = doc_rate_map[name]
 
+        # retrainDocuments 안내 문구 추가
+        if result.get('projectReadiness') == '재학습필요':
+            result['retrainDocuments'] = "🚨 위 개념에 대한 보충 학습이 필요합니다. 추가 문서 학습을 검토하세요."
+        else:
+            result['retrainDocuments'] = None
+
         # 토큰 사용량 (차후 주석처리 ✅ )
         usage = response.usage
         print("🟨 사용 토큰:", usage.total_tokens)
