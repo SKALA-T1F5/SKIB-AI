@@ -8,9 +8,24 @@ import re
 
 
 class RequirementAnalyzer:
-    """요구사항 분석기"""
+    """
+    요구사항 분석기
+    
+    사용자 프롬프트에서 테스트 관련 요구사항을 추출합니다:
+    - 난이도 (쉬움/보통/어려움)
+    - 테스트 유형 (객관식/주관식/혼합)
+    - 문제 수
+    - 제한시간
+    - 집중 주제
+    - 특수 요구사항
+    """
     
     def __init__(self):
+        """
+        RequirementAnalyzer 초기화
+        
+        키워드 패턴을 설정합니다.
+        """
         self.difficulty_keywords = {
             "easy": ["쉬운", "기초", "초급", "간단한", "기본"],
             "medium": ["중간", "보통", "일반적인", "표준"],
@@ -24,8 +39,17 @@ class RequirementAnalyzer:
         }
     
     def analyze(self, user_prompt: str, keywords: List[str], document_summary: str) -> Dict[str, Any]:
-        """요구사항 종합 분석"""
+        """
+        요구사항 종합 분석
         
+        Args:
+            user_prompt: 사용자 요청 프롬프트
+            keywords: 문서 키워드 목록
+            document_summary: 문서 요약
+            
+        Returns:
+            Dict: 분석된 요구사항들
+        """
         return {
             "difficulty": self._extract_difficulty(user_prompt),
             "test_type": self._extract_test_type(user_prompt),
@@ -36,7 +60,15 @@ class RequirementAnalyzer:
         }
     
     def _extract_difficulty(self, prompt: str) -> str:
-        """난이도 추출"""
+        """
+        프롬프트에서 난이도 추출
+        
+        Args:
+            prompt: 사용자 프롬프트
+            
+        Returns:
+            str: 난이도 ("easy", "medium", "hard")
+        """
         prompt_lower = prompt.lower()
         
         for difficulty, keywords in self.difficulty_keywords.items():
@@ -47,7 +79,15 @@ class RequirementAnalyzer:
         return "medium"  # 기본값
     
     def _extract_test_type(self, prompt: str) -> str:
-        """테스트 유형 추출"""
+        """
+        프롬프트에서 테스트 유형 추출
+        
+        Args:
+            prompt: 사용자 프롬프트
+            
+        Returns:
+            str: 테스트 유형 ("objective", "subjective", "mixed")
+        """
         prompt_lower = prompt.lower()
         
         has_objective = any(keyword in prompt_lower for keyword in self.test_type_keywords["objective"])
@@ -63,7 +103,15 @@ class RequirementAnalyzer:
             return "mixed"  # 기본값
     
     def _extract_question_count(self, prompt: str) -> Dict[str, int]:
-        """문제 수 추출"""
+        """
+        프롬프트에서 문제 수 추출
+        
+        Args:
+            prompt: 사용자 프롬프트
+            
+        Returns:
+            Dict[str, int]: 문제 수 정보 (objective, subjective)
+        """
         result = {"objective": 5, "subjective": 3}  # 기본값
         
         # 객관식 문제 수 찾기
