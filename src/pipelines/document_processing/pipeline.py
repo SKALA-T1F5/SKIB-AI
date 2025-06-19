@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph
 
+from db.vectorDB.chromaDB.pipeline import ChromaDBPipeline
 from src.agents.document_analyzer.tools.keyword_summary import (
     extract_keywords_and_summary,
 )
@@ -13,8 +14,6 @@ from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
 from src.pipelines.base.exceptions import PipelineException
 from src.pipelines.base.pipeline import BasePipeline
 from src.pipelines.document_processing.state import DocumentProcessingState
-
-# from db.vectordb.client import get_vector_client
 
 
 class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
@@ -161,7 +160,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             )
 
             return {
-                **state,
                 "parsed_blocks": blocks,
                 "block_statistics": {
                     "total": len(blocks),
@@ -215,7 +213,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             )
 
             return {
-                **state,
                 "content_analysis": analysis_result,
                 **self._update_progress("analyze_content_complete"),
             }
@@ -252,7 +249,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             )
 
             return {
-                **state,
                 "content_analysis": updated_analysis,
                 "document_info": keywords_result.get("document_info", {}),
                 **self._update_progress("extract_keywords_complete"),
@@ -268,57 +264,84 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     async def _store_vectors_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
-        """벡터 저장 노드"""
-        if not self.config.get("enable_vectordb"):
-            self.logger.info("VectorDB storage disabled, skipping")
-            return {**state, **self._update_progress("vectors_skipped")}
-
-        self.logger.info("Storing vectors in VectorDB")
-
+        """벡터 저장 노드 - ChromaDB Pipeline 클래스 사용"""
         try:
-            blocks = state["parsed_blocks"]
-            document_id = state["document_id"]
-            project_id = state["project_id"]
+            if not self.config.get("enable_vectordb", True):
+                self.logger.info("VectorDB storage disabled, skipping")
+                return {
+                    "vector_embeddings": {
+                        "status": "skipped",
+                        "reason": "vectordb_disabled",
+                        "chunks_count": 0,
+                    },
+                    **self._update_progress("store_vectors_complete"),
+                }
 
-            # VectorDB 클라이언트 가져오기
-            vector_client = get_vector_client()
+            self.logger.info("Starting vector storage to ChromaDB")
 
-            # 텍스트 블록만 추출하여 임베딩
-            text_blocks = []
-            for block in blocks:
-                if block.get("type") in ["paragraph", "section", "heading"]:
-                    content = block.get("content", "").strip()
-                    if content and len(content) > 50:  # 최소 길이 필터
-                        text_blocks.append(
-                            {
-                                "content": content,
-                                "type": block.get("type"),
-                                "page": block.get("metadata", {}).get("page", 0),
-                                "document_id": document_id,
-                                "project_id": project_id,
-                            }
-                        )
+            # 상태에서 필요한 데이터 추출
+            parsed_blocks = state.get("parsed_blocks", [])
+            state.get("document_id")
+            filename = state.get("filename", "unknown")
+            state.get("project_id")
 
-            # VectorDB에 저장 (실제 구현은 vector_client에 따라 다름)
-            if hasattr(vector_client, "store_document_chunks"):
-                await vector_client.store_document_chunks(
-                    chunks=text_blocks, document_id=document_id, project_id=project_id
-                )
+            if not parsed_blocks:
+                self.logger.warning("No parsed blocks found for vector storage")
+                return {
+                    "vector_embeddings": {
+                        "status": "skipped",
+                        "reason": "no_blocks",
+                        "chunks_count": 0,
+                    },
+                    **self._update_progress("store_vectors_complete"),
+                }
 
-            self.logger.info(f"Stored {len(text_blocks)} text chunks in VectorDB")
+            # 컬렉션명 생성 (파일명 -> 정규화)
+            import os
+
+            from utils.change_name import normalize_collection_name
+
+            base_filename = os.path.splitext(filename)[0]
+            collection_name = normalize_collection_name(base_filename)
+
+            self.logger.info(
+                f"Uploading {len(parsed_blocks)} blocks to ChromaDB collection: {collection_name}"
+            )
+
+            chromadb_pipeline = ChromaDBPipeline()
+            upload_result = chromadb_pipeline.process_and_upload_document(
+                document_blocks=parsed_blocks,
+                collection_name=collection_name,
+                source_file=filename,
+                recreate_collection=False,  # 기존 데이터 유지
+            )
+
+            uploaded_count = upload_result.get("uploaded_count", 0)
+
+            self.logger.info(
+                f"ChromaDB upload completed: {uploaded_count} chunks uploaded"
+            )
+
+            # 결과 구성 (ChromaDBPipeline 결과 활용)
+            vector_result = {
+                "status": upload_result.get("status", "completed"),
+                "collection_name": collection_name,
+                "uploaded_count": uploaded_count,
+                "total_blocks": len(parsed_blocks),
+                "chunks_count": uploaded_count,
+                "source_file": filename,
+                "collection_total": upload_result.get(
+                    "collection_total", uploaded_count
+                ),
+            }
 
             return {
-                **state,
-                "vector_embeddings": {
-                    "chunks_count": len(text_blocks),
-                    "status": "stored",
-                },
+                "vector_embeddings": vector_result,
                 **self._update_progress("store_vectors_complete"),
             }
 
         except Exception as e:
-            # VectorDB 실패는 전체 Pipeline 실패로 하지 않음
-            self.logger.warning(f"VectorDB storage failed: {str(e)}")
+            self.logger.error(f"Vector storage failed: {str(e)}")
             return {
                 "vector_embeddings": {
                     "chunks_count": 0,
@@ -333,7 +356,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
         self.logger.info("Finalizing document processing")
 
         return {
-            **state,
             **self._update_progress("completed"),
             "processing_status": "completed",
             "completed_at": datetime.datetime.now().isoformat(),
