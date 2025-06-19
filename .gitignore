@@ -12,6 +12,7 @@ weaviate_data/
 data/images/
 data
 logs/
+chroma_data/
 
 # System files
 .DS_Store
