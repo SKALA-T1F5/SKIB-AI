@@ -7,10 +7,18 @@
 
 from typing import Any, Dict, List
 
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel
+
 from ..base.agent import BaseAgent
 from ..base.state import BaseState, TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
+
+
+class TestGoal(BaseModel):
+    test_title: str
+    test_summary: str
 
 
 class TestDesignerAgent(BaseAgent):
@@ -103,9 +111,13 @@ class TestDesignerAgent(BaseAgent):
         self, requirements: Dict[str, Any], input_data: Dict[str, Any]
     ) -> str:
         """GPT-4를 사용하여 테스트 요약 생성"""
+        parser = JsonOutputParser(pydantic_object=TestGoal)
+        format_instructions = parser.get_format_instructions()
 
-        prompt = f"""
-다음 정보를 바탕으로 테스트의 목적과 범위를 요약해주세요:
+        user_prompt = f"""
+다음 정보를 바탕으로 테스트의 제목(test_title)과 요약(test_summary)을 작성해주세요. 출력은 한국어로 작성하며,:
+
+**테스트 제목은 창의적이고 간결하게**,
 
 **사용자 요청:**
 {requirements['user_prompt']}
@@ -124,11 +136,15 @@ class TestDesignerAgent(BaseAgent):
 - 유형: {requirements['test_type']}
 - 제한시간: {requirements['time_limit']}분
 
-다음 형식으로 테스트 요약을 작성해주세요:
+다음 형식으로 테스트 요약을 작성해주세요.
+이때 다음 항목으로 나눠서 작성하되, 테스트 요약 부분을하나의 string으로 출력하세요:
 1. 테스트 목적
 2. 평가 범위
 3. 출제 방향
 4. 예상 소요시간
+
+
+{format_instructions}
 """
 
         try:
@@ -143,12 +159,12 @@ class TestDesignerAgent(BaseAgent):
                         "role": "system",
                         "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다.",
                     },
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.3,
             )
-
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content.strip()
+            return parser.parse(content)
 
         except Exception as e:
             self.logger.error(f"테스트 요약 생성 실패: {e}")
