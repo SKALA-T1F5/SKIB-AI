@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v5: 시험목표 글자수 제한, insights 로 변경
+# v6: proejctReadiness 기준 강화, '#keyword' 기준 강조, 문서별 comment 내용 삭제, examGoal 글자수 제한 80자
 
 from typing import List, Dict, Any
 import json
@@ -14,18 +14,17 @@ SYSTEM_PROMPT = """
 [Task]
 다음 항목을 기준으로 시험 데이터를 분석하고, JSON 형식으로 평가 결과를 생성하세요:
 
-1. examGoal은 최대 90자 이내로 요약하세요.
-2. 각 문서(documentName)별 comment를 정리하세요.
-3. 학습자의 insights는 type:strength/weakness로 총 4개 작성하세요. text에는 #keyword와 함께 제시하고, questionText를 기준으로 판단합니다.
-4. 전체 averageCorrectRate 및 문서별 편차를 분석하여 학습자의 프로젝트 참여 적정성을 판단하세요. 정답률 기준(90% 이상: 우수 / 70~89%: 양호 / 50~69%: 보통 / 50% 미만: 미흡)을 적용해 각 문서 수준의 편차가 큰 경우에도 '진행 가능' 여부를 신중히 판단하세요.
-5. projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
-   - 개별 문서별 이해도의 편차
+1. examGoal은 최대 80자 이내로 요약하세요.
+2. 학습자의 insights는 type:strength/weakness로 총 4개 작성하세요. text에는 '#keyword'와 함께 제시하고, questionText를 기준으로 판단합니다.
+4. 학습자의 프로젝트 참여 적정성 projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
+   - 개별 averageCorrectRate 및 문서별 편차를 분석해 문서 수준의 편차가 큰 경우에도 '진행 가능' 여부를 신중히 판단
+   - 정답률 기준(90% 이상: 우수 / 70~89%: 양호 / 50~69%: 보통 / 50% 미만: 미흡)
    - 실무에 바로 적용 가능한 수준인지 여부
    - 핵심 개념/절차에 대한 오개념 유무
    - 실제 투입 시 리스크 여부  
-6. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: “프로세스 흐름도 작성 실습을 통해 구조적 사고 강화” 등)
-7. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: “법령 적용 사례 비교 학습” 등)
-8. 위 내용을 다음 JSON 형식으로 응답하세요:
+5. 그에 따른 실무 중심 improvementPoints을 구체적이고 실행 가능하게 제시하세요. (예: “프로세스 흐름도 작성 실습을 통해 구조적 사고 강화” 등)
+6. suggestedTopics는 단순한 키워드가 아닌, 실무에 연계될 수 있도록 구성요소 수준 또는 실습 중심으로 3개 제시하세요. (예: “법령 적용 사례 비교 학습” 등)
+7. 위 내용을 다음 JSON 형식으로 응답하세요:
 
 [Output Format]
 {
