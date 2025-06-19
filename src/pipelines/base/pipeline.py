@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Awaitable, Callable, Dict, Generic, List, Optional, TypeVar
 
 from langgraph.checkpoint.memory import MemorySaver
-from langgraph.graph import StateGraph
+from langgraph.graph import END, StateGraph
 
 from src.pipelines.base.state import BasePipelineState
 
@@ -46,7 +46,7 @@ class BasePipeline(ABC, Generic[StateType]):
     def _setup_default_logger(self) -> logging.Logger:
         """기본 로거 설정"""
         logger = logging.getLogger(self.pipeline_name)
-        logger.setLevel(logging.INFO)
+        logger.setLevel(logging.DEBUG)
         return logger
 
     def _get_default_state(self) -> Dict[str, Any]:
@@ -79,6 +79,7 @@ class BasePipeline(ABC, Generic[StateType]):
         """Pipeline별 상태 스키마 반환"""
 
     # 실행 관련 메서드
+    @abstractmethod
     async def run(
         self, input_data: Dict[str, Any], session_id: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -89,25 +90,54 @@ class BasePipeline(ABC, Generic[StateType]):
     ):
         """Pipeline 스트리밍 실행"""
 
+    #### Utility 메서드 ####
+
+    def _route_next_step(self, state: StateType) -> str:
+        """공통 라우팅 함수: 실패 시 에러 핸들러, 완료 시 END"""
+        current_step = state.get("current_step", "")
+        status = state.get("processing_status", "")
+        nodes = self._get_node_list()
+
+        if status == "failed":
+            return "error_handler"
+        if current_step in ["completed", "finalize"]:
+            return END
+
+        try:
+            idx = nodes.index(current_step.replace("_complete", ""))
+            return nodes[idx + 1] if idx + 1 < len(nodes) else END
+        except ValueError:
+            return END
+
     # 상태 관리 메서드
     def _update_progress(self, current_step: str) -> Dict[str, Any]:
         """현재 진행 상태 업데이트"""
         nodes = self._get_node_list()
-        try:
-            if current_step not in nodes and current_step.endswith("_complete"):
-                base = current_step.replace("_complete", "")
-                node_match = next((n for n in nodes if n.startswith(base)), None)
-                current_step = node_match if node_match else current_step
-            current_index = nodes.index(current_step) + 1
-        except ValueError:
-            current_index = 0
-
-        progress = (current_index / len(nodes)) * 100 if nodes else 0
-
+        completed_steps = [
+            "completed",
+            "finalize",
+            "vectors_skipped",
+            "store_vectors_failed",
+        ]
+        if current_step in completed_steps:
+            progress = 100
+            status = "completed"
+            idx = len(nodes)
+        else:
+            try:
+                if current_step not in nodes and current_step.endswith("_complete"):
+                    base = current_step.replace("_complete", "")
+                    node_match = next((n for n in nodes if n.startswith(base)), None)
+                    current_step = node_match if node_match else current_step
+                idx = nodes.index(current_step) + 1
+            except ValueError:
+                idx = 0
+            progress = (idx / len(nodes)) * 100 if nodes else 0
+            status = "running" if progress < 100 else "completed"
         return {
             "current_step": current_step,
             "progress_percentage": progress,
-            "processing_status": "running" if progress < 100 else "completed",
+            "processing_status": status,
         }
 
     def _handle_error(self, error: Exception, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -125,7 +155,6 @@ class BasePipeline(ABC, Generic[StateType]):
         """노드 함수 래퍼 (에러 처리, 로깅 등)"""
 
         async def wrapper(state: StateType) -> StateType:
-            print(f"=== WRAPPER CALLED for {node_func.__name__} ===")
             try:
                 self.logger.debug(
                     f"Executing node: {node_func.__name__}", exc_info=True

@@ -1,21 +1,22 @@
 # src/pipelines/document_processing/pipeline.py
 import datetime
-import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph
 
+from db.vectorDB.chromaDB.pipeline import ChromaDBPipeline
+from src.agents.document_analyzer.tools.keyword_summary import (
+    extract_keywords_and_summary,
+)
+
 # 기존 Agents 코드 import
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from src.agents.question_generator.keyword_summary import extract_keywords_and_summary
 from src.pipelines.base.exceptions import PipelineException
 from src.pipelines.base.pipeline import BasePipeline
 from src.pipelines.document_processing.state import DocumentProcessingState
 
-# from db.vectordb.client import get_vector_client
 
-
-class DocumentProcessingPipeline(BasePipeline):
+class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     """문서 처리 LangGraph Pipeline"""
 
     def __init__(self, config: Optional[Dict[str, Any]] = None, **kwargs):
@@ -159,7 +160,6 @@ class DocumentProcessingPipeline(BasePipeline):
             )
 
             return {
-                **state,
                 "parsed_blocks": blocks,
                 "block_statistics": {
                     "total": len(blocks),
@@ -213,7 +213,6 @@ class DocumentProcessingPipeline(BasePipeline):
             )
 
             return {
-                **state,
                 "content_analysis": analysis_result,
                 **self._update_progress("analyze_content_complete"),
             }
@@ -250,7 +249,6 @@ class DocumentProcessingPipeline(BasePipeline):
             )
 
             return {
-                **state,
                 "content_analysis": updated_analysis,
                 "document_info": keywords_result.get("document_info", {}),
                 **self._update_progress("extract_keywords_complete"),
@@ -266,58 +264,84 @@ class DocumentProcessingPipeline(BasePipeline):
     async def _store_vectors_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
-        """벡터 저장 노드"""
-        print(self.config.get("enable_vectordb"))
-        if not self.config.get("enable_vectordb"):
-            self.logger.info("VectorDB storage disabled, skipping")
-            return self._update_progress("vectors_skipped")
-
-        self.logger.info("Storing vectors in VectorDB")
-
+        """벡터 저장 노드 - ChromaDB Pipeline 클래스 사용"""
         try:
-            blocks = state["parsed_blocks"]
-            document_id = state["document_id"]
-            project_id = state["project_id"]
+            if not self.config.get("enable_vectordb", True):
+                self.logger.info("VectorDB storage disabled, skipping")
+                return {
+                    "vector_embeddings": {
+                        "status": "skipped",
+                        "reason": "vectordb_disabled",
+                        "chunks_count": 0,
+                    },
+                    **self._update_progress("store_vectors_complete"),
+                }
 
-            # VectorDB 클라이언트 가져오기
-            vector_client = get_vector_client()
+            self.logger.info("Starting vector storage to ChromaDB")
 
-            # 텍스트 블록만 추출하여 임베딩
-            text_blocks = []
-            for block in blocks:
-                if block.get("type") in ["paragraph", "section", "heading"]:
-                    content = block.get("content", "").strip()
-                    if content and len(content) > 50:  # 최소 길이 필터
-                        text_blocks.append(
-                            {
-                                "content": content,
-                                "type": block.get("type"),
-                                "page": block.get("metadata", {}).get("page", 0),
-                                "document_id": document_id,
-                                "project_id": project_id,
-                            }
-                        )
+            # 상태에서 필요한 데이터 추출
+            parsed_blocks = state.get("parsed_blocks", [])
+            state.get("document_id")
+            filename = state.get("filename", "unknown")
+            state.get("project_id")
 
-            # VectorDB에 저장 (실제 구현은 vector_client에 따라 다름)
-            if hasattr(vector_client, "store_document_chunks"):
-                await vector_client.store_document_chunks(
-                    chunks=text_blocks, document_id=document_id, project_id=project_id
-                )
+            if not parsed_blocks:
+                self.logger.warning("No parsed blocks found for vector storage")
+                return {
+                    "vector_embeddings": {
+                        "status": "skipped",
+                        "reason": "no_blocks",
+                        "chunks_count": 0,
+                    },
+                    **self._update_progress("store_vectors_complete"),
+                }
 
-            self.logger.info(f"Stored {len(text_blocks)} text chunks in VectorDB")
+            # 컬렉션명 생성 (파일명 -> 정규화)
+            import os
+
+            from utils.change_name import normalize_collection_name
+
+            base_filename = os.path.splitext(filename)[0]
+            collection_name = normalize_collection_name(base_filename)
+
+            self.logger.info(
+                f"Uploading {len(parsed_blocks)} blocks to ChromaDB collection: {collection_name}"
+            )
+
+            chromadb_pipeline = ChromaDBPipeline()
+            upload_result = chromadb_pipeline.process_and_upload_document(
+                document_blocks=parsed_blocks,
+                collection_name=collection_name,
+                source_file=filename,
+                recreate_collection=False,  # 기존 데이터 유지
+            )
+
+            uploaded_count = upload_result.get("uploaded_count", 0)
+
+            self.logger.info(
+                f"ChromaDB upload completed: {uploaded_count} chunks uploaded"
+            )
+
+            # 결과 구성 (ChromaDBPipeline 결과 활용)
+            vector_result = {
+                "status": upload_result.get("status", "completed"),
+                "collection_name": collection_name,
+                "uploaded_count": uploaded_count,
+                "total_blocks": len(parsed_blocks),
+                "chunks_count": uploaded_count,
+                "source_file": filename,
+                "collection_total": upload_result.get(
+                    "collection_total", uploaded_count
+                ),
+            }
 
             return {
-                **state,
-                "vector_embeddings": {
-                    "chunks_count": len(text_blocks),
-                    "status": "stored",
-                },
+                "vector_embeddings": vector_result,
                 **self._update_progress("store_vectors_complete"),
             }
 
         except Exception as e:
-            # VectorDB 실패는 전체 Pipeline 실패로 하지 않음
-            self.logger.warning(f"VectorDB storage failed: {str(e)}")
+            self.logger.error(f"Vector storage failed: {str(e)}")
             return {
                 "vector_embeddings": {
                     "chunks_count": 0,
@@ -332,7 +356,6 @@ class DocumentProcessingPipeline(BasePipeline):
         self.logger.info("Finalizing document processing")
 
         return {
-            **state,
             **self._update_progress("completed"),
             "processing_status": "completed",
             "completed_at": datetime.datetime.now().isoformat(),
@@ -365,76 +388,3 @@ class DocumentProcessingPipeline(BasePipeline):
                 "failed_step": failed_step,
                 "completed_at": datetime.datetime.now().isoformat(),
             }
-
-    # ==================== 유틸리티 메서드 ====================
-
-    def _route_next_step(self, state: DocumentProcessingState) -> str:
-        """다음 단계 라우팅"""
-        current_step = state.get("current_step", "")
-        nodes = self._get_node_list()
-        if state.get("processing_status") == "failed":
-            return "error_handler"
-        if current_step in ["completed", "finalize"]:
-            return END
-        try:
-            idx = nodes.index(current_step.replace("_complete", ""))
-            return nodes[idx + 1] if idx + 1 < len(nodes) else END
-        except ValueError:
-            return END
-
-    def _update_progress(self, current_step: str) -> Dict[str, Any]:
-        """
-        진행률 업데이트 (노드 리스트 기반, 하드코딩 없이)
-        """
-        nodes = self._get_node_list()
-        try:
-            # current_step이 노드 이름이 아닐 경우, 매핑 로직 추가
-            if current_step not in nodes and current_step.endswith("_complete"):
-                # 예: "parse_complete" -> "parse_document"
-                base = current_step.replace("_complete", "")
-                # 가장 유사한 노드 찾기 (prefix 매칭)
-                node_match = next((n for n in nodes if n.startswith(base)), None)
-                current_step = node_match if node_match else current_step
-
-            current_index = nodes.index(current_step) + 1  # 1-based 진행률
-        except ValueError:
-            current_index = 0
-
-        progress = (current_index / len(nodes)) * 100 if nodes else 0
-
-        return {
-            "current_step": current_step,
-            "progress_percentage": progress,
-            "processing_status": "running" if progress < 100 else "completed",
-        }
-
-    def _create_node_wrapper(self, node_func: Callable) -> Callable:
-        """노드 함수 래퍼 (에러 처리, 로깅 등)"""
-
-        async def wrapper(state: DocumentProcessingState) -> Dict[str, Any]:
-            print(f"=== WRAPPER CALLED for {node_func.__name__} ===")
-            try:
-                self.logger.debug(
-                    f"Executing node: {node_func.__name__}", exc_info=True
-                )
-                start_time = time.time()
-
-                result = await node_func(state)
-
-                execution_time = time.time() - start_time
-                self.logger.debug(
-                    f"Node {node_func.__name__} completed in {execution_time:.2f}s",
-                    exc_info=True,
-                )
-                # self.logger.debug(f"STATE AFTER {node_func.__name__}: {result}")
-
-                return result
-
-            except Exception as e:
-                self.logger.error(
-                    f"Node {node_func.__name__} failed: {str(e)}", exc_info=True
-                )
-                self.logger.debug(f"STATE ON ERROR in {node_func.__name__}: {state}")
-                return self._handle_error(e, state)
-
-        return wrapper
