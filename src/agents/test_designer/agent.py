@@ -7,10 +7,18 @@
 
 from typing import Any, Dict, List
 
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel
+
 from ..base.agent import BaseAgent
 from ..base.state import BaseState, TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
+
+
+class TestGoal(BaseModel):
+    test_title: str
+    test_summary: str
 
 
 class TestDesignerAgent(BaseAgent):
@@ -69,17 +77,21 @@ class TestDesignerAgent(BaseAgent):
     ) -> tuple[bool, str]:
         """결과 검증"""
         required_fields = ["requirements", "test_summary", "test_config"]
-
         for field in required_fields:
             if field not in result:
                 return False, f"필수 필드 '{field}'가 누락되었습니다"
 
-        # 테스트 config 검증
         config = result["test_config"]
-        if not config.get("num_questions") or config["num_questions"] <= 0:
-            return False, "유효하지 않은 문제 수입니다"
-
-        return True, "테스트 설계가 성공적으로 완료되었습니다"
+        # 다양한 형태의 문제 수 확인
+        num_questions = (
+            config.get("num_questions", 0)
+            or config.get("question_config", {}).get("total_questions", 0)
+            or config.get("total_questions", 0)
+        )
+        if num_questions > 0:
+            return True, "테스트 설계가 성공적으로 완료되었습니다."
+        else:
+            return False, "문제 수가 설정되지 않았습니다."
 
     async def _analyze_requirements(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """요구사항 분석"""
@@ -99,9 +111,13 @@ class TestDesignerAgent(BaseAgent):
         self, requirements: Dict[str, Any], input_data: Dict[str, Any]
     ) -> str:
         """GPT-4를 사용하여 테스트 요약 생성"""
+        parser = JsonOutputParser(pydantic_object=TestGoal)
+        format_instructions = parser.get_format_instructions()
 
-        prompt = f"""
-다음 정보를 바탕으로 테스트의 목적과 범위를 요약해주세요:
+        user_prompt = f"""
+다음 정보를 바탕으로 테스트의 제목(test_title)과 요약(test_summary)을 작성해주세요. 출력은 한국어로 작성하며,:
+
+**테스트 제목은 창의적이고 간결하게**,
 
 **사용자 요청:**
 {requirements['user_prompt']}
@@ -120,11 +136,15 @@ class TestDesignerAgent(BaseAgent):
 - 유형: {requirements['test_type']}
 - 제한시간: {requirements['time_limit']}분
 
-다음 형식으로 테스트 요약을 작성해주세요:
+다음 형식으로 테스트 요약을 작성해주세요.
+이때 다음 항목으로 나눠서 작성하되, 테스트 요약 부분을하나의 string으로 출력하세요:
 1. 테스트 목적
 2. 평가 범위
 3. 출제 방향
 4. 예상 소요시간
+
+
+{format_instructions}
 """
 
         try:
@@ -139,12 +159,12 @@ class TestDesignerAgent(BaseAgent):
                         "role": "system",
                         "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다.",
                     },
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.3,
             )
-
-            return response.choices[0].message.content.strip()
+            content = response.choices[0].message.content.strip()
+            return parser.parse(content)
 
         except Exception as e:
             self.logger.error(f"테스트 요약 생성 실패: {e}")
@@ -180,7 +200,8 @@ class TestDesignerAgent(BaseAgent):
                     matches = re.findall(r"객관식.*?(\d+)", user_prompt)
                     if matches:
                         num_objective = int(matches[0])
-                except:
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
                     pass
 
         if "주관식" in user_prompt:
@@ -191,7 +212,8 @@ class TestDesignerAgent(BaseAgent):
                     matches = re.findall(r"주관식.*?(\d+)", user_prompt)
                     if matches:
                         num_subjective = int(matches[0])
-                except:
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
                     pass
 
         # 난이도별 조정
@@ -221,50 +243,6 @@ class TestDesignerAgent(BaseAgent):
         }
 
         return config
-
-    # BaseAgent abstract methods 구현
-    async def plan(
-        self, input_data: Dict[str, Any], state: BaseState
-    ) -> Dict[str, Any]:
-        """작업 계획 수립"""
-        return {"action": "analyze_and_design", "input": input_data}
-
-    async def act(self, plan: Dict[str, Any], state: BaseState) -> Dict[str, Any]:
-        """실제 작업 수행"""
-        input_data = plan["input"]
-
-        # 요구사항 분석
-        requirements = await self._analyze_requirements(input_data)
-
-        # 테스트 요약 생성
-        test_summary = await self._generate_test_summary(requirements, input_data)
-
-        # 테스트 설정 생성
-        test_config = await self._create_test_config(test_summary, requirements)
-
-        return {
-            "test_summary": test_summary,
-            "test_config": test_config,
-            "requirements": requirements,
-        }
-
-    async def reflect(
-        self, result: Dict[str, Any], state: BaseState
-    ) -> tuple[bool, str]:
-        """결과 검증"""
-        if "test_summary" in result and "test_config" in result:
-            config = result["test_config"]
-            # 다양한 형태의 문제 수 확인
-            num_questions = (
-                config.get("num_questions", 0)
-                or config.get("question_config", {}).get("total_questions", 0)
-                or config.get("total_questions", 0)
-            )
-            if num_questions > 0:
-                return True, "테스트 설계가 성공적으로 완료되었습니다."
-            else:
-                return False, "문제 수가 설정되지 않았습니다."
-        return False, "테스트 요약이나 설정이 생성되지 않았습니다."
 
 
 def design_test_from_analysis(

@@ -3,7 +3,7 @@
 import json
 import os
 
-from utils.change_name import normalize_collection_name
+from utils.naming import filename_to_collection
 
 
 # 문제 생성 결과 저장
@@ -12,7 +12,7 @@ def save_question_result(
 ):
     os.makedirs(output_dir, exist_ok=True)
     # 컬렉션명을 정규화하여 파일명 생성
-    normalized_project = normalize_collection_name(chunk_info["project"])
+    normalized_project = filename_to_collection(chunk_info["project"])
     file_path = os.path.join(output_dir, f"{normalized_project}.jsonl")
 
     with open(file_path, "a", encoding="utf-8") as f:

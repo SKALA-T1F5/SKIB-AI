@@ -10,8 +10,6 @@ from typing import Dict, List
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from utils.change_name import normalize_collection_name
-
 # 환경 변수 로드
 load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY")

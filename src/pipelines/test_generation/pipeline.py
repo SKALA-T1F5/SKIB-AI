@@ -19,7 +19,7 @@ from db.vectorDB.weaviate_utils import upload_chunk_to_collection
 from src.agents.document_analyzer.agent import DocumentAnalyzerAgent
 from src.agents.question_generator.tools.question_generator import QuestionGenerator
 from src.agents.test_designer.agent import TestDesignerAgent
-from utils.change_name import normalize_collection_name
+from utils.naming import filename_to_collection
 
 
 class TestGenerationPipeline:
@@ -66,7 +66,7 @@ class TestGenerationPipeline:
             # 컬렉션명 설정
             if not collection_name:
                 filename = os.path.splitext(os.path.basename(pdf_path))[0]
-                collection_name = normalize_collection_name(filename)
+                collection_name = filename_to_collection(filename)
 
             print(f"🚀 테스트 생성 파이프라인 시작")
             print(f"📁 컬렉션: {collection_name}")

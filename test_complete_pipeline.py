@@ -18,7 +18,6 @@ from src.agents.document_analyzer.tools.keyword_summary import (
     extract_keywords_and_summary,
 )
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from utils.change_name import normalize_collection_name
 
 
 def test_document(pdf_path: str, document_name: str) -> Dict:

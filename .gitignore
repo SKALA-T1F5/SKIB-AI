@@ -16,10 +16,8 @@ chroma_data/
 
 # System files
 .DS_Store
-
-#k8s secrets
-k8s/open-ai-secret.yaml
 .pre-commit-config.yaml
 
 #k8s secrets
 k8s/open-ai-secret.yaml
+.pre-commit-config.yaml

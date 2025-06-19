@@ -2,7 +2,7 @@ import re
 
 
 # collection 이름 정규화 (모두 소문자로 통일)
-def normalize_collection_name(name: str) -> str:
+def filename_to_collection(name: str) -> str:
     # 특수한 한글 파일명들에 대한 매핑
     special_mappings = {
         "자동차 리포트": "car_report",

@@ -20,7 +20,7 @@ from sentence_transformers import SentenceTransformer
 
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
 from src.agents.question_generator.tools.question_generator import QuestionGenerator
-from utils.change_name import normalize_collection_name
+from utils.naming import filename_to_collection
 
 # 임베딩 모델 로딩 (bge 모델 사용)
 embedding_model = SentenceTransformer("BAAI/bge-base-en")
@@ -45,7 +45,7 @@ def run_question_generation_pipeline(
         if pdf_path == 1:
             pdf_path = "data/raw_docs/2.연말정산시스템(YETA) 매뉴얼.pdf"
         elif pdf_path == 2:
-            pdf_path = "data/documents/projects/1/2_ags_trouble_shooting.pdf"
+            pdf_path = "data/raw_docs/2_AGS Trouble shooting 가이드_v1.1.pdf"
         elif pdf_path == 3:
             pdf_path = "data/raw_docs/alopex_UI_1.1.2_개발가이드.pdf"
         elif pdf_path == 4:
@@ -65,7 +65,7 @@ def run_question_generation_pipeline(
         return []
 
     filename = os.path.splitext(os.path.basename(pdf_path))[0]
-    collection_name = normalize_collection_name(filename)
+    collection_name = filename_to_collection(filename)
 
     # 1. PDF를 Docling 스타일 블록으로 변환 (페이지 정보 포함)
     print("📄 1단계: PDF 파싱 및 블록 분해")
