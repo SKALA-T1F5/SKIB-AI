@@ -21,9 +21,9 @@ class DocumentAnalyzerAgent:
         self.auto_upload_chromadb = auto_upload_chromadb
         # 이미지 저장 디렉토리 설정
         if collection_name:
-            from utils.change_name import normalize_collection_name
+            from utils.naming import filename_to_collection
 
-            normalized_name = normalize_collection_name(collection_name)
+            normalized_name = filename_to_collection(collection_name)
             self.image_save_dir = f"data/images/{normalized_name}"
         else:
             self.image_save_dir = "data/images/unified"

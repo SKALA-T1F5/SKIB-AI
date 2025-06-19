@@ -14,7 +14,7 @@ import fitz  # PyMuPDF
 import pdfplumber
 
 from src.agents.question_generator.tools.question_generator import QuestionGenerator
-from utils.change_name import normalize_collection_name
+from utils.naming import filename_to_collection
 
 from .image_extractor import _extract_quality_images
 from .table_extractor import _extract_tables
@@ -44,7 +44,7 @@ def parse_pdf_unified(
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF 파일을 찾을 수 없습니다: {pdf_path}")
     if collection_name:
-        normalized_name = normalize_collection_name(collection_name)
+        normalized_name = filename_to_collection(collection_name)
         IMAGE_SAVE_DIR = f"data/images/{normalized_name}"
     else:
         IMAGE_SAVE_DIR = "data/images/unified"
