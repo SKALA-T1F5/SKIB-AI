@@ -1,5 +1,5 @@
 # agents/test_feedback/example_data/example_data_1.py
-# 프론트엔드 개발 환경 구축 역량 평가 시험
+# 프론트엔드 개발 환경 구축 역량 평가 시험 (정답률 90~100%)
 
 # 시험 목표
 exam_goal = '효율적인 프론트엔드 개발 환경 구축 역량을 확인하는 시험입니다. 주요 빌드 도구, 패키지 관리, 최적화 전략을 중심으로 객관식과 주관식 혼합형으로 생성하겠습니다.'
@@ -15,7 +15,7 @@ question_results = [
         "answer": "Webpack",
         "tags": ["추론력"],
         "keyword": "빌드 도구",
-        "correctRate": 51.39
+        "correctRate": 91.3
     },
     {
         "questionId": 2,
@@ -26,7 +26,7 @@ question_results = [
         "answer": ".env",
         "tags": ["문제해결력"],
         "keyword": "환경 변수",
-        "correctRate": 43.11
+        "correctRate": 92.5
     },
     {
         "questionId": 3,
@@ -37,7 +37,7 @@ question_results = [
         "answer": "npm",
         "tags": ["추론력"],
         "keyword": "패키지 관리",
-        "correctRate": 34.41
+        "correctRate": 93.0
     },
     {
         "questionId": 4,
@@ -48,7 +48,7 @@ question_results = [
         "answer": "코드 스플리팅",
         "tags": ["문제해결력"],
         "keyword": "빌드 최적화",
-        "correctRate": 62.32
+        "correctRate": 95.6
     },
     {
         "questionId": 5,
@@ -59,7 +59,7 @@ question_results = [
         "answer": "의존성 충돌 발생 시 패키지 재설치",
         "tags": ["논리력"],
         "keyword": "의존성 문제",
-        "correctRate": 73.35
+        "correctRate": 97.1
     },
     {
         "questionId": 6,
@@ -70,7 +70,7 @@ question_results = [
         "answer": "일관성 유지",
         "tags": ["문제해결력"],
         "keyword": "디자인 시스템",
-        "correctRate": 66.44
+        "correctRate": 93.4
     },
     {
         "questionId": 7,
@@ -81,7 +81,7 @@ question_results = [
         "answer": "로딩 속도",
         "tags": ["이해력"],
         "keyword": "UI 최적화",
-        "correctRate": 88.65
+        "correctRate": 98.2
     },
     {
         "questionId": 8,
@@ -92,7 +92,7 @@ question_results = [
         "answer": "화면 크기",
         "tags": ["추론력"],
         "keyword": "반응형 디자인",
-        "correctRate": 91.25
+        "correctRate": 96.7
     },
     {
         "questionId": 9,
@@ -103,7 +103,7 @@ question_results = [
         "answer": "명확한 피드백 제공",
         "tags": ["이해력"],
         "keyword": "UX 설계 원칙",
-        "correctRate": 70.2
+        "correctRate": 90.6
     },
     {
         "questionId": 10,
@@ -114,7 +114,7 @@ question_results = [
         "answer": "컴포넌트 재사용성, 접근성",
         "tags": ["분석력"],
         "keyword": "디자인 시스템 요소",
-        "correctRate": 59.3
+        "correctRate": 92.9
     },
     {
         "questionId": 11,
@@ -125,7 +125,7 @@ question_results = [
         "answer": "자동화된 테스트",
         "tags": ["이해력"],
         "keyword": "CI",
-        "correctRate": 88.1
+        "correctRate": 95.2
     },
     {
         "questionId": 12,
@@ -136,7 +136,7 @@ question_results = [
         "answer": "자동 배포",
         "tags": ["이해력"],
         "keyword": "CD",
-        "correctRate": 79.42
+        "correctRate": 93.8
     },
     {
         "questionId": 13,
@@ -147,7 +147,7 @@ question_results = [
         "answer": "서비스 오류 발생 시",
         "tags": ["문제해결력"],
         "keyword": "Rollback",
-        "correctRate": 68.7
+        "correctRate": 94.1
     },
     {
         "questionId": 14,
@@ -158,7 +158,7 @@ question_results = [
         "answer": "Jenkins",
         "tags": ["추론력"],
         "keyword": "CI/CD 도구",
-        "correctRate": 75.3
+        "correctRate": 91.9
     },
     {
         "questionId": 15,
@@ -169,7 +169,6 @@ question_results = [
         "answer": "단순성 유지",
         "tags": ["논리력"],
         "keyword": "프로세스 설계 원칙",
-        "correctRate": 84.6
+        "correctRate": 90.0
     }
-] 
-
+]

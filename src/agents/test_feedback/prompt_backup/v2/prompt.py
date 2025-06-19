@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# System Prompt 간소화
+# v2: System Prompt 간소화
 
 from typing import List, Dict, Any
 
