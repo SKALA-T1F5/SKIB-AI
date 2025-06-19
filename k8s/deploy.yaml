@@ -34,7 +34,7 @@ spec:
                   key: OPENAI_API_KEY
           volumeMounts:
             - name: document-volume
-              mountPath: /app/data
+              mountPath: /data
       volumes:
         - name: document-volume
           persistentVolumeClaim:
