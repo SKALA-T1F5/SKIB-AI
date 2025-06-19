@@ -18,8 +18,9 @@ class DifficultyLevel(str, Enum):
     hard = "HARD"
 
 
-class QuestionConfig(BaseModel):
+class QuestionsByDocumentConfig(BaseModel):
     documentId: int
+    keywords: List[str]
     configuredObjectiveCount: int
     configuredSubjectiveCount: int
 
