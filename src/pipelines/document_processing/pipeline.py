@@ -2,6 +2,7 @@
 import datetime
 from typing import Any, Dict, List, Optional
 
+from langchain_teddynote import logging
 from langgraph.graph import END, StateGraph
 
 from db.vectorDB.chromaDB.pipeline import ChromaDBPipeline
@@ -14,6 +15,7 @@ from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
 from src.pipelines.base.exceptions import PipelineException
 from src.pipelines.base.pipeline import BasePipeline
 from src.pipelines.document_processing.state import DocumentProcessingState
+from utils.naming import filename_to_collection
 
 
 class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
@@ -82,6 +84,7 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
         """Pipeline 실행"""
         try:
             # 초기 상태 구성
+            logging.langsmith("DocumentProcessingPipeline")
             initial_state = {
                 **self.default_state,
                 **input_data,
@@ -144,6 +147,7 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
 
         try:
             # 기존 unified_parser 사용
+            filename_to_collection()
             blocks = parse_pdf_unified(state["document_path"])
 
             # 블록 타입별 통계
@@ -299,10 +303,10 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             # 컬렉션명 생성 (파일명 -> 정규화)
             import os
 
-            from utils.change_name import normalize_collection_name
+            from utils.naming import filename_to_collection
 
             base_filename = os.path.splitext(filename)[0]
-            collection_name = normalize_collection_name(base_filename)
+            collection_name = filename_to_collection(base_filename)
 
             self.logger.info(
                 f"Uploading {len(parsed_blocks)} blocks to ChromaDB collection: {collection_name}"

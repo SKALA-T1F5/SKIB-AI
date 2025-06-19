@@ -12,7 +12,7 @@ import sys
 from sentence_transformers import SentenceTransformer
 
 from src.agents.document_analyzer.tools.unified_parser import parse_pdf_unified
-from utils.change_name import normalize_collection_name
+from utils.naming import filename_to_collection
 
 from .weaviate_utils import upload_chunk_to_collection
 
@@ -28,7 +28,7 @@ def upload_document_to_vectordb(pdf_path: str):
     source_file = os.path.basename(pdf_path)
     # 파일명을 정규화하여 컬렉션명 생성
     base_name = os.path.splitext(source_file)[0]
-    collection_name = normalize_collection_name(base_name)
+    collection_name = filename_to_collection(base_name)
 
     print(f"🏷️ 컬렉션명: {collection_name}")
 
