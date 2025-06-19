@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v4: 정답률 기준 수정, 강약점 갯수 수정, questionText 기준 판단
+# v3: System Prompt few-shot
 
 from typing import List, Dict, Any
 
@@ -14,7 +14,7 @@ SYSTEM_PROMPT = """
 다음 항목을 기준으로 시험 데이터를 분석하고, JSON 형식으로 평가 결과를 생성하세요:
 
 1. 각 문서(documentName)별 comment를 정리하세요.
-2. 학습자의 strengths과 weaknesses을 각각 1~3개, 총 4개 작성하세요. #keyword와 함께 제시하고, questionText를 기준으로 판단합니다.
+2. 학습자의 strengths과 weaknesses을 각각 1~3개 #keyword와 함께 제시하세요.
 3. 전체 averageCorrectRate 및 문서별 편차를 분석하여 학습자의 프로젝트 참여 적정성을 판단하세요. 정답률 기준(90% 이상: 우수 / 70~89%: 양호 / 50~69%: 보통 / 50% 미만: 미흡)을 적용해 각 문서 수준의 편차가 큰 경우에도 '진행 가능' 여부를 신중히 판단하세요.
 4. projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
    - 개별 문서별 이해도의 편차
