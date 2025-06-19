@@ -81,8 +81,12 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
         result = json.loads(content)
 
-        # 4. 실제 값으로 덮어쓰기
-        result['performanceByDocument'] = performance_by_document
+        # averageCorrectRate만 실제 값으로 덮어쓰기
+        doc_rate_map = {doc['documentName']: doc['averageCorrectRate'] for doc in performance_by_document}
+        for doc in result.get('performanceByDocument', []):
+            name = doc.get('documentName')
+            if name in doc_rate_map:
+                doc['averageCorrectRate'] = doc_rate_map[name]
 
         # 토큰 사용량 (차후 주석처리 ✅ )
         usage = response.usage
