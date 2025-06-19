@@ -13,11 +13,27 @@ from .tools.text_analyzer import TextAnalyzer
 
 
 class DocumentAnalyzerAgent:
-    """문서 분석 전문 Agent"""
+    """
+    문서 분석 전문 Agent
+    
+    주요 기능:
+    - PDF 문서의 구조 파싱 (텍스트, 이미지, 표)
+    - 키워드 추출 및 문서 요약
+    - ChromaDB 자동 업로드
+    - 분석 결과 저장 및 관리
+    """
     
     def __init__(self, collection_name: str = None, auto_upload_chromadb: bool = True):
+        """
+        DocumentAnalyzer 초기화
+        
+        Args:
+            collection_name: ChromaDB 컬렉션명
+            auto_upload_chromadb: ChromaDB 자동 업로드 활성화 여부
+        """
         self.collection_name = collection_name
         self.auto_upload_chromadb = auto_upload_chromadb
+        
         # 이미지 저장 디렉토리 설정
         if collection_name:
             from utils.change_name import normalize_collection_name
@@ -25,6 +41,7 @@ class DocumentAnalyzerAgent:
             self.image_save_dir = f"data/images/{normalized_name}"
         else:
             self.image_save_dir = "data/images/unified"
+            
         self.text_analyzer = TextAnalyzer()
         
     def analyze_document(
@@ -66,7 +83,7 @@ class DocumentAnalyzerAgent:
                     analysis_result = extract_keywords_and_summary(blocks, pdf_path.split('/')[-1])
                     content_analysis = analysis_result.get('content_analysis', {})
                     
-                    state["keywords"] = content_analysis.get('key_concepts', [])
+                    state["keywords"] = content_analysis.get('keywords', content_analysis.get('key_concepts', []))
                     state["summary"] = content_analysis.get('summary', '')
                     state["main_topics"] = content_analysis.get('main_topics', [])
                     
@@ -109,16 +126,40 @@ class DocumentAnalyzerAgent:
         return state
     
     def parse_structure_only(self, pdf_path: str) -> List[Dict]:
-        """구조 파싱만 수행"""
+        """
+        문서 구조 파싱만 수행 (키워드 추출 없이)
+        
+        Args:
+            pdf_path: PDF 파일 경로
+            
+        Returns:
+            List[Dict]: 구조화된 블록들
+        """
         return parse_pdf_unified(pdf_path, self.collection_name, generate_questions=False)
     
-    
     def analyze_text_only(self, text: str, collection_name: str = None) -> Dict:
-        """텍스트 분석만 수행"""
+        """
+        텍스트 분석만 수행 (구조 파싱 없이)
+        
+        Args:
+            text: 분석할 텍스트
+            collection_name: 컬렉션명 (옵션)
+            
+        Returns:
+            Dict: 텍스트 분석 결과
+        """
         return self.text_analyzer.analyze_text(text, collection_name or self.collection_name or "unknown")
     
     def _extract_all_text(self, blocks: List[Dict]) -> str:
-        """블록들에서 모든 텍스트 추출"""
+        """
+        블록들에서 모든 텍스트 추출
+        
+        Args:
+            blocks: 문서 블록들
+            
+        Returns:
+            str: 추출된 전체 텍스트
+        """
         text_parts = []
         
         for block in blocks:
@@ -136,7 +177,14 @@ class DocumentAnalyzerAgent:
         return "\n".join(text_parts)
     
     def _save_results(self, state: DocumentAnalyzerState, pdf_path: str, extract_keywords: bool):
-        """결과를 구분된 디렉토리에 저장"""
+        """
+        분석 결과를 구분된 디렉토리에 저장
+        
+        Args:
+            state: 분석 상태
+            pdf_path: PDF 파일 경로
+            extract_keywords: 키워드 추출 여부
+        """
         import os
         import json
         from datetime import datetime
@@ -144,9 +192,11 @@ class DocumentAnalyzerAgent:
         filename = os.path.basename(pdf_path).replace('.pdf', '')
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         
-        # 키워드/요약 결과 저장
+        # 키워드/요약 결과 저장 (collection 명 기반 디렉토리)
         if extract_keywords and (state.get("keywords") or state.get("summary")):
-            keywords_dir = "data/outputs/keywords_summary"
+            # Collection 명 기반 디렉토리 구조
+            collection_dir = self.collection_name or "default"
+            keywords_dir = f"data/outputs/keywords_summary/{collection_dir}"
             os.makedirs(keywords_dir, exist_ok=True)
             
             keywords_data = {
@@ -176,9 +226,44 @@ class DocumentAnalyzerAgent:
                 json.dump(keywords_data, f, ensure_ascii=False, indent=2)
             print(f"💾 키워드/요약 저장: {keywords_file}")
         
+        # 전체 분석 결과 저장 (블록 포함) - question_generation을 위해
+        analysis_results_dir = f"data/outputs/document_analysis/{self.collection_name or 'default'}"
+        os.makedirs(analysis_results_dir, exist_ok=True)
+        
+        analysis_result_data = {
+            "document_info": {
+                "source_file": os.path.basename(pdf_path),
+                "collection_name": self.collection_name,
+                "processing_date": datetime.now().isoformat(),
+                "analysis_type": "full_analysis"
+            },
+            "analysis_result": state,
+            "pipeline_info": {
+                "pipeline_type": "document_analysis",
+                "pdf_path": pdf_path,
+                "collection_name": self.collection_name,
+                "extract_keywords": extract_keywords,
+                "processing_time": 0,  # 실제 시간은 pipeline에서 계산
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+        
+        analysis_file = f"{analysis_results_dir}/{filename}_analysis_result_{timestamp}.json"
+        with open(analysis_file, 'w', encoding='utf-8') as f:
+            json.dump(analysis_result_data, f, ensure_ascii=False, indent=2)
+        print(f"💾 전체 분석 결과 저장: {analysis_file}")
+        
     
     def _table_to_text(self, table_data: Dict) -> str:
-        """표 데이터를 텍스트로 변환"""
+        """
+        표 데이터를 텍스트로 변환
+        
+        Args:
+            table_data: 표 데이터
+            
+        Returns:
+            str: 변환된 텍스트
+        """
         if not isinstance(table_data, dict) or 'data' not in table_data:
             return ""
         
@@ -445,7 +530,16 @@ class DocumentAnalyzerAgent:
         return list(set(topics))[:3]  # 중복 제거 후 상위 3개 반환
 
     def _upload_to_chromadb(self, blocks: List[Dict], pdf_path: str) -> int:
-        """블록들을 ChromaDB에 업로드 (새로운 모듈 사용)"""
+        """
+        블록들을 ChromaDB에 업로드
+        
+        Args:
+            blocks: 업로드할 블록들
+            pdf_path: PDF 파일 경로
+            
+        Returns:
+            int: 업로드된 블록 수
+        """
         try:
             from db.vectorDB.chromaDB import upload_documents
             import os
