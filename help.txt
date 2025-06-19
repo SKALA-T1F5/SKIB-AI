@@ -5,6 +5,9 @@ conda activate question-bank
 # 텍스트 파일에 있는 모든 패키지 한 번에 설치
 pip install -r requirements.txt
 
+# gemini key 사용 패키지 설치
+pip install google-generativeai==0.8.3 Pillow==11.1.0
+
 # pytesseract를 사용하기 위한 Tesseract OCR 설치
 conda install -c conda-forge tesseract
 
@@ -29,8 +32,16 @@ docker-compose up -d
 # Weaviate 컬렉션 수동 삭제
 curl -X DELETE http://localhost:8080/v1/schema/{{컬렉션명}}
 
-# 코드 실행
-python -m agents.question_generator.run_pipeline "data/raw_docs/SKCP-3003-프로그램설계서(프로세스및화면)_10.세금계산서)_v1.0_20230410.pdf"
+### 각 파이프라인 실행 ###
+  # 1. 문서 분석
+  python -m src.pipelines.document_analysis.pipeline
+
+  # 2. 테스트 설계  
+  python -m src.pipelines.test_design.pipeline
+
+  # 3. 문제 생성
+  python -m src.pipelines.question_generation.pipeline
+
 
 
 
