@@ -5,6 +5,7 @@ __pycache__/
 # Conda / virtualenv
 .env
 venv/
+.venv
 .env.*
 
 # Generated data files
@@ -17,3 +18,6 @@ chroma_data/
 # System files
 .DS_Store
 .pre-commit-config.yaml
+
+/k8s/open-ai-secret.yaml
+chroma.sqlite3
