@@ -83,7 +83,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
         """Pipeline 실행"""
         try:
             # 초기 상태 구성
-            logging.langsmith("DocumentProcessingPipeline")
             initial_state = {
                 **self.default_state,
                 **input_data,
