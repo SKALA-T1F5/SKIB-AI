@@ -19,5 +19,6 @@ chroma_data/
 .DS_Store
 .pre-commit-config.yaml
 
+# Deployment files
 /k8s/open-ai-secret.yaml
 chroma.sqlite3
