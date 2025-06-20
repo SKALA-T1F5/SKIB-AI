@@ -2,7 +2,6 @@
 import datetime
 from typing import Any, Dict, List, Optional
 
-from langchain_teddynote import logging
 from langgraph.graph import END, StateGraph
 
 from db.vectorDB.chromaDB.pipeline import ChromaDBPipeline
