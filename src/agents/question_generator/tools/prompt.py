@@ -14,7 +14,7 @@ def get_vision_prompt(
     test_config: dict = None,
 ) -> str:
     """
-    GPT-4 Vision용 문제 생성 프롬프트 (향상된 기능)
+    GPT-4 Vision용 문제 생성 프롬프트
 
     Args:
         source: 문서 파일명
