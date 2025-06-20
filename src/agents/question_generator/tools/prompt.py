@@ -2,19 +2,20 @@
 Question Generator Prompts
 """
 
+
 def get_vision_prompt(
-    source: str, 
-    page: str, 
-    difficulty: str, 
-    num_objective: int, 
+    source: str,
+    page: str,
+    difficulty: str,
+    num_objective: int,
     num_subjective: int,
     keywords: list = None,
     main_topics: list = None,
-    test_config: dict = None
+    test_config: dict = None,
 ) -> str:
     """
     GPT-4 Vision용 문제 생성 프롬프트 (향상된 기능)
-    
+
     Args:
         source: 문서 파일명
         page: 페이지 번호
@@ -24,7 +25,7 @@ def get_vision_prompt(
         keywords: 키워드 목록
         main_topics: 주요 주제 목록
         test_config: 테스트 설정
-    
+
     Returns:
         str: 프롬프트 문자열
     """
@@ -34,15 +35,15 @@ def get_vision_prompt(
         keyword_info += f"\n\n**중요 키워드**: {', '.join(keywords[:10])}"
     if main_topics:
         keyword_info += f"\n**주요 주제**: {', '.join(main_topics[:5])}"
-    
+
     # 테스트 설정 정보 추가
     test_info = ""
     if test_config:
-        if test_config.get('test_summary'):
+        if test_config.get("test_summary"):
             test_info += f"\n\n**테스트 목적**: {test_config['test_summary'][:200]}..."
-        if test_config.get('topics'):
+        if test_config.get("topics"):
             test_info += f"\n**평가 주제**: {', '.join(test_config['topics'][:3])}"
-    
+
     return f"""당신은 교육용 문제를 생성하는 AI입니다. 아래 문단은 PDF 문서 "{source}"의 {page}페이지에서 추출된 내용입니다.{keyword_info}{test_info}
 
 이 내용을 바탕으로 요청된 난이도 '{difficulty}' 수준으로 다음 문제들을 생성해주세요:

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sk-team-09-ai
+  namespace: sk-team-09
+  labels:
+    app: sk-team-09-ai
+spec:
+  type: ClusterIP
+  selector:
+    app: sk-team-09-ai
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000
+      targetPort: 8000
+    - name: mgmt
+      protocol: TCP
+      port: 8001
+      targetPort: 8001
+  type: ClusterIP

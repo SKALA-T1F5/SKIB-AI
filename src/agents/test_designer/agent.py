@@ -1,18 +1,313 @@
 """
+테스트 설계 Agent
+- 키워드와 문서 요약을 분석
+- 사용자 프롬프트를 GPT-4에 전달
+- 테스트 요약 및 config 생성
+"""
+
+from typing import Any, Dict, List
+
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel
+
+from ..base.agent import BaseAgent
+from ..base.state import BaseState, TestDesignerState
+from .tools.requirement_analyzer import RequirementAnalyzer
+from .tools.test_config_generator import TestConfigGenerator
+
+
+class TestGoal(BaseModel):
+    test_title: str
+    test_summary: str
+
+
+class TestDesignerAgent(BaseAgent):
+    """테스트 설계 전문 Agent"""
+
+    def __init__(self):
+        super().__init__(
+            name="test_designer",
+            state_class=TestDesignerState,
+            tools={
+                "requirement_analyzer": RequirementAnalyzer(),
+                "config_generator": TestConfigGenerator(),
+            },
+        )
+
+    async def plan(
+        self, input_data: Dict[str, Any], state: BaseState
+    ) -> Dict[str, Any]:
+        """테스트 설계 계획 수립"""
+        return {
+            "action": "design_test",
+            "steps": [
+                "analyze_requirements",
+                "generate_test_summary",
+                "create_test_config",
+                "validate_design",
+            ],
+            "input_data": input_data,
+        }
+
+    async def act(self, plan: Dict[str, Any], state: BaseState) -> Dict[str, Any]:
+        """테스트 설계 실행"""
+        input_data = plan["input_data"]
+
+        # 1. 요구사항 분석
+        self.update_progress(0.2, "요구사항 분석 중...")
+        requirements = await self._analyze_requirements(input_data)
+
+        # 2. 테스트 요약 생성
+        self.update_progress(0.5, "테스트 요약 생성 중...")
+        test_summary = await self._generate_test_summary(requirements, input_data)
+
+        # 3. 테스트 config 생성
+        self.update_progress(0.8, "테스트 설정 생성 중...")
+        test_config = await self._create_test_config(test_summary, requirements)
+
+        return {
+            "requirements": requirements,
+            "test_summary": test_summary,
+            "test_config": test_config,
+            "status": "completed",
+        }
+
+    async def reflect(
+        self, result: Dict[str, Any], state: BaseState
+    ) -> tuple[bool, str]:
+        """결과 검증"""
+        required_fields = ["requirements", "test_summary", "test_config"]
+        for field in required_fields:
+            if field not in result:
+                return False, f"필수 필드 '{field}'가 누락되었습니다"
+
+        config = result["test_config"]
+        # 다양한 형태의 문제 수 확인
+        num_questions = (
+            config.get("num_questions", 0)
+            or config.get("question_config", {}).get("total_questions", 0)
+            or config.get("total_questions", 0)
+        )
+        if num_questions > 0:
+            return True, "테스트 설계가 성공적으로 완료되었습니다."
+        else:
+            return False, "문제 수가 설정되지 않았습니다."
+
+    async def _analyze_requirements(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """요구사항 분석"""
+        # analyzer = self.requirement_analyzer  # 원래 구조 유지
+
+        return {
+            "user_prompt": input_data.get("user_prompt", ""),
+            "keywords": input_data.get("keywords", []),
+            "document_summary": input_data.get("document_summary", ""),
+            "document_topics": input_data.get("document_topics", []),
+            "target_difficulty": input_data.get("difficulty", "medium"),
+            "test_type": input_data.get("test_type", "mixed"),
+            "time_limit": input_data.get("time_limit", 60),
+        }
+
+    async def _generate_test_summary(
+        self, requirements: Dict[str, Any], input_data: Dict[str, Any]
+    ) -> str:
+        """GPT-4를 사용하여 테스트 요약 생성"""
+        parser = JsonOutputParser(pydantic_object=TestGoal)
+        format_instructions = parser.get_format_instructions()
+
+        user_prompt = f"""
+다음 정보를 바탕으로 테스트의 제목(test_title)과 요약(test_summary)을 작성해주세요. 출력은 한국어로 작성하며,:
+
+**테스트 제목은 창의적이고 간결하게**,
+
+**사용자 요청:**
+{requirements['user_prompt']}
+
+**문서 키워드:**
+{', '.join(requirements['keywords'])}
+
+**문서 요약:**
+{requirements['document_summary']}
+
+**주요 주제:**
+{', '.join(requirements['document_topics'])}
+
+**테스트 설정:**
+- 난이도: {requirements['target_difficulty']}
+- 유형: {requirements['test_type']}
+- 제한시간: {requirements['time_limit']}분
+
+다음 형식으로 테스트 요약을 작성해주세요.
+이때 다음 항목으로 나눠서 작성하되, 테스트 요약 부분을하나의 string으로 출력하세요:
+1. 테스트 목적
+2. 평가 범위
+3. 출제 방향
+4. 예상 소요시간
+
+
+{format_instructions}
+"""
+
+        try:
+            from openai import AsyncOpenAI
+
+            client = AsyncOpenAI()
+
+            response = await client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다.",
+                    },
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.3,
+            )
+            content = response.choices[0].message.content.strip()
+            return parser.parse(content)
+
+        except Exception as e:
+            self.logger.error(f"테스트 요약 생성 실패: {e}")
+            return f"테스트 목적: {requirements['user_prompt']}\n평가 범위: 제공된 문서 내용\n출제 방향: {requirements['target_difficulty']} 난이도"
+
+    async def _create_test_config(
+        self, test_summary: str, requirements: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """테스트 설정 생성"""
+        # config_generator = self.config_generator  # 원래 구조 유지
+
+        # 기본 설정 생성
+        base_config = {
+            "test_summary": test_summary,
+            "difficulty": requirements["target_difficulty"],
+            "time_limit": requirements["time_limit"],
+            "test_type": requirements["test_type"],
+        }
+
+        # 문제 수 계산 (사용자 프롬프트 분석)
+        user_prompt = requirements["user_prompt"].lower()
+
+        # 문제 수 추출 시도
+        num_objective = 5  # 기본값
+        num_subjective = 3  # 기본값
+
+        if "객관식" in user_prompt:
+            if "개" in user_prompt:
+                try:
+                    # "객관식 10개" 같은 패턴 찾기
+                    import re
+
+                    matches = re.findall(r"객관식.*?(\d+)", user_prompt)
+                    if matches:
+                        num_objective = int(matches[0])
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
+                    pass
+
+        if "주관식" in user_prompt:
+            if "개" in user_prompt:
+                try:
+                    import re
+
+                    matches = re.findall(r"주관식.*?(\d+)", user_prompt)
+                    if matches:
+                        num_subjective = int(matches[0])
+                # TODO : 예외 처리 개선
+                except:  # noqa: E722
+                    pass
+
+        # 난이도별 조정
+        if requirements["target_difficulty"] == "easy":
+            num_objective = max(3, num_objective - 2)
+            num_subjective = max(2, num_subjective - 1)
+        elif requirements["target_difficulty"] == "hard":
+            num_objective = min(10, num_objective + 3)
+            num_subjective = min(7, num_subjective + 2)
+
+        config = {
+            **base_config,
+            "num_questions": num_objective + num_subjective,
+            "num_objective": num_objective,
+            "num_subjective": num_subjective,
+            "question_distribution": {
+                "objective": num_objective,
+                "subjective": num_subjective,
+            },
+            "topics": requirements["document_topics"],
+            "keywords": requirements["keywords"],
+            "scoring": {
+                "objective_points": 2,
+                "subjective_points": 5,
+                "total_points": (num_objective * 2) + (num_subjective * 5),
+            },
+        }
+
+        return config
+
+
+def design_test_from_analysis(
+    keywords: List[str],
+    document_summary: str,
+    document_topics: List[str],
+    user_prompt: str,
+    difficulty: str = "medium",
+    test_type: str = "mixed",
+    time_limit: int = 60,
+) -> Dict[str, Any]:
+    """
+    문서 분석 결과로부터 테스트 설계
+
+    Args:
+        keywords: 문서 키워드
+        document_summary: 문서 요약
+        document_topics: 주요 주제
+        user_prompt: 사용자 요청
+        difficulty: 난이도
+        test_type: 테스트 유형
+        time_limit: 제한시간
+
+    Returns:
+        테스트 설계 결과
+    """
+    import asyncio
+
+    agent = TestDesignerAgent()
+
+    input_data = {
+        "keywords": keywords,
+        "document_summary": document_summary,
+        "document_topics": document_topics,
+        "user_prompt": user_prompt,
+        "difficulty": difficulty,
+        "test_type": test_type,
+        "time_limit": time_limit,
+    }
+
+    # 비동기 실행
+    async def run():
+        await agent.initialize()
+        result = await agent.execute(input_data)
+        return result
+
+    return asyncio.run(run())
+
+
+"""
 테스트 설계 Agent (Simple 패턴)
 - 키워드와 문서 요약을 분석
 - 사용자 프롬프트를 GPT-4에 전달
 - 테스트 요약 및 config 생성
 """
 
-import os
 import json
+import os
 import time
-from typing import Dict, Any, List
 from datetime import datetime
-import openai
-from openai import OpenAI
+from typing import Any, Dict, List
+
 from dotenv import load_dotenv
+from openai import OpenAI
+
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
 
@@ -25,21 +320,21 @@ openai_client = OpenAI(api_key=api_key)
 class TestDesignerAgent:
     """
     테스트 설계 전문 Agent (Simple 패턴)
-    
+
     주요 기능:
     - 사용자 요구사항 분석
     - GPT-4를 활용한 테스트 요약 생성
     - 테스트 설정 및 구성 생성
     - 문제 수와 난이도 자동 결정
     """
-    
+
     def __init__(self):
         """
         TestDesigner 초기화
         """
         self.requirement_analyzer = RequirementAnalyzer()
         self.config_generator = TestConfigGenerator()
-    
+
     def design_test(
         self,
         keywords: List[str],
@@ -48,11 +343,11 @@ class TestDesignerAgent:
         user_prompt: str,
         difficulty: str = "medium",
         test_type: str = "mixed",
-        time_limit: int = 60
+        time_limit: int = 60,
     ) -> Dict[str, Any]:
         """
         테스트 설계 실행
-        
+
         Args:
             keywords: 문서 키워드 목록
             document_summary: 문서 요약
@@ -61,36 +356,42 @@ class TestDesignerAgent:
             difficulty: 난이도 (easy, medium, hard)
             test_type: 테스트 유형 (objective, subjective, mixed)
             time_limit: 제한시간 (분)
-            
+
         Returns:
             Dict: 테스트 설계 결과
         """
         start_time = time.time()
-        
+
         print("🎯 TestDesignerAgent 시작")
         print(f"📝 사용자 요청: {user_prompt}")
         print(f"🔑 키워드: {len(keywords)}개")
         print(f"📋 주제: {len(document_topics)}개")
         print(f"⚡ 난이도: {difficulty}")
-        
+
         try:
             # 1. 요구사항 분석
             print("\n🔄 1단계: 요구사항 분석")
             requirements = self._analyze_requirements(
-                keywords, document_summary, document_topics, user_prompt, difficulty, test_type, time_limit
+                keywords,
+                document_summary,
+                document_topics,
+                user_prompt,
+                difficulty,
+                test_type,
+                time_limit,
             )
-            
+
             # 2. 테스트 요약 생성
             print("\n🔄 2단계: 테스트 요약 생성")
             test_summary = self._generate_test_summary(requirements)
-            
+
             # 3. 테스트 config 생성
             print("\n🔄 3단계: 테스트 설정 생성")
             test_config = self._create_test_config(test_summary, requirements)
-            
+
             # 처리 시간 계산
             processing_time = time.time() - start_time
-            
+
             # 결과 구성
             result = {
                 "test_summary": test_summary,
@@ -99,18 +400,18 @@ class TestDesignerAgent:
                 "processing_info": {
                     "processing_time": round(processing_time, 2),
                     "timestamp": datetime.now().isoformat(),
-                    "status": "completed"
-                }
+                    "status": "completed",
+                },
             }
-            
+
             print(f"\n✅ 테스트 설계 완료!")
             print(f"⏱️  처리 시간: {processing_time:.2f}초")
             print(f"📊 총 문제 수: {test_config.get('num_questions', 0)}개")
             print(f"   - 객관식: {test_config.get('num_objective', 0)}개")
             print(f"   - 주관식: {test_config.get('num_subjective', 0)}개")
-            
+
             return result
-            
+
         except Exception as e:
             print(f"❌ 테스트 설계 실패: {e}")
             return {
@@ -121,23 +422,23 @@ class TestDesignerAgent:
                     "processing_time": round(time.time() - start_time, 2),
                     "timestamp": datetime.now().isoformat(),
                     "status": "failed",
-                    "error": str(e)
-                }
+                    "error": str(e),
+                },
             }
-    
+
     def _analyze_requirements(
-        self, 
-        keywords: List[str], 
-        document_summary: str, 
-        document_topics: List[str], 
-        user_prompt: str, 
-        difficulty: str, 
-        test_type: str, 
-        time_limit: int
+        self,
+        keywords: List[str],
+        document_summary: str,
+        document_topics: List[str],
+        user_prompt: str,
+        difficulty: str,
+        test_type: str,
+        time_limit: int,
     ) -> Dict[str, Any]:
         """
         사용자 요구사항 분석
-        
+
         Args:
             keywords: 키워드 목록
             document_summary: 문서 요약
@@ -146,13 +447,15 @@ class TestDesignerAgent:
             difficulty: 난이도
             test_type: 테스트 유형
             time_limit: 제한시간
-            
+
         Returns:
             Dict: 분석된 요구사항
         """
         # 요구사항 분석기 사용
-        analyzed = self.requirement_analyzer.analyze(user_prompt, keywords, document_summary)
-        
+        analyzed = self.requirement_analyzer.analyze(
+            user_prompt, keywords, document_summary
+        )
+
         return {
             "user_prompt": user_prompt,
             "keywords": keywords,
@@ -161,16 +464,16 @@ class TestDesignerAgent:
             "target_difficulty": difficulty,
             "test_type": test_type,
             "time_limit": time_limit,
-            "analyzed_requirements": analyzed
+            "analyzed_requirements": analyzed,
         }
-    
+
     def _generate_test_summary(self, requirements: Dict[str, Any]) -> str:
         """
         GPT-4를 사용하여 테스트 요약 생성
-        
+
         Args:
             requirements: 분석된 요구사항
-            
+
         Returns:
             str: 생성된 테스트 요약
         """
@@ -200,34 +503,39 @@ class TestDesignerAgent:
 3. 출제 방향
 4. 예상 소요시간
 """
-        
+
         try:
             response = openai_client.chat.completions.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다.",
+                    },
+                    {"role": "user", "content": prompt},
                 ],
-                temperature=0.3
+                temperature=0.3,
             )
-            
+
             return response.choices[0].message.content.strip()
-            
+
         except Exception as e:
             print(f"⚠️ 테스트 요약 생성 실패: {e}")
             return f"""테스트 목적: {requirements['user_prompt']}
 평가 범위: 제공된 문서 내용
 출제 방향: {requirements['target_difficulty']} 난이도
 예상 소요시간: {requirements['time_limit']}분"""
-    
-    def _create_test_config(self, test_summary: str, requirements: Dict[str, Any]) -> Dict[str, Any]:
+
+    def _create_test_config(
+        self, test_summary: str, requirements: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """
         테스트 설정 생성
-        
+
         Args:
             test_summary: 생성된 테스트 요약
             requirements: 분석된 요구사항
-            
+
         Returns:
             Dict: 테스트 설정
         """
@@ -236,37 +544,39 @@ class TestDesignerAgent:
             "test_summary": test_summary,
             "difficulty": requirements["target_difficulty"],
             "time_limit": requirements["time_limit"],
-            "test_type": requirements["test_type"]
+            "test_type": requirements["test_type"],
         }
-        
+
         # 문제 수 계산 (사용자 프롬프트 분석)
         user_prompt = requirements["user_prompt"].lower()
-        
+
         # 문제 수 추출 시도
         num_objective = 5  # 기본값
         num_subjective = 3  # 기본값
-        
+
         if "객관식" in user_prompt:
             if "개" in user_prompt:
                 try:
                     # "객관식 10개" 같은 패턴 찾기
                     import re
-                    matches = re.findall(r'객관식.*?(\d+)', user_prompt)
+
+                    matches = re.findall(r"객관식.*?(\d+)", user_prompt)
                     if matches:
                         num_objective = int(matches[0])
                 except:
                     pass
-        
+
         if "주관식" in user_prompt:
             if "개" in user_prompt:
                 try:
                     import re
-                    matches = re.findall(r'주관식.*?(\d+)', user_prompt)
+
+                    matches = re.findall(r"주관식.*?(\d+)", user_prompt)
                     if matches:
                         num_subjective = int(matches[0])
                 except:
                     pass
-        
+
         # 난이도별 조정
         if requirements["target_difficulty"] == "easy":
             num_objective = max(3, num_objective - 2)
@@ -274,7 +584,7 @@ class TestDesignerAgent:
         elif requirements["target_difficulty"] == "hard":
             num_objective = min(10, num_objective + 3)
             num_subjective = min(7, num_subjective + 2)
-        
+
         config = {
             **base_config,
             "num_questions": num_objective + num_subjective,
@@ -282,17 +592,17 @@ class TestDesignerAgent:
             "num_subjective": num_subjective,
             "question_distribution": {
                 "objective": num_objective,
-                "subjective": num_subjective
+                "subjective": num_subjective,
             },
             "topics": requirements["document_topics"],
             "keywords": requirements["keywords"],
             "scoring": {
                 "objective_points": 2,
                 "subjective_points": 5,
-                "total_points": (num_objective * 2) + (num_subjective * 5)
-            }
+                "total_points": (num_objective * 2) + (num_subjective * 5),
+            },
         }
-        
+
         return config
 
 
@@ -304,11 +614,11 @@ def design_test_from_analysis(
     user_prompt: str,
     difficulty: str = "medium",
     test_type: str = "mixed",
-    time_limit: int = 60
+    time_limit: int = 60,
 ) -> Dict[str, Any]:
     """
     문서 분석 결과로부터 테스트 설계 편의 함수
-    
+
     Args:
         keywords: 문서 키워드
         document_summary: 문서 요약
@@ -317,13 +627,19 @@ def design_test_from_analysis(
         difficulty: 난이도
         test_type: 테스트 유형
         time_limit: 제한시간
-        
+
     Returns:
         테스트 설계 결과
     """
     agent = TestDesignerAgent()
     return agent.design_test(
-        keywords, document_summary, document_topics, user_prompt, difficulty, test_type, time_limit
+        keywords,
+        document_summary,
+        document_topics,
+        user_prompt,
+        difficulty,
+        test_type,
+        time_limit,
     )
 
 
@@ -332,38 +648,38 @@ def design_test_from_keywords_file(
     user_prompt: str,
     difficulty: str = "medium",
     test_type: str = "mixed",
-    time_limit: int = 60
+    time_limit: int = 60,
 ) -> Dict[str, Any]:
     """
     키워드 파일로부터 테스트 설계 편의 함수
-    
+
     Args:
         keywords_file_path: 키워드/요약 JSON 파일 경로
         user_prompt: 사용자 요청
         difficulty: 난이도
         test_type: 테스트 유형
         time_limit: 제한시간
-        
+
     Returns:
         테스트 설계 결과
     """
     try:
         # 키워드 파일 로드
-        with open(keywords_file_path, 'r', encoding='utf-8') as f:
+        with open(keywords_file_path, "r", encoding="utf-8") as f:
             keywords_data = json.load(f)
-        
-        content_analysis = keywords_data.get('content_analysis', {})
-        
+
+        content_analysis = keywords_data.get("content_analysis", {})
+
         return design_test_from_analysis(
-            keywords=content_analysis.get('keywords', []),
-            document_summary=content_analysis.get('summary', ''),
-            document_topics=content_analysis.get('main_topics', []),
+            keywords=content_analysis.get("keywords", []),
+            document_summary=content_analysis.get("summary", ""),
+            document_topics=content_analysis.get("main_topics", []),
             user_prompt=user_prompt,
             difficulty=difficulty,
             test_type=test_type,
-            time_limit=time_limit
+            time_limit=time_limit,
         )
-        
+
     except Exception as e:
         print(f"❌ 키워드 파일 로딩 실패: {e}")
         return {
@@ -373,6 +689,6 @@ def design_test_from_keywords_file(
             "processing_info": {
                 "timestamp": datetime.now().isoformat(),
                 "status": "failed",
-                "error": f"키워드 파일 로딩 실패: {str(e)}"
-            }
+                "error": f"키워드 파일 로딩 실패: {str(e)}",
+            },
         }
