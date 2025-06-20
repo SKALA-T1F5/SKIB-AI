@@ -10,8 +10,8 @@ venv/
 
 # Generated data files
 weaviate_data/
+chroma_data/
 data/images/
-data
 logs/
 chroma_data/
 

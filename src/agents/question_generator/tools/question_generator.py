@@ -19,6 +19,8 @@ from .prompt import get_vision_prompt
 load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY")
 openai_client = OpenAI(api_key=api_key)
+# google_api_key = os.getenv("GOOGLE_API_KEY")
+# genai.configure(api_key=google_api_key)
 
 
 def generate_question(
@@ -96,13 +98,83 @@ def generate_question(
 
     except Exception as e:
         print(f"  ❌ 질문 생성 실패: {e}")
+        import traceback
+
+        print(f"  📄 상세 오류: {traceback.format_exc()}")
         return []
+
+
+# 기존 Gemini 버전 (주석 처리)
+"""
+def generate_question_gemini(
+    messages: List[Dict], 
+    source: str, 
+    page: str, 
+    num_objective: int = 1, 
+    num_subjective: int = 1,
+    difficulty: str = "NORMAL"
+) -> List[Dict]:
+    try:
+        system_prompt = get_vision_prompt(source, page, difficulty, num_objective, num_subjective)
+
+        print(f"  🤖 Gemini 2.5 Flash 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})")
+
+        model = genai.GenerativeModel('gemini-2.0-flash-exp')
+
+        gemini_parts = []
+        gemini_parts.append(system_prompt)
+
+        for message in messages:
+            if message.get("type") == "text":
+                gemini_parts.append(message["text"])
+            elif message.get("type") == "image_url":
+                import io
+                from PIL import Image
+
+                image_url = message["image_url"]["url"]
+                if image_url.startswith("data:image"):
+                    base64_data = image_url.split(",")[1]
+                    image_data = base64.b64decode(base64_data)
+                    image = Image.open(io.BytesIO(image_data))
+                    gemini_parts.append(image)
+
+        response = model.generate_content(
+            gemini_parts,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=2000,
+            )
+        )
+
+        raw_content = response.text.strip()
+
+        if "```json" in raw_content:
+            raw_content = raw_content.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_content:
+            raw_content = raw_content.split("```")[1].split("```")[0].strip()
+
+        questions = json.loads(raw_content)
+
+        if not isinstance(questions, list):
+            return []
+
+        return questions
+    except Exception as e:
+        print(f"  ❌ 질문 생성 실패: {e}")
+        return []
+"""
 
 
 class QuestionGenerator:
     """질문 생성 클래스"""
 
     def __init__(self, image_save_dir: str = "data/images"):
+        """
+        QuestionGenerator 초기화
+
+        Args:
+            image_save_dir: 이미지 파일이 저장된 디렉토리 경로
+        """
         self.image_save_dir = image_save_dir
 
     def generate_questions_for_blocks(
@@ -175,7 +247,7 @@ class QuestionGenerator:
                     continue
 
                 try:
-                    # GPT-4 Vision으로 질문 생성
+                    # GPT-4 Vision으로 질문 생성 (키워드와 주제 활용)
                     questions = generate_question(
                         messages=chunk["messages"],
                         source=chunk["metadata"].get("source", "unknown"),

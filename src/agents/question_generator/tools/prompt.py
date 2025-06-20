@@ -4,7 +4,14 @@ Question Generator Prompts
 
 
 def get_vision_prompt(
-    source: str, page: str, difficulty: str, num_objective: int, num_subjective: int
+    source: str,
+    page: str,
+    difficulty: str,
+    num_objective: int,
+    num_subjective: int,
+    keywords: list = None,
+    main_topics: list = None,
+    test_config: dict = None,
 ) -> str:
     """
     GPT-4 Vision용 문제 생성 프롬프트
@@ -15,14 +22,39 @@ def get_vision_prompt(
         difficulty: 난이도 (EASY, NORMAL, HARD)
         num_objective: 객관식 문제 수
         num_subjective: 주관식 문제 수
+        keywords: 키워드 목록
+        main_topics: 주요 주제 목록
+        test_config: 테스트 설정
 
     Returns:
         str: 프롬프트 문자열
     """
-    return f"""당신은 교육용 문제를 생성하는 AI입니다. 아래 문단은 PDF 문서 "{source}"의 {page}페이지에서 추출된 내용입니다.  
+    # 키워드와 주제 정보 추가
+    keyword_info = ""
+    if keywords:
+        keyword_info += f"\n\n**중요 키워드**: {', '.join(keywords[:10])}"
+    if main_topics:
+        keyword_info += f"\n**주요 주제**: {', '.join(main_topics[:5])}"
+
+    # 테스트 설정 정보 추가
+    test_info = ""
+    if test_config:
+        if test_config.get("test_summary"):
+            test_info += f"\n\n**테스트 목적**: {test_config['test_summary'][:200]}..."
+        if test_config.get("topics"):
+            test_info += f"\n**평가 주제**: {', '.join(test_config['topics'][:3])}"
+
+    return f"""당신은 교육용 문제를 생성하는 AI입니다. 아래 문단은 PDF 문서 "{source}"의 {page}페이지에서 추출된 내용입니다.{keyword_info}{test_info}
+
 이 내용을 바탕으로 요청된 난이도 '{difficulty}' 수준으로 다음 문제들을 생성해주세요:
 - 객관식 문제 ({num_objective}개)
 - 서술형 문제 ({num_subjective}개)
+
+**문제 생성 시 주의사항**:
+- 위의 중요 키워드들을 활용하여 문제를 구성하세요
+- 주요 주제와 관련된 실무적 내용을 포함하세요
+- 이미지가 있다면 이미지 내용과 연계한 문제를 만드세요
+
 총 {num_objective + num_subjective}개의 문제를 **반드시 다음 명세에 따른 JSON 리스트 형식**으로 생성해주세요.
 다른 어떤 설명이나 추가 텍스트 없이, 순수한 JSON 배열 문자열만 응답해야 합니다.
 
