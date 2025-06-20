@@ -53,9 +53,11 @@ class DocumentAnalyzerAgent:
         """
         문서 종합 분석
 
+
         Args:
             pdf_path: PDF 파일 경로
             extract_keywords: 키워드 추출 여부
+
 
         Returns:
             DocumentAnalyzerState: 분석 결과
@@ -95,17 +97,6 @@ class DocumentAnalyzerAgent:
                     content_analysis = analysis_result.get("content_analysis", {})
 
                     state["keywords"] = content_analysis.get("key_concepts", [])
-                    state["summary"] = content_analysis.get("summary", "")
-                    state["main_topics"] = content_analysis.get("main_topics", [])
-
-                    analysis_result = extract_keywords_and_summary(
-                        blocks, pdf_path.split("/")[-1]
-                    )
-                    content_analysis = analysis_result.get("content_analysis", {})
-
-                    state["keywords"] = content_analysis.get(
-                        "keywords", content_analysis.get("key_concepts", [])
-                    )
                     state["summary"] = content_analysis.get("summary", "")
                     state["main_topics"] = content_analysis.get("main_topics", [])
 
@@ -215,11 +206,6 @@ class DocumentAnalyzerAgent:
     def _save_results(
         self, state: DocumentAnalyzerState, pdf_path: str, extract_keywords: bool
     ):
-        """결과를 구분된 디렉토리에 저장"""
-
-    def _save_results(
-        self, state: DocumentAnalyzerState, pdf_path: str, extract_keywords: bool
-    ):
         """
         분석 결과를 구분된 디렉토리에 저장
 
@@ -249,6 +235,7 @@ class DocumentAnalyzerAgent:
                     "source_file": os.path.basename(pdf_path),
                     "collection_name": self.collection_name,
                     "processing_date": datetime.now().isoformat(),
+                    "analysis_type": "keywords_and_summary",
                     "analysis_type": "keywords_and_summary",
                 },
                 "content_analysis": {

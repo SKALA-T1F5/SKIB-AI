@@ -7,6 +7,7 @@
 
 import base64
 import json
+import os
 from typing import Dict, List
 
 from dotenv import load_dotenv
@@ -29,12 +30,9 @@ def generate_question(
     num_objective: int = 1,
     num_subjective: int = 1,
     difficulty: str = "NORMAL",
-    keywords: List[str] = None,
-    main_topics: List[str] = None,
-    test_config: Dict = None,
 ) -> List[Dict]:
     """
-    GPT-4 Vision을 사용하여 질문을 생성하는 함수 (향상된 기능)
+    GPT-4 Vision을 사용하여 질문을 생성하는 함수
 
     Args:
         messages: Vision API 메시지 배열 (텍스트 및 이미지 포함)
@@ -43,24 +41,14 @@ def generate_question(
         num_objective: 객관식 문제 수
         num_subjective: 주관식 문제 수
         difficulty: 난이도 (EASY, NORMAL, HARD)
-        keywords: 키워드 목록 (문제 생성 시 활용)
-        main_topics: 주요 주제 목록
-        test_config: 테스트 설정
 
     Returns:
         List[Dict]: 생성된 질문 목록
     """
     try:
-        # Vision API용 프롬프트 생성 (키워드와 주제 정보 포함)
+        # Vision API용 프롬프트 생성
         system_prompt = get_vision_prompt(
-            source,
-            page,
-            difficulty,
-            num_objective,
-            num_subjective,
-            keywords,
-            main_topics,
-            test_config,
+            source, page, difficulty, num_objective, num_subjective
         )
 
         # 메시지 구성
@@ -178,12 +166,7 @@ def generate_question_gemini(
 
 
 class QuestionGenerator:
-    """
-    질문 생성 클래스
-
-    GPT-4 Vision을 사용하여 문서 블록들로부터 자동으로 질문을 생성합니다.
-    텍스트, 이미지, 표를 모두 처리할 수 있습니다.
-    """
+    """질문 생성 클래스"""
 
     def __init__(self, image_save_dir: str = "data/images"):
         """
@@ -195,26 +178,15 @@ class QuestionGenerator:
         self.image_save_dir = image_save_dir
 
     def generate_questions_for_blocks(
-        self,
-        blocks: List[Dict],
-        num_objective: int = 3,
-        num_subjective: int = 3,
-        keywords: List[str] = None,
-        main_topics: List[str] = None,
-        summary: str = "",
-        test_config: Dict = None,
+        self, blocks: List[Dict], num_objective: int = 3, num_subjective: int = 3
     ) -> List[Dict]:
         """
-        블록들에 대해 GPT-4 Vision으로 질문 생성 (향상된 기능)
+        블록들에 대해 GPT-4 Vision으로 질문 생성
 
         Args:
             blocks: 문서 블록들
             num_objective: 객관식 문제 수
             num_subjective: 주관식 문제 수
-            keywords: 키워드 목록 (문제 생성 시 활용)
-            main_topics: 주요 주제 목록
-            summary: 문서 요약
-            test_config: 테스트 설정
 
         Returns:
             List[Dict]: 질문이 추가된 블록들
@@ -282,9 +254,6 @@ class QuestionGenerator:
                         page=str(chunk["metadata"].get("page", "N/A")),
                         num_objective=chunk_obj,
                         num_subjective=chunk_subj,
-                        keywords=keywords or [],
-                        main_topics=main_topics or [],
-                        test_config=test_config,
                     )
 
                     # 첫 번째 블록에 질문 추가 (청크 대표)
@@ -312,16 +281,7 @@ class QuestionGenerator:
     def _blocks_to_vision_chunks(
         self, blocks: List[Dict], max_chunk_size: int = 15000
     ) -> List[Dict]:
-        """
-        블록들을 GPT-4 Vision API용 청크로 변환
-
-        Args:
-            blocks: 문서 블록들
-            max_chunk_size: 최대 청크 크기 (토큰 제한)
-
-        Returns:
-            List[Dict]: Vision API용 청크들
-        """
+        """블록들을 GPT-4 Vision API용 청크로 변환"""
         chunks = []
         current_chunk = {
             "messages": [],
@@ -414,15 +374,7 @@ class QuestionGenerator:
         return chunks
 
     def _format_table_as_text(self, table_data: Dict) -> str:
-        """
-        표 데이터를 텍스트로 변환 (마크다운 형식)
-
-        Args:
-            table_data: 표 데이터 딕셔너리
-
-        Returns:
-            str: 마크다운 형식의 표 텍스트
-        """
+        """표 데이터를 텍스트로 변환"""
         if not isinstance(table_data, dict) or "data" not in table_data:
             return str(table_data)
 
