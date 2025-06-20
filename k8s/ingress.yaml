@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sk-team-09-ai
+  namespace: sk-team-09
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: public-nginx
+  rules:
+    - host: skib-ai.skala25a.project.skala-ai.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: sk-team-09-ai
+                port:
+                  number: 8000
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: sk-team-09-ai
+                port:
+                  number: 8001
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: sk-team-09-ai
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sk-team-09-ai
+                port:
+                  number: 8000
+  tls:
+    - hosts:
+        - skib-ai.skala25a.project.skala-ai.com
+      secretName: skib-ai-tls-cert
