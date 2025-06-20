@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         GIT_URL = 'https://github.com/SKALA-T1F5/SKIB-AI.git'
-        GIT_BRANCH = 'prod'
+        GIT_BRANCH = 'main'
         GIT_ID = 'skala-github-yoonali'
         GIT_USER_NAME = 'yoonali'
         GIT_USER_EMAIL = 'yoonalim2003@gmail.com'

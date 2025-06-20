@@ -11,7 +11,7 @@ spec:
   source:
     path: k8s
     repoURL: https://github.com/SKALA-T1F5/SKIB-AI.git
-    targetRevision: prod
+    targetRevision: main
   syncPolicy:
     automated:
       prune: true
