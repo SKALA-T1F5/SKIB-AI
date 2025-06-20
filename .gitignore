@@ -4,6 +4,7 @@ __pycache__/
 
 # Conda / virtualenv
 .env
+venv/
 .venv
 .env.*
 
@@ -18,6 +19,5 @@ chroma_data/
 .DS_Store
 .pre-commit-config.yaml
 
-#k8s secrets
-k8s/open-ai-secret.yaml
-.pre-commit-config.yaml
+/k8s/open-ai-secret.yaml
+chroma.sqlite3
