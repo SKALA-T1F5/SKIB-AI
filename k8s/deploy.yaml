@@ -32,6 +32,31 @@ spec:
                 secretKeyRef:
                   name: open-ai-secret
                   key: OPENAI_API_KEY
+            - name: CHROMADB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: chromadb-secret
+                  key: CHROMADB_URL
+            - name: CHROMADB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: chromadb-secret
+                  key: CHROMADB_USERNAME
+            - name: CHROMADB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: chromadb-secret
+                  key: CHROMADB_PASSWORD
+            - name: USE_REMOTE_CHROMADB
+              valueFrom:
+                secretKeyRef:
+                  name: chromadb-secret
+                  key: USE_REMOTE_CHROMADB
+            - name: EMBEDDING_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: chromadb-secret
+                  key: EMBEDDING_MODEL
           volumeMounts:
             - name: document-volume
               mountPath: /data
