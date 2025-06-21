@@ -21,4 +21,5 @@ chroma_data/
 
 # Deployment files
 /k8s/open-ai-secret.yaml
+/k8s/chromadb-secret.yaml
 chroma.sqlite3
