@@ -11,9 +11,8 @@ venv/
 # Generated data files
 weaviate_data/
 chroma_data/
-data/images/
 logs/
-chroma_data/
+data/
 
 # System files
 .DS_Store

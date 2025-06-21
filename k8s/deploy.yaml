@@ -8,7 +8,7 @@ spec:
   selector:
     matchLabels:
       app: sk-team-09-ai
-  template:
+  template:git 
     metadata:
       annotations:
         prometheus.io/scrape: "true"
