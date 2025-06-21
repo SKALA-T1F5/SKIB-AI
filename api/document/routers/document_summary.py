@@ -105,15 +105,15 @@ async def process_document_background(
 
             # TODO SpringBoot 연결 후 확인 필요
             # # 2. SpringBoot에 알림
-            # success = await notify_springboot_completion(document_id, summary_data)
+            success = await notify_springboot_completion(document_id, summary_data)
 
-            # if success:
-            #     # 3. 완료 상태로 변경
-            #     set_status(document_id, StatusEnum.DONE)
-            #     logger.info(f"✅ Processing completed for document_id: {document_id}")
-            # else:
-            #     set_status(document_id, StatusEnum.FAILED)
-            #     logger.error(f"SpringBoot 알림 실패: document_id: {document_id}")
+            if success:
+                # 3. 완료 상태로 변경
+                set_status(document_id, StatusEnum.DONE)
+                logger.info(f"✅ Processing completed for document_id: {document_id}")
+            else:
+                set_status(document_id, StatusEnum.FAILED)
+                logger.error(f"SpringBoot 알림 실패: document_id: {document_id}")
         else:
             # 실패 처리
             set_status(document_id, StatusEnum.FAILED)
