@@ -2,7 +2,7 @@ import hashlib
 import os
 from shutil import copyfile
 
-from config import settings  # 변경된 경로 사용
+from config.settings import settings  # 변경된 경로 사용
 
 
 def compute_file_hash(file_bytes: bytes) -> str:
