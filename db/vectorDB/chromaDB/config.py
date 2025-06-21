@@ -20,7 +20,8 @@ class ChromaDBConfig:
             config_file: 환경 변수 파일 경로
         """
         # 환경 변수 로드
-        load_dotenv(config_file, override=True)
+        if os.getenv("ENV", "local") == "local":
+            load_dotenv(config_file, override=True)
 
         # 원격 서버 설정
         self.remote_url = os.getenv(
