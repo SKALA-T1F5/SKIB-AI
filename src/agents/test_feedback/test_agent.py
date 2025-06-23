@@ -9,7 +9,7 @@ from src.agents.test_feedback.agent import test_feedback
 # from src.agents.test_feedback.example_data.example_data_1 import exam_goal, question_results
 # from src.agents.test_feedback.example_data.example_data_2 import exam_goal, question_results
 from src.agents.test_feedback.example_data.example_data_3 import exam_goal, question_results
-# from api.grading.schemas.subjective_grading import GradingCriterion
+# from api.grading.schemas.test_feedback import FeedbackCriteria
 
 async def run_test():
     # 1. 시험 목표와 문항별 응시 결과는 example_data.py에서 가져옴
@@ -49,9 +49,7 @@ async def run_test():
     print(f"\n└─ 개선점:")
     print(f"  {result['improvementPoints']}")
     
-    project_readiness = result['projectReadiness']
-    print(f"\n5️⃣ 프로젝트 참여 적정성: {project_readiness['result']} ")
-    print(f"\n└─ 판단 근거: {project_readiness['reasoning']}")
+    print(f"\n5️⃣ 프로젝트 참여 적정성: {result['projectReadiness']} ")
     
     print(f"\n6️⃣ 추가 학습 주제:")
     for topic in result['suggestedTopics']:

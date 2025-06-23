@@ -64,16 +64,14 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
     """
     OpenAI를 이용하여 시험목표와 문항별 응시 결과를 분석하고 종합적인 피드백을 반환
     """
-    # 1. 문서별 평균 정답률 계산
+    # 1. 사전 데이터 계산
     performance_by_document = calc_performance_by_document(question_results)
-
-    # 2. 상하위 5개씩 총 10개 문제만 선택
     selected_questions = select_top_bottom_questions(question_results)
 
-    # 3. 최종 프롬프트 구성 (선택된 문제만 전달)
+    # 2. 최종 프롬프트 구성
     USER_PROMPT = build_user_prompt(exam_goal, selected_questions, performance_by_document)
 
-    # 4. MODEL 호출
+    # 3. MODEL 호출
     try:
         # RAW INPUT 출력 #########################################
         # print("\n" + "="*80)
@@ -108,7 +106,18 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
         result = json.loads(content)
 
-        # 5. averageCorrectRate만 실제 값으로 덮어쓰기
+        # 4. AI 결과 후처리
+        # 4-1. projectReadiness를 문서별 최소 정답률 기준으로 계산하여 결과에 추가
+        min_rate = min(doc['averageCorrectRate'] for doc in performance_by_document) if performance_by_document else 0
+        if min_rate >= 90:
+            project_readiness_result = "Excellent"
+        elif min_rate >= 60:
+            project_readiness_result = "Pass"
+        else:
+            project_readiness_result = "Fail"
+        result['projectReadiness'] = project_readiness_result
+        
+        # 4-2. averageCorrectRate만 실제 값으로 덮어쓰기
         doc_rate_map = {doc['documentName']: doc['averageCorrectRate'] for doc in performance_by_document}
         for doc in result.get('performanceByDocument', []):
             name = doc.get('documentName')
