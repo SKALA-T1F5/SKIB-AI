@@ -67,7 +67,7 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
                 {"role": "user", "content": USER_PROMPT}
             ],
             temperature=0.2,
-            stream=True,
+            stream=False,
         )
 
         content = response.choices[0].message.content.strip()
@@ -82,18 +82,13 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
         result = json.loads(content)
 
-        # averageCorrectRate만 실제 값으로 덮어쓰기
+        # 4. averageCorrectRate만 실제 값으로 덮어쓰기
         doc_rate_map = {doc['documentName']: doc['averageCorrectRate'] for doc in performance_by_document}
         for doc in result.get('performanceByDocument', []):
             name = doc.get('documentName')
             if name in doc_rate_map:
                 doc['averageCorrectRate'] = doc_rate_map[name]
 
-        # retrainDocuments 안내 문구 추가
-        if result.get('projectReadiness') == '재학습필요':
-            result['retrainDocuments'] = "🚨 위 개념에 대한 보충 학습이 필요합니다. 추가 문서 학습을 검토하세요."
-        else:
-            result['retrainDocuments'] = None
 
         # 토큰 사용량 (차후 주석처리 ✅ )
         usage = response.usage

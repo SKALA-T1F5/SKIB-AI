@@ -6,9 +6,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.
 
 import asyncio
 from src.agents.test_feedback.agent import test_feedback
-# from src.agents.test_feedback.example_data.example_data_1 import exam_goal, question_results
+from src.agents.test_feedback.example_data.example_data_1 import exam_goal, question_results
 # from src.agents.test_feedback.example_data.example_data_2 import exam_goal, question_results
-from src.agents.test_feedback.example_data.example_data_3 import exam_goal, question_results
+# from src.agents.test_feedback.example_data.example_data_3 import exam_goal, question_results
 # from api.grading.schemas.subjective_grading import GradingCriterion
 
 async def run_test():
@@ -49,8 +49,9 @@ async def run_test():
     print(f"\n└─ 개선점:")
     print(f"  {result['improvementPoints']}")
     
-    print(f"\n5️⃣ 프로젝트 참여 적정성: {result['projectReadiness']}")
-    print(f"\n└─ 재학습 안내: {result['retrainDocuments']}")
+    project_readiness = result['projectReadiness']
+    print(f"\n5️⃣ 프로젝트 참여 적정성: {project_readiness['result']} ")
+    print(f"\n└─ 판단 근거: {project_readiness['reasoning']}")
     
     print(f"\n6️⃣ 추가 학습 주제:")
     for topic in result['suggestedTopics']:
