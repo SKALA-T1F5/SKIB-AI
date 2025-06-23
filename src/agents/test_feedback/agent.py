@@ -1,8 +1,10 @@
 # agents/test_feedback/agent.py
 import os
 import openai
+from google import genai
 import json
 from collections import defaultdict
+import re
 
 from openai import AsyncOpenAI
 from typing import List, Dict, Any
@@ -18,6 +20,13 @@ load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY") 
 openai_client = AsyncOpenAI(api_key=api_key) 
 AGENT_MODEL = os.getenv("AGENT_TEST_FEEDBACK_MODEL") #.env에 모델명 저장 (AGENT_TEST_FEEDBACK_MODEL=gpt-4)✅
+
+#gemini 로드
+# load_dotenv(override=True) 
+gemini_api_key = os.getenv("GEMINI_API_KEY") 
+gemini_client = genai.Client(api_key=gemini_api_key)
+GEMINI_MODEL = os.getenv("GEMINI_AGENT_TEST_FEEDBACK_MODEL") #.env에 모델명 저장 (GEMINI_AGENT_TEST_FEEDBACK_MODEL=gemini-2.5-flash)✅
+
 
 def calc_performance_by_document(question_results: List[Dict[str, Any]]):
     doc_map = defaultdict(list)
@@ -60,6 +69,22 @@ def select_top_bottom_questions(question_results: List[Dict[str, Any]], top_coun
     
     return selected_questions
 
+def extract_json_from_gemini(content: str) -> str:
+    # 코드블록 내 JSON 추출
+    match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", content)
+    if match:
+        return match.group(1)
+    # 일반 코드블록 (json 명시X)
+    match = re.search(r"```\s*(\{[\s\S]*?\})\s*```", content)
+    if match:
+        return match.group(1)
+    # 중괄호로 시작하는 첫 JSON 객체 추출
+    match = re.search(r"(\{[\s\S]*\})", content)
+    if match:
+        return match.group(1)
+    # 그대로 반환 (마지막 수단)
+    return content.strip()
+
 async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     OpenAI를 이용하여 시험목표와 문항별 응시 결과를 분석하고 종합적인 피드백을 반환
@@ -84,24 +109,44 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
         # print(messages)
         ########################################################
         
-        response = await openai_client.chat.completions.create(
-            model=AGENT_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": USER_PROMPT}
-            ],
-            temperature=0.2,
-            stream=False,
-        )
+        #OPENAI 방식
+        # response = await openai_client.chat.completions.create(
+        #     model=AGENT_MODEL,
+        #     messages=[
+        #         {"role": "system", "content": SYSTEM_PROMPT},
+        #         {"role": "user", "content": USER_PROMPT}
+        #     ],
+        #     temperature=0.2,
+        #     stream=False,
+        # )
+        # content = response.choices[0].message.content.strip()
 
+
+        #GEMINI 방식
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[
+                {"role": "model", "parts": [{"text": SYSTEM_PROMPT}]},
+                {"role": "user", "parts": [{"text": USER_PROMPT}]}
+            ],
+        )
+        content = response.text
         content = response.choices[0].message.content.strip()
+        # Gemini 등 LLM의 코드블록/텍스트 혼합 응답에서 JSON만 추출
+        content = extract_json_from_gemini(content)
+        try:
+            result = json.loads(content)
+        except Exception as e:
+            print("AI 원본 응답:", content)
+            raise RuntimeError(f"시험 피드백 생성 오류: {str(e)}")
         
+
         # RAW OUTPUT 출력 #########################################
-        # print("\n" + "="*80)
-        # print("🤖 MODEL OUTPUT (RAW)")
-        # print("="*80)
-        # print(content)
-        # print("="*80)
+        print("\n" + "="*80)
+        print("🤖 MODEL OUTPUT (RAW)")
+        print("="*80)
+        print(content)
+        print("="*80)
         ########################################################
 
         result = json.loads(content)
