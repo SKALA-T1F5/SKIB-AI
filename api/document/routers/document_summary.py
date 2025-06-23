@@ -133,7 +133,7 @@ async def notify_springboot_completion(document_id: int, summary_data: Dict) -> 
     try:
         async with httpx.AsyncClient() as client:
             response = await client.put(
-                f"http://localhost:8080/api/document/summary/{document_id}",
+                f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{document_id}",
                 json=summary_data,
                 headers={"Content-Type": "application/json"},
             )
