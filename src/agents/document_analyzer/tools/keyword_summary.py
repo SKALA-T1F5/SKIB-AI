@@ -1,3 +1,7 @@
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
 """
 각 문서에 대해 주요 키워드 추출 및 요약을 수행하고 JSON 형태로 출력하는 모듈입니다.
 Docling으로 파싱된 블록들을 분석하여 문서의 핵심 내용을 추출합니다.
