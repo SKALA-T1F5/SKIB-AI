@@ -101,7 +101,7 @@ async def generate_test_plan(request: TestPlanRequest):
             difficulty_level=difficulty_level,
             limited_time=test_config.get("time_limit", 60),
             pass_score=test_config.get("pass_score", 70),
-            retake=test_config.get("retake_allowed", True),
+            is_retake=test_config.get("retake_allowed", True),
             document_configs=document_configs,
         )
 
