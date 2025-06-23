@@ -30,10 +30,35 @@ def calc_performance_by_document(question_results: List[Dict[str, Any]]):
         performance.append({
             "documentName": doc,
             "averageCorrectRate": round(avg, 2),
+            "countQuestions": len(questions),  # 문서별 총 문제 개수 추가
             "keywords": keywords
-            # comment는 AI가 생성
         })
     return performance
+
+def select_top_bottom_questions(question_results: List[Dict[str, Any]], top_count: int = 5, bottom_count: int = 5) -> List[Dict[str, Any]]:
+    """
+    전체 문제 중 정답률 기준 상위 5개, 하위 5개 문제를 선택하여 총 10개 문제를 반환
+    """
+    # 정답률 기준으로 전체 문제 정렬
+    sorted_questions = sorted(question_results, key=lambda x: x['correctRate'], reverse=True)
+    
+    selected_questions = []
+    
+    # 상위 5개 선택
+    top_questions = sorted_questions[:top_count]
+    selected_questions.extend(top_questions)
+    
+    # 하위 5개 선택 (중복 방지)
+    if len(sorted_questions) > top_count + bottom_count:
+        bottom_questions = sorted_questions[-(bottom_count):]
+    elif len(sorted_questions) > top_count:
+        bottom_questions = sorted_questions[top_count:]
+    else:
+        bottom_questions = []
+    
+    selected_questions.extend(bottom_questions)
+    
+    return selected_questions
 
 async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -42,12 +67,13 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
     # 1. 문서별 평균 정답률 계산
     performance_by_document = calc_performance_by_document(question_results)
 
-    # 2. 최종 프롬프트 구성
-    # USER_PROMPT = build_user_prompt(exam_goal, question_results)
-    # 2. 최종 프롬프트 구성 (A: 프롬프트에 포함)
-    USER_PROMPT = build_user_prompt(exam_goal, question_results, performance_by_document)
+    # 2. 상하위 5개씩 총 10개 문제만 선택
+    selected_questions = select_top_bottom_questions(question_results)
 
-    # 3. MODEL 호출
+    # 3. 최종 프롬프트 구성 (선택된 문제만 전달)
+    USER_PROMPT = build_user_prompt(exam_goal, selected_questions, performance_by_document)
+
+    # 4. MODEL 호출
     try:
         # RAW INPUT 출력 #########################################
         # print("\n" + "="*80)
@@ -82,7 +108,7 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
         result = json.loads(content)
 
-        # 4. averageCorrectRate만 실제 값으로 덮어쓰기
+        # 5. averageCorrectRate만 실제 값으로 덮어쓰기
         doc_rate_map = {doc['documentName']: doc['averageCorrectRate'] for doc in performance_by_document}
         for doc in result.get('performanceByDocument', []):
             name = doc.get('documentName')

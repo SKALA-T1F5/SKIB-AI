@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v11: retrainDocuments 삭제, projectReadiness:Excellent/Pass/Fail, reasoning 추가, userprompt 대괄호,insight 예시추가
+# v12: 문서별 평균 정답률 추가, 문서별 #keyword 추가, 상하위 5개 문항만 전달
 
 from typing import List, Dict, Any
 import json
@@ -126,11 +126,11 @@ SYSTEM_PROMPT = """
 """
 
 # 2. 사용자 프롬프트 생성 함수
-# 시험목표와 문항별응시결과, 문서별 집계정보를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성합니다.
-def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]], performance_by_document: List[Dict[str, Any]]) -> str:
+# 시험목표와 선택된 문항별응시결과, 문서별 집계정보를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성
+def build_user_prompt(exam_goal: str, selected_questions: List[Dict[str, Any]], performance_by_document: List[Dict[str, Any]]) -> str:
     # 문항별 결과를 문자열로 변환
     questions_text = ""
-    for result in question_results:
+    for result in selected_questions:
         questions_text += f"""
         questionId {result.get('questionId', 'N/A')}:
         - documentName: {result.get('documentName', 'N/A')}
@@ -143,11 +143,24 @@ def build_user_prompt(exam_goal: str, question_results: List[Dict[str, Any]], pe
         - correctRate: {result.get('correctRate', 'N/A')}%
         """
     
+    # 문서별 총 문제 개수 정보 추가
+    document_info = ""
+    for doc in performance_by_document:
+        document_info += f"""
+        • {doc['documentName']}:
+          - 총 문제 수: {doc.get('countQuestions', 'N/A')}개
+          - 평균 정답률: {doc['averageCorrectRate']}%
+          - #keyword: {', '.join(doc.get('keywords', []))}
+        """
+    
     prompt = f"""
         [시험 목표]
         \"\"\"{exam_goal}\"\"\"
 
-        [문항별 응시 결과]
+        [문서별 전체 정보]
+        {document_info}
+
+        [문항별 응시 결과 (상위/하위 5개씩)]
         {questions_text}
 
         [문서별 집계 정보]
