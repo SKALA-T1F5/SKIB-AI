@@ -67,6 +67,7 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
                 {"role": "user", "content": USER_PROMPT}
             ],
             temperature=0.2,
+            stream=True,
         )
 
         content = response.choices[0].message.content.strip()

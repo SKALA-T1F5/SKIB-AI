@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v11 프롬프트 수정 retrainDocuments 삭제
+# v10 업로드 문서명 내용 삭제, return에 포함
 
 from typing import List, Dict, Any
 import json
@@ -18,7 +18,7 @@ SYSTEM_PROMPT = """
 2. 학습자의 insights는 type:strength/weakness로 총 4개 작성하세요. text에는 '#keyword'와 함께 제시하고, questionText를 기준으로 판단합니다.
 4. 학습자의 프로젝트 참여 적정성 projectReadiness에 대한 판단의 근거는 다음을 포함하세요:
    - 개별 averageCorrectRate 및 문서별 편차를 분석해 문서 수준의 편차가 큰 경우에도 '진행가능/보류/재학습필요' 여부를 신중히 판단
-   - 정답률 기준(90% 이상: 진행가능 / 60~89%: 보류 / 60% 미만: 재학습필요)
+   - 정답률 기준(90% 이상: 우수 / 60~89%: 보통 / 60% 미만: 미흡)
    - 실무에 바로 적용 가능한 수준인지 여부
    - 핵심 개념/절차에 대한 오개념 유무
    - 실제 투입 시 리스크 여부  
@@ -47,6 +47,7 @@ SYSTEM_PROMPT = """
     "improvementPoints": "...",
     "suggestedTopics": [...],
     "projectReadiness": "진행가능 / 보류 / 재학습필요",
+    "retrainDocuments": "..." 또는 null,
     "overallEvaluation": "..."
 }
 
@@ -78,6 +79,7 @@ SYSTEM_PROMPT = """
         "사고 발생 후 조치 절차 및 보고 체계 실습"
     ],
     "projectReadiness": "진행가능",
+    "retrainDocuments": null,
     "overallEvaluation": "산업안전관리 전반에 대한 이해도가 매우 높아, 프로젝트를 바로 진행해도 무방합니다. 실전 적용에서도 큰 무리가 없을 것으로 보이며, 고난이도 사고 대응 훈련만 병행하면 완성도 높은 실무 수행이 가능합니다."
 }
 
