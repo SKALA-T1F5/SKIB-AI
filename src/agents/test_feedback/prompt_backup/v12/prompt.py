@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v13: user_prompt 간소화
+# v12: 문서별 평균 정답률 추가, 문서별 #keyword 추가, 상하위 5개 문항만 전달
 
 from typing import List, Dict, Any
 import json
@@ -132,20 +132,42 @@ def build_user_prompt(exam_goal: str, selected_questions: List[Dict[str, Any]], 
     questions_text = ""
     for result in selected_questions:
         questions_text += f"""
-        documentName: {result.get('documentName', 'N/A')} | questionText: {result.get('questionText', 'N/A')[:100]}... | tags: {result.get('tags', 'N/A')} | correctRate: {result.get('correctRate', 'N/A')}% | #keyword: {result.get('keyword', 'N/A')}
+        questionId {result.get('questionId', 'N/A')}:
+        - documentName: {result.get('documentName', 'N/A')}
+        - questionText: {result.get('questionText', 'N/A')}
+        - difficulty: {result.get('difficulty', 'N/A')}
+        - type: {result.get('type', 'N/A')}
+        - answer: {result.get('answer', 'N/A')}
+        - tags: {', '.join(result.get('tags', []))}
+        - #keyword: {result.get('keyword', 'N/A')}
+        - correctRate: {result.get('correctRate', 'N/A')}%
+        """
+    
+    # 문서별 총 문제 개수 정보 추가
+    document_info = ""
+    for doc in performance_by_document:
+        document_info += f"""
+        • {doc['documentName']}:
+          - 총 문제 수: {doc.get('countQuestions', 'N/A')}개
+          - 평균 정답률: {doc['averageCorrectRate']}%
+          - #keyword: {', '.join(doc.get('keywords', []))}
         """
     
     prompt = f"""
         [시험 목표]
         \"\"\"{exam_goal}\"\"\"
 
-        [문서별 결과]
-        {json.dumps(performance_by_document, ensure_ascii=False, indent=2)}
+        [문서별 전체 정보]
+        {document_info}
 
-        [문항별 결과 (상하위 5개씩)]
+        [문항별 응시 결과 (상위/하위 5개씩)]
         {questions_text}
+
+        [문서별 집계 정보]
+        {json.dumps(performance_by_document, ensure_ascii=False, indent=2)}
         
-        위 정보를 기반으로 학습자의 강점/약점, 개선점, 프로젝트 참여 적정성을 포함한 피드백을 다음 JSON 형식으로 제공하세요.
+        위 정보를 바탕으로 전체적인 시험 결과를 분석하고 종합적인 피드백을 제공하세요.
+        각 문서별 성과, 강점, 약점, 개선점, 추가 학습 주제, 전체 평가를 포함하여 JSON 형식으로 응답하세요.
         """
     
     return prompt
