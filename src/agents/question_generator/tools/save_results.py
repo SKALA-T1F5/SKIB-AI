@@ -36,7 +36,7 @@ def save_question_result(
                 continue
 
             # 정상적인 문제 객체인 경우, chunk_info의 일부 내용을 문제 객체에 추가 (선택적)
-            # generate_question 에서 이미 document_id, page_number, question_id 등을 추가하므로 중복 최소화
+            # generate_question 에서 이미 documentId, page_number, question_id 등을 추가하므로 중복 최소화
             # 여기서는 청크 레벨의 정보를 추가할 수 있습니다.
             question_to_save = question_item.copy()  # 원본 수정을 피하기 위해 복사
             question_to_save["chunk_id_ref"] = chunk_info.get("chunk_id")

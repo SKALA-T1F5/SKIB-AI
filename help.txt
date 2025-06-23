@@ -8,6 +8,26 @@ pip install -r requirements.txt
 # gemini key 사용 패키지 설치
 pip install google-generativeai==0.8.3 Pillow==11.1.0
 
+### 각 에이전트 테스트 (Pytest) ###
+
+  # 모든 에이전트 테스트 실행
+  pytest tests/agents/ -v
+
+  # 개별 에이전트 테스트 실행
+  pytest tests/agents/test_document_analyzer.py -v
+  pytest tests/agents/test_test_designer.py -v
+  pytest tests/agents/test_question_generator.py -v
+
+### 각 파이프라인 실행 ###
+  # 1. 문서 분석
+  python -m src.pipelines.document_analysis.pipeline
+
+  # 2. 테스트 설계  
+  python -m src.pipelines.test_design.pipeline
+
+  # 3. 문제 생성
+  python -m src.pipelines.question_generation.pipeline
+
 # pytesseract를 사용하기 위한 Tesseract OCR 설치
 conda install -c conda-forge tesseract
 
@@ -32,15 +52,8 @@ docker-compose up -d
 # Weaviate 컬렉션 수동 삭제
 curl -X DELETE http://localhost:8080/v1/schema/{{컬렉션명}}
 
-### 각 파이프라인 실행 ###
-  # 1. 문서 분석
-  python -m src.pipelines.document_analysis.pipeline
 
-  # 2. 테스트 설계  
-  python -m src.pipelines.test_design.pipeline
 
-  # 3. 문제 생성
-  python -m src.pipelines.question_generation.pipeline
 
 
 

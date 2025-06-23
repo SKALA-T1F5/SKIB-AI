@@ -38,7 +38,7 @@ class QuestionResponse(BaseModel):
     grading_criteria: Optional[List[GradingCriterion]] = Field(
         None, description="주관식 문제 채점 기준"
     )
-    document_id: int = Field(..., description="문제가 속한 문서의 고유 ID")
+    documentId: int = Field(..., description="문제가 속한 문서의 고유 ID")
     document_name: str = Field(..., description="문제가 속한 문서의 이름")
     keywords: Optional[List[str]] = Field(None, description="문제와 관련된 키워드 목록")
     tags: Optional[List[str]] = Field(
@@ -54,5 +54,5 @@ class QuestionUpdate(BaseModel):
     options: Optional[List[str]] = Field(None, description="객관식 선택지")
     answer: Optional[str] = Field(None, description="정답")
     explanation: Optional[str] = Field(None, description="해설")
-    document_id: int = Field(..., description="문제가 속한 문서의 고유 ID")
+    documentId: int = Field(..., description="문제가 속한 문서의 고유 ID")
     tags: Optional[List[str]] = Field(None, description="태그 목록")
