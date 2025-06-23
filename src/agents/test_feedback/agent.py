@@ -69,21 +69,6 @@ def select_top_bottom_questions(question_results: List[Dict[str, Any]], top_coun
     
     return selected_questions
 
-def extract_json_from_gemini(content: str) -> str:
-    # 코드블록 내 JSON 추출
-    match = re.search(r"```json\s*(\{[\s\S]*?\})\s*```", content)
-    if match:
-        return match.group(1)
-    # 일반 코드블록 (json 명시X)
-    match = re.search(r"```\s*(\{[\s\S]*?\})\s*```", content)
-    if match:
-        return match.group(1)
-    # 중괄호로 시작하는 첫 JSON 객체 추출
-    match = re.search(r"(\{[\s\S]*\})", content)
-    if match:
-        return match.group(1)
-    # 그대로 반환 (마지막 수단)
-    return content.strip()
 
 async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
@@ -130,23 +115,18 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
                 {"role": "user", "parts": [{"text": USER_PROMPT}]}
             ],
         )
-        content = response.text
-        content = response.choices[0].message.content.strip()
-        # Gemini 등 LLM의 코드블록/텍스트 혼합 응답에서 JSON만 추출
-        content = extract_json_from_gemini(content)
-        try:
-            result = json.loads(content)
-        except Exception as e:
-            print("AI 원본 응답:", content)
-            raise RuntimeError(f"시험 피드백 생성 오류: {str(e)}")
+        content = response.text.strip()
+        if content.startswith("```"):
+            content = re.sub(r"^```(?:json)?\s*", "", content)  # 앞쪽 제거
+            content = re.sub(r"\s*```$", "", content)           # 뒤쪽 제거
         
 
         # RAW OUTPUT 출력 #########################################
-        print("\n" + "="*80)
-        print("🤖 MODEL OUTPUT (RAW)")
-        print("="*80)
-        print(content)
-        print("="*80)
+        # print("\n" + "="*80)
+        # print("🤖 MODEL OUTPUT (RAW)")
+        # print("="*80)
+        # print(content)
+        # print("="*80)
         ########################################################
 
         result = json.loads(content)
@@ -171,10 +151,10 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
 
         # 토큰 사용량 (차후 주석처리 ✅ )
-        usage = response.usage
-        print("🟨 사용 토큰:", usage.total_tokens)
-        print("└─ prompt_tokens:", usage.prompt_tokens)
-        print("└─ completion_tokens:", usage.completion_tokens)
+        # usage = response.usage
+        # print("🟨 사용 토큰:", usage.total_tokens)
+        # print("└─ prompt_tokens:", usage.prompt_tokens)
+        # print("└─ completion_tokens:", usage.completion_tokens)
         
         return result
 
