@@ -15,14 +15,23 @@ router = APIRouter(prefix="/api/document", tags=["Document"])
 logger = logging.getLogger(__name__)
 
 
+from fastapi import Form
+
+
 @router.post("/upload", response_model=DocumentUploadResponse)
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    metadata: DocumentUploadMetaRequest = Depends(),
+    document_id: int = Form(...),
+    project_id: int = Form(...),
+    name: str = Form(...),
 ):
     try:
-        # 정상 처리 로직
+        # ✅ 직접 매핑하여 Pydantic 객체 생성
+        metadata = DocumentUploadMetaRequest(
+            document_id=document_id, project_id=project_id, name=name
+        )
+
         set_status(metadata.document_id, StatusEnum.PROCESSING)
         logger.info(
             f"""Document upload started: {metadata.document_id},
@@ -48,5 +57,5 @@ async def upload_document(
         )
 
     except Exception as e:
-        logger.exception("🔥 [UPLOAD ERROR] 문서 업로드 중 예외 발생")  # <-- 여기!
+        logger.exception("🔥 [UPLOAD ERROR] 문서 업로드 중 예외 발생")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
