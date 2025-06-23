@@ -25,5 +25,5 @@ class TestPlanResponse(BaseModel):
     difficulty_level: DifficultyLevel
     limited_time: int  # 분 단위
     pass_score: int  # 통과 점수 (%)
-    retake: bool  # 재응시 여부
+    is_retake: bool  # 재응시 여부
     document_configs: List[TestPlanByDocument]
