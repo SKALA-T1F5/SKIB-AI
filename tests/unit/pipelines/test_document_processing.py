@@ -43,7 +43,7 @@ class TestDocumentProcessingPipeline:
         """테스트용 입력 데이터"""
         return {
             "document_path": "/test/path/sample.pdf",
-            "document_id": 123,
+            "documentId": 123,
             "project_id": 456,
             "filename": "sample.pdf",
         }
@@ -425,7 +425,7 @@ class TestDocumentProcessingPipeline:
 
         # 필수 필드 검증
         assert state["document_path"] == sample_input_data["document_path"]
-        assert state["document_id"] == sample_input_data["document_id"]
+        assert state["documentId"] == sample_input_data["documentId"]
         assert state["project_id"] == sample_input_data["project_id"]
         assert state["filename"] == sample_input_data["filename"]
 
@@ -454,7 +454,7 @@ class TestDocumentProcessingPipeline:
 
         input_data = {
             "document_path": str(test_file),
-            "document_id": 999,
+            "documentId": 999,
             "project_id": 888,
             "filename": "test_document.txt",
         }
@@ -516,7 +516,7 @@ class TestDocumentProcessingPipeline:
 
             # 동시 실행
             tasks = [
-                pipeline.run({**sample_input_data, "document_id": i})
+                pipeline.run({**sample_input_data, "documentId": i})
                 for i, pipeline in enumerate(pipelines)
             ]
 

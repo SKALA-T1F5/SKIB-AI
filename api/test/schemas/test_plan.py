@@ -13,7 +13,7 @@ class TestPlanRequest(BaseModel):
 
 
 class TestPlanByDocument(BaseModel):
-    document_id: int
+    documentId: int
     keywords: List[str]
     recommended_objective: int
     recommended_subjective: int

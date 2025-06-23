@@ -10,7 +10,7 @@ def compute_file_hash(file_bytes: bytes) -> str:
 
 
 def save_document_locally(
-    file_bytes: bytes, document_id: int, project_id: int, name: str
+    file_bytes: bytes, documentId: int, project_id: int, name: str
 ) -> dict:
     """
     파일을 로컬에 저장 (중복 제거 포함)
@@ -23,7 +23,7 @@ def save_document_locally(
     global_path = os.path.join(settings.GLOBAL_DIR, f"{file_hash}.pdf")
     project_dir = os.path.join(settings.PROJECT_DIR_BASE, f"{project_id}")
     os.makedirs(project_dir, exist_ok=True)
-    project_path = os.path.join(project_dir, f"{document_id}_{name}.pdf")
+    project_path = os.path.join(project_dir, f"{documentId}_{name}.pdf")
 
     # Step 1: global 저장
     if not os.path.exists(global_path):

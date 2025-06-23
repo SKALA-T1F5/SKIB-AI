@@ -8,7 +8,7 @@ class TestGenerationState(BasePipelineState, total=False):
 
     # 테스트 설정
     test_config: Dict[str, Any]
-    document_ids: List[int]
+    documentIds: List[int]
 
     # 생성 결과
     generated_questions: List[Dict[str, Any]]
