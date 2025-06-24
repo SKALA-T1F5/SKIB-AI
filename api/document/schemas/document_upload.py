@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class DocumentUploadMetaRequest(BaseModel):
-    document_id: int = Form(...)
+    documentId: int = Form(...)
     project_id: int = Form(...)
     name: str = Form(...)
 

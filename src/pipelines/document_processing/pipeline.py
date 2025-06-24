@@ -21,7 +21,7 @@ def extract_metadata(state: DocumentProcessingState) -> Dict[str, Any]:
         "filename": state.get(
             "filename", os.path.basename(state.get("document_path", ""))
         ),
-        "document_id": state.get("document_id"),
+        "documentId": state.get("documentId"),
         "project_id": state.get("project_id"),
     }
 
@@ -90,7 +90,7 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
                 "started_at": datetime.datetime.now().isoformat(),
             }
             self.logger.info(
-                f"Starting document processing for document_id: {initial_state.get('document_id')}"
+                f"Starting document processing for documentId: {initial_state.get('documentId')}"
             )
             self.logger.info(f"Filename: {initial_state.get('filename')}")
 

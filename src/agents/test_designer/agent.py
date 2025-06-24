@@ -1,19 +1,26 @@
 """
 테스트 설계 Agent
-- 키워드와 문서 요약을 분석
-- 사용자 프롬프트를 GPT-4에 전달
-- 테스트 요약 및 config 생성
+- 각 문서별 keyword&summary를 input으로 받음
+- Gemini 2.5 Pro를 사용하여 전체 테스트 Plan과 문서별 테스트 Plan을 생성
 """
 
+import json
+import os
 from typing import Any, Dict, List
 
-from langchain_core.output_parsers import JsonOutputParser
+import google.generativeai as genai
+from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from ..base.agent import BaseAgent
 from ..base.state import BaseState, TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
+
+# 환경 변수 로드
+load_dotenv(override=True)
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=gemini_api_key)
 
 
 class TestGoal(BaseModel):
@@ -109,66 +116,142 @@ class TestDesignerAgent(BaseAgent):
 
     async def _generate_test_summary(
         self, requirements: Dict[str, Any], input_data: Dict[str, Any]
-    ) -> str:
-        """GPT-4를 사용하여 테스트 요약 생성"""
-        parser = JsonOutputParser(pydantic_object=TestGoal)
-        format_instructions = parser.get_format_instructions()
+    ) -> Dict[str, Any]:
+        """Gemini 2.5 Pro를 사용하여 테스트 계획 생성"""
+
+        # 문서별 정보 정리
+        documents_info = []
+        if "documents" in input_data:
+            for i, doc in enumerate(input_data["documents"]):
+                doc_info = f"""
+문서 {i+1}: {doc.get('document_name', f'문서_{i+1}')}
+- 주요 키워드: {', '.join(doc.get('keywords', [])[:8])}
+- 요약: {doc.get('summary', '')[:200]}...
+- 주요 주제: {', '.join(doc.get('main_topics', [])[:5])}
+"""
+                documents_info.append(doc_info)
 
         user_prompt = f"""
-다음 정보를 바탕으로 테스트의 제목(test_title)과 요약(test_summary)을 작성해주세요. 출력은 한국어로 작성하며,:
+당신은 교육 평가 전문가입니다. 제공된 여러 문서의 내용을 분석하여 종합적인 테스트 계획을 수립해주세요.
 
-**테스트 제목은 창의적이고 간결하게**,
+## 분석 대상 문서들:
+{chr(10).join(documents_info)}
 
-**사용자 요청:**
-{requirements['user_prompt']}
+## 사용자 요구사항:
+{requirements.get('user_prompt', '표준 테스트 계획을 수립해주세요')}
 
-**문서 키워드:**
-{', '.join(requirements['keywords'])}
+## 목표 난이도:
+{requirements.get('target_difficulty', 'NORMAL')}
 
-**문서 요약:**
-{requirements['document_summary']}
+다음 JSON 형식으로 응답해주세요:
 
-**주요 주제:**
-{', '.join(requirements['document_topics'])}
+```json
+{{
+    "name": "전체 테스트의 적절한 이름",
+    "test_summary": "이 테스트의 목적과 평가 범위를 설명하는 요약 (200자 이내)",
+    "difficulty_level": "NORMAL",
+    "limited_time": 90,
+    "pass_score": 70,
+    "retake": true,
+    "document_configs": [
+        {{
+            "document_id": 1,
+            "keywords": ["문서1의 핵심 키워드 5-8개"],
+            "recommended_objective": 5,
+            "recommended_subjective": 3
+        }},
+        {{
+            "document_id": 2,
+            "keywords": ["문서2의 핵심 키워드 5-8개"],
+            "recommended_objective": 4,
+            "recommended_subjective": 2
+        }}
+    ]
+}}
+```
 
-**테스트 설정:**
-- 난이도: {requirements['target_difficulty']}
-- 유형: {requirements['test_type']}
-- 제한시간: {requirements['time_limit']}분
+## 지침:
+1. **전체 테스트명**: 모든 문서의 주제를 아우르는 포괄적인 이름
+2. **테스트 요약**: 전체 테스트의 목적과 평가 범위를 명확히 설명
+3. **제한시간**: 문서 수와 문제 수를 고려하여 적절히 설정 (60-120분)
+4. **통과점수**: 난이도에 따라 조정 (EASY: 60%, NORMAL: 70%, HARD: 80%)
+5. **문서별 키워드**: 각 문서에서 가장 중요한 키워드 5-8개 선별
+6. **문제 수 추천**: 문서의 복잡도와 중요도에 따라 객관식/주관식 문제 수 조정
+   - 객관식: 2-8개 (기본 개념 확인)
+   - 주관식: 1-5개 (심화 이해 평가)
 
-다음 형식으로 테스트 요약을 작성해주세요.
-이때 다음 항목으로 나눠서 작성하되, 테스트 요약 부분을하나의 string으로 출력하세요:
-1. 테스트 목적
-2. 평가 범위
-3. 출제 방향
-4. 예상 소요시간
-
-
-{format_instructions}
+반드시 유효한 JSON 형식으로만 응답하세요.
 """
 
         try:
-            from openai import AsyncOpenAI
+            print("🤖 Gemini 2.5 Pro로 테스트 계획 생성 중...")
 
-            client = AsyncOpenAI()
+            # 안전 설정
+            safety_settings = [
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE",
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE",
+                },
+            ]
 
-            response = await client.chat.completions.create(
-                model="gpt-4",
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "당신은 교육 평가 전문가입니다. 주어진 정보를 바탕으로 명확하고 구체적인 테스트 요약을 작성합니다.",
-                    },
-                    {"role": "user", "content": user_prompt},
-                ],
-                temperature=0.3,
+            model = genai.GenerativeModel(
+                "gemini-2.5-pro", safety_settings=safety_settings
             )
-            content = response.choices[0].message.content.strip()
-            return parser.parse(content)
+
+            response = model.generate_content(
+                user_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=3000,
+                ),
+            )
+
+            # 안전한 응답 처리
+            if response.candidates and response.candidates[0].content.parts:
+                raw_content = response.text.strip()
+                print(f"📄 응답 내용 미리보기: {raw_content[:200]}...")
+
+                # JSON 파싱
+                if "```json" in raw_content:
+                    raw_content = (
+                        raw_content.split("```json")[1].split("```")[0].strip()
+                    )
+                elif "```" in raw_content:
+                    raw_content = raw_content.split("```")[1].split("```")[0].strip()
+
+                test_plan_data = json.loads(raw_content)
+                print("✅ Gemini 2.5 Pro 테스트 계획 생성 완료")
+                return test_plan_data
+            else:
+                print(f"⚠️ Gemini 응답이 차단됨")
+                raise Exception("Gemini 응답이 차단되었습니다")
 
         except Exception as e:
-            self.logger.error(f"테스트 요약 생성 실패: {e}")
-            return f"테스트 목적: {requirements['user_prompt']}\n평가 범위: 제공된 문서 내용\n출제 방향: {requirements['target_difficulty']} 난이도"
+            self.logger.error(f"테스트 계획 생성 실패: {e}")
+            # 기본 계획 반환
+            return {
+                "name": "종합 평가 테스트",
+                "test_summary": "제공된 문서들의 핵심 내용을 종합적으로 평가하는 테스트입니다.",
+                "difficulty_level": requirements.get("target_difficulty", "NORMAL"),
+                "limited_time": 90,
+                "pass_score": 70,
+                "retake": True,
+                "document_configs": [
+                    {
+                        "document_id": i + 1,
+                        "keywords": doc.get("keywords", [])[:6],
+                        "recommended_objective": 4,
+                        "recommended_subjective": 2,
+                    }
+                    for i, doc in enumerate(input_data.get("documents", []))
+                ],
+            }
 
     async def _create_test_config(
         self, test_summary: str, requirements: Dict[str, Any]
@@ -245,38 +328,35 @@ class TestDesignerAgent(BaseAgent):
         return config
 
 
-def design_test_from_analysis(
-    keywords: List[str],
-    document_summary: str,
-    document_topics: List[str],
-    user_prompt: str,
-    difficulty: str = "medium",
+def design_test_from_documents(
+    documents: List[Dict[str, Any]],
+    user_prompt: str = "표준 테스트 계획을 수립해주세요",
+    difficulty: str = "NORMAL",
     test_type: str = "mixed",
-    time_limit: int = 60,
+    time_limit: int = 90,
+    save_files: bool = True,
 ) -> Dict[str, Any]:
     """
-    문서 분석 결과로부터 테스트 설계
+    여러 문서의 키워드/요약으로부터 테스트 계획 설계
 
     Args:
-        keywords: 문서 키워드
-        document_summary: 문서 요약
-        document_topics: 주요 주제
+        documents: 문서 정보 리스트
+            [{"document_id": 1, "document_name": "문서명", "keywords": [...], "summary": "...", "main_topics": [...]}]
         user_prompt: 사용자 요청
-        difficulty: 난이도
+        difficulty: 난이도 (EASY, NORMAL, HARD)
         test_type: 테스트 유형
         time_limit: 제한시간
+        save_files: 파일로 저장할지 여부
 
     Returns:
-        테스트 설계 결과
+        테스트 계획 결과 (전체 테스트 Plan + 문서별 테스트 Plan)
     """
     import asyncio
 
     agent = TestDesignerAgent()
 
     input_data = {
-        "keywords": keywords,
-        "document_summary": document_summary,
-        "document_topics": document_topics,
+        "documents": documents,
         "user_prompt": user_prompt,
         "difficulty": difficulty,
         "test_type": test_type,
@@ -287,6 +367,151 @@ def design_test_from_analysis(
     async def run():
         await agent.initialize()
         result = await agent.execute(input_data)
+
+        if save_files and result.get("output", {}).get("status") == "completed":
+            _save_test_plans(result.get("output", {}), documents)
+
         return result
 
     return asyncio.run(run())
+
+
+def _save_test_plans(result: Dict[str, Any], documents: List[Dict[str, Any]]):
+    """테스트 계획을 분리하여 저장"""
+    import os
+    from datetime import datetime
+
+    # 타임스탬프 생성
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 디렉토리 생성
+    total_dir = "data/outputs/total_test_plan"
+    document_dir = "data/outputs/document_test_plan"
+    os.makedirs(total_dir, exist_ok=True)
+    os.makedirs(document_dir, exist_ok=True)
+
+    # 1. 전체 테스트 plan 저장 (여러 문서들의 keyword&summary 활용한 통합 계획)
+    if "test_summary" in result:
+        test_summary = result["test_summary"]
+
+        # 전체 테스트 계획 파일
+        total_test_plan = {
+            "metadata": {
+                "created_at": datetime.now().isoformat(),
+                "total_documents": len(documents),
+                "document_names": [
+                    doc.get("document_name", f"문서_{doc.get('document_id', i+1)}")
+                    for i, doc in enumerate(documents)
+                ],
+            },
+            "test_plan": {
+                "name": test_summary.get("name", "종합 테스트"),
+                "test_summary": test_summary.get("test_summary", ""),
+                "difficulty_level": test_summary.get("difficulty_level", "NORMAL"),
+                "limited_time": test_summary.get("limited_time", 90),
+                "pass_score": test_summary.get("pass_score", 70),
+                "retake": test_summary.get("retake", True),
+            },
+            "aggregated_info": {
+                "all_keywords": list(
+                    set([kw for doc in documents for kw in doc.get("keywords", [])])
+                ),
+                "all_summaries": [doc.get("summary", "") for doc in documents],
+                "all_topics": list(
+                    set(
+                        [
+                            topic
+                            for doc in documents
+                            for topic in doc.get("main_topics", [])
+                        ]
+                    )
+                ),
+            },
+        }
+
+        total_filename = f"total_test_plan_{timestamp}.json"
+        total_path = os.path.join(total_dir, total_filename)
+
+        with open(total_path, "w", encoding="utf-8") as f:
+            json.dump(total_test_plan, f, ensure_ascii=False, indent=2)
+
+        print(f"✅ 전체 테스트 계획 저장: {total_path}")
+
+    # 2. 문서별 테스트 plan 저장 (document_id, keywords, 추천 문제수)
+    if "test_summary" in result and "document_configs" in result["test_summary"]:
+        document_configs = result["test_summary"]["document_configs"]
+
+        # 문서별 테스트 계획 파일
+        document_test_plan = {
+            "metadata": {
+                "created_at": datetime.now().isoformat(),
+                "total_documents": len(document_configs),
+            },
+            "document_plans": [],
+        }
+
+        for config in document_configs:
+            # 원본 문서 정보 찾기
+            original_doc = next(
+                (
+                    doc
+                    for doc in documents
+                    if doc.get("document_id") == config.get("document_id")
+                ),
+                {},
+            )
+
+            doc_plan = {
+                "document_id": config.get("document_id"),
+                "document_name": original_doc.get(
+                    "document_name", f"문서_{config.get('document_id')}"
+                ),
+                "keywords": config.get("keywords", []),
+                "summary": original_doc.get("summary", ""),
+                "main_topics": original_doc.get("main_topics", []),
+                "recommended_questions": {
+                    "objective": config.get("recommended_objective", 5),
+                    "subjective": config.get("recommended_subjective", 3),
+                    "total": config.get("recommended_objective", 5)
+                    + config.get("recommended_subjective", 3),
+                },
+            }
+            document_test_plan["document_plans"].append(doc_plan)
+
+        document_filename = f"document_test_plan_{timestamp}.json"
+        document_path = os.path.join(document_dir, document_filename)
+
+        with open(document_path, "w", encoding="utf-8") as f:
+            json.dump(document_test_plan, f, ensure_ascii=False, indent=2)
+
+        print(f"✅ 문서별 테스트 계획 저장: {document_path}")
+
+
+# 기존 함수 호환성 유지
+def design_test_from_analysis(
+    keywords: List[str],
+    document_summary: str,
+    document_topics: List[str],
+    user_prompt: str,
+    difficulty: str = "NORMAL",
+    test_type: str = "mixed",
+    time_limit: int = 60,
+) -> Dict[str, Any]:
+    """기존 함수 호환성 유지 (단일 문서용)"""
+    documents = [
+        {
+            "document_id": 1,
+            "document_name": "단일 문서",
+            "keywords": keywords,
+            "summary": document_summary,
+            "main_topics": document_topics,
+        }
+    ]
+
+    return design_test_from_documents(
+        documents=documents,
+        user_prompt=user_prompt,
+        difficulty=difficulty,
+        test_type=test_type,
+        time_limit=time_limit,
+    )

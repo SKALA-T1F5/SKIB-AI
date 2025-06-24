@@ -9,7 +9,7 @@ class DocumentProcessingState(BasePipelineState, total=False):
 
     # ==================== 입력 데이터 (초기 설정) ====================
     document_path: str  # 문서 파일 경로
-    document_id: int  # 문서 ID
+    documentId: int  # 문서 ID
     project_id: int  # 프로젝트 ID
     filename: str  # 파일명
 

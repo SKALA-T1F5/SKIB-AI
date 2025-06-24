@@ -25,7 +25,7 @@ async def generate_test_plan(request: TestPlanRequest):
         for doc_summary in request.document_summaries:
             all_keywords.extend(doc_summary.keywords)
             all_summaries.append(
-                f"문서 {doc_summary.document_id}: {doc_summary.summary}"
+                f"문서 {doc_summary.documentId}: {doc_summary.summary}"
             )
 
         # 중복 키워드 제거
@@ -86,10 +86,10 @@ async def generate_test_plan(request: TestPlanRequest):
 
                 document_configs.append(
                     TestPlanByDocument(
-                        document_id=doc_summary.document_id,
+                        documentId=doc_summary.documentId,
                         keywords=doc_summary.keywords[:3],  # 상위 3개 키워드
-                        recommended_objective=obj_count,
-                        recommended_subjective=subj_count,
+                        recommendedObjective=obj_count,
+                        recommendedSubjective=subj_count,
                     )
                 )
 
@@ -97,12 +97,12 @@ async def generate_test_plan(request: TestPlanRequest):
         # TODO: 현재 state 맞게 출력되고 있는지 확인 X
         response = TestPlanResponse(
             name=test_title,
-            test_summary=test_summary,
-            difficulty_level=difficulty_level,
-            limited_time=test_config.get("time_limit", 60),
-            pass_score=test_config.get("pass_score", 70),
-            is_retake=test_config.get("retake_allowed", True),
-            document_configs=document_configs,
+            summary=test_summary,
+            difficultyLevel=difficulty_level,
+            limitedTime=test_config.get("time_limit", 60),
+            passScore=test_config.get("pass_score", 70),
+            isRetake=test_config.get("retake_allowed", True),
+            documentConfigs=document_configs,
         )
 
         return response

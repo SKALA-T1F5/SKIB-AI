@@ -1,29 +1,45 @@
 from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from api.document.schemas.document_summary import SummaryByDocumentResponse
 from api.question.schemas.question import DifficultyLevel
 
 
 class TestPlanRequest(BaseModel):
-    project_id: int
-    user_input: str
-    document_summaries: List[SummaryByDocumentResponse]
+    project_id: int = Field(..., alias="projectId", description="프로젝트 ID")
+    user_input: str = Field(..., alias="userInput", description="사용자 입력")
+    document_summaries: List[SummaryByDocumentResponse] = Field(
+        ..., alias="documentSummaries", description="문서 요약 목록"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 class TestPlanByDocument(BaseModel):
-    document_id: int
-    keywords: List[str]
-    recommended_objective: int
-    recommended_subjective: int
+    document_id: int = Field(..., description="문서 ID")
+    keywords: List[str] = Field(..., description="키워드 목록")
+    recommended_objective: int = Field(
+        ..., alias="recommendedObjective", description="추천 객관식 문항 수"
+    )
+    recommended_subjective: int = Field(
+        ..., alias="recommendedSubjective", description="추천 주관식 문항 수"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 class TestPlanResponse(BaseModel):
     name: str
-    test_summary: str
-    difficulty_level: DifficultyLevel
-    limited_time: int  # 분 단위
-    pass_score: int  # 통과 점수 (%)
-    is_retake: bool  # 재응시 여부
-    document_configs: List[TestPlanByDocument]
+    summary: str = Field(..., description="테스트 요약")
+    difficulty_level: DifficultyLevel = Field(
+        alias="difficultyLevel", description="난이도"
+    )
+    limited_time: int = Field(alias="limitedTime", description="제한 시간 (분)")
+    pass_score: int = Field(alias="passScore", description="통과 점수 (%)")
+    is_retake: bool = Field(alias="isRetake", description="재응시 여부")
+    document_configs: List[TestPlanByDocument] = Field(
+        alias="documentConfigs", description="문서별 질문 구성"
+    )
+
+    model_config = {"populate_by_name": True}  # v2 방식

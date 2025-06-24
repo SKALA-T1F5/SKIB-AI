@@ -11,7 +11,7 @@ class StatusEnum(str, Enum):
 
 
 class DocumentStatusResponse(BaseModel):
-    document_id: int
+    documentId: int
     status: StatusEnum
 
 

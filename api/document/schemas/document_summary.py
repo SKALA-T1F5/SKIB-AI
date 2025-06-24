@@ -18,19 +18,19 @@ class SummaryByDocumentResponse(BaseModel):
 
     summary: str
     keywords: List[str]  # main_topics + key_concepts 조합
-    document_id: int
+    documentId: int
 
 
 class DocumentSummaryRequest(BaseModel):
     """문서 요약 요청"""
 
-    document_id: int
+    documentId: int
 
 
 class DocumentSummaryResponse(BaseModel):
     """문서 요약 응답 (FastAPI 내부용 - 상세)"""
 
-    document_id: int
+    documentId: int
     content_analysis: DocumentContentAnalysisBase
 
 

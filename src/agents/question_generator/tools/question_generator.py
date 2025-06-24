@@ -10,17 +10,15 @@ import json
 import os
 from typing import Dict, List
 
+import google.generativeai as genai
 from dotenv import load_dotenv
-from openai import OpenAI
 
 from .prompt import get_vision_prompt
 
 # 환경 변수 로드
 load_dotenv(override=True)
-api_key = os.getenv("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=api_key)
-# google_api_key = os.getenv("GOOGLE_API_KEY")
-# genai.configure(api_key=google_api_key)
+gemini_api_key = os.getenv("GEMINI_API_KEY")
+genai.configure(api_key=gemini_api_key)
 
 
 def generate_question(
@@ -32,7 +30,7 @@ def generate_question(
     difficulty: str = "NORMAL",
 ) -> List[Dict]:
     """
-    GPT-4 Vision을 사용하여 질문을 생성하는 함수
+    Gemini 2.5 Pro를 사용하여 질문을 생성하는 함수
 
     Args:
         messages: Vision API 메시지 배열 (텍스트 및 이미지 포함)
@@ -51,27 +49,56 @@ def generate_question(
             source, page, difficulty, num_objective, num_subjective
         )
 
-        # 메시지 구성
-        api_messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": messages},
+        print(
+            f"  🤖 Gemini 2.5 Pro 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
+        )
+
+        # Gemini 2.5 Pro 모델 초기화 (안전 설정 완화)
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
 
-        print(
-            f"  🤖 GPT-4 Vision 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
+        model = genai.GenerativeModel("gemini-2.5-pro", safety_settings=safety_settings)
+
+        # Gemini용 메시지 구성
+        gemini_parts = [system_prompt]
+
+        for message in messages:
+            if message.get("type") == "text":
+                gemini_parts.append(message["text"])
+            elif message.get("type") == "image_url":
+                import io
+
+                from PIL import Image
+
+                image_url = message["image_url"]["url"]
+                if image_url.startswith("data:image"):
+                    base64_data = image_url.split(",")[1]
+                    image_data = base64.b64decode(base64_data)
+                    image = Image.open(io.BytesIO(image_data))
+                    gemini_parts.append(image)
+
+        # Gemini API 호출
+        response = model.generate_content(
+            gemini_parts,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                max_output_tokens=2000,
+            ),
         )
 
-        # GPT-4 Vision API 호출
-        response = openai_client.chat.completions.create(
-            model="gpt-4o",  # Vision 지원 모델
-            messages=api_messages,
-            temperature=0.7,
-            max_tokens=2000,
-            timeout=60,
-        )
-
-        raw_content = response.choices[0].message.content.strip()
-        print(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
+        # 안전한 응답 처리
+        if response.candidates and response.candidates[0].content.parts:
+            raw_content = response.text.strip()
+            print(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
+        else:
+            print(
+                f"  ⚠️ Gemini 응답이 차단됨 (finish_reason: {response.candidates[0].finish_reason if response.candidates else 'N/A'})"
+            )
+            return []
 
         # JSON 파싱
         try:
@@ -80,6 +107,28 @@ def generate_question(
                 raw_content = raw_content.split("```json")[1].split("```")[0].strip()
             elif "```" in raw_content:
                 raw_content = raw_content.split("```")[1].split("```")[0].strip()
+
+            # JSON이 잘린 경우 복구 시도
+            if not raw_content.strip().endswith("]"):
+                # 배열이 완료되지 않은 경우, 마지막 객체 제거
+                if raw_content.strip().endswith(","):
+                    raw_content = raw_content.strip()[:-1]
+
+                # 불완전한 마지막 객체 제거
+                bracket_count = 0
+                valid_end = -1
+                for i, char in enumerate(raw_content):
+                    if char == "{":
+                        bracket_count += 1
+                    elif char == "}":
+                        bracket_count -= 1
+                        if bracket_count == 0:
+                            valid_end = i
+
+                if valid_end > 0:
+                    raw_content = raw_content[: valid_end + 1] + "]"
+                else:
+                    raw_content += "]"
 
             questions = json.loads(raw_content)
 
@@ -93,7 +142,8 @@ def generate_question(
 
         except json.JSONDecodeError as e:
             print(f"  ❌ JSON 파싱 실패: {e}")
-            print(f"  원본 응답: {raw_content}")
+            print(f"  원본 응답 길이: {len(raw_content)} 문자")
+            print(f"  응답 마지막 100자: ...{raw_content[-100:]}")
             return []
 
     except Exception as e:
@@ -191,10 +241,10 @@ class QuestionGenerator:
         Returns:
             List[Dict]: 질문이 추가된 블록들
         """
-        print("🤖 GPT-4 Vision 질문 생성 중...")
+        print("🤖 Gemini 2.5 Pro 질문 생성 중...")
 
         try:
-            # 블록들을 청킹하여 GPT-4 Vision 메시지 생성
+            # 블록들을 청킹하여 Gemini 2.5 Pro 메시지 생성
             vision_chunks = self._blocks_to_vision_chunks(blocks)
 
             questions_generated = 0
@@ -247,7 +297,7 @@ class QuestionGenerator:
                     continue
 
                 try:
-                    # GPT-4 Vision으로 질문 생성 (키워드와 주제 활용)
+                    # Gemini 2.5 Pro로 질문 생성 (키워드와 주제 활용)
                     questions = generate_question(
                         messages=chunk["messages"],
                         source=chunk["metadata"].get("source", "unknown"),
@@ -281,7 +331,7 @@ class QuestionGenerator:
     def _blocks_to_vision_chunks(
         self, blocks: List[Dict], max_chunk_size: int = 15000
     ) -> List[Dict]:
-        """블록들을 GPT-4 Vision API용 청크로 변환"""
+        """블록들을 Gemini 2.5 Pro API용 청크로 변환"""
         chunks = []
         current_chunk = {
             "messages": [],
