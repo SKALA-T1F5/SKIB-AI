@@ -1,4 +1,4 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from src.agents.trainee_assistant.models import MessageType, SearchResult
 from src.agents.trainee_assistant.tools import VectorSearchTool, WebSearchTool
 from src.agents.trainee_assistant.memory_manager import ConversationMemoryManager
@@ -11,9 +11,22 @@ openai.api_key = settings.api_key
 class RAGProcessor:
     """RAG(Retrieval-Augmented Generation) 처리 클래스"""
     
-    def __init__(self, document_name: str, similarity_threshold: float = 0.7):
+    def __init__(
+        self,
+        document_name: Optional[str] = None,
+        similarity_threshold: float = 0.7,
+        vector_search_tool: Optional[VectorSearchTool] = None,
+        web_search_tool: Optional[WebSearchTool] = None,
+    ):
         self.similarity_threshold = similarity_threshold
-        self.vector_search_tool = VectorSearchTool(document_name=document_name)
+
+        if vector_search_tool:
+            self.vector_search_tool = vector_search_tool
+        elif document_name:
+            self.vector_search_tool = VectorSearchTool(document_name=document_name)
+        else:
+            raise ValueError("Either vector_search_tool or document_name must be provided.")
+
         self.web_search_tool = WebSearchTool(
             api_key=settings.google_api_key,
             cx=settings.google_cx_id

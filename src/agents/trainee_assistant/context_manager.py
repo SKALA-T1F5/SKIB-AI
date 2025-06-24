@@ -7,23 +7,20 @@ class QuestionContextManager:
     def __init__(self):
         self.current_question_context: Optional[QuestionContext] = None
 
-    def set_question_context(self, question_data: Dict[str, Any]):
-        """프론트엔드에서 받은 문제 정보를 설정"""
-        question = question_data.get("question", {})
-
+    def set_question_context(self, question: Dict[str, Any]):
         self.current_question_context = QuestionContext(
-            test_id=question_data.get("testId"),
-            question_id=question.get("_id", {}).get("$oid") if isinstance(question.get("_id"), dict) else question.get("_id"),
+            test_id=question.get("test_id"),
+            question_id=question.get("question_id"),
             question_type=QuestionType(question.get("question_type")),
-            difficulty_level=DifficultyLevel(question.get("difficultyLevel")),
-            question_text=question.get("question"),
-            options=question.get("options"),  # Optional[List[str]]
-            grading_criteria=question.get("gradingCriteria"),  # Optional[str]
-            correct_answer=question.get("answer"),
+            difficulty_level=DifficultyLevel(question.get("difficulty_level")),
+            question_text=question.get("question_text"),
+            correct_answer=question.get("correct_answer"),
             explanation=question.get("explanation"),
-            document_id=question.get("documentId"),
+            document_id=question.get("document_id"),
             document_name=question.get("document_name"),
-            tags=question.get("tags", [])
+            tags=question.get("tags", []),
+            options=question.get("options"),
+            grading_criteria=question.get("grading_criteria")
         )
 
     def get_system_prompt(self) -> str:
