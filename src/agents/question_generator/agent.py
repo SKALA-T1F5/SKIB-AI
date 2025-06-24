@@ -7,10 +7,14 @@
 
 import json
 import os
+import glob
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from .tools.question_generator import QuestionGenerator
+from .tools.test_plan_handler import TestPlanHandler
+from .tools.vector_search import VectorSearchHandler
+from .tools.result_saver import ResultSaver
 
 
 class QuestionGeneratorAgent:
@@ -27,390 +31,232 @@ class QuestionGeneratorAgent:
         else:
             self.image_save_dir = "data/images/unified"
         self.question_generator = QuestionGenerator(self.image_save_dir)
+        
+        # Tools 초기화
+        self.test_plan_handler = TestPlanHandler()
+        self.vector_search_handler = VectorSearchHandler()
+        self.result_saver = ResultSaver()
 
-    def generate_questions_from_blocks(
+
+
+
+
+
+    def generate_enhanced_questions_from_test_plans(
         self,
-        blocks: List[Dict],
-        num_objective: int = 3,
-        num_subjective: int = 3,
-        source_file: str = "document.pdf",
-        keywords: List[str] = None,
-        main_topics: List[str] = None,
-        summary: str = "",
-    ) -> Dict:
+        total_test_plan_path: str = None,
+        document_test_plan_path: str = None,
+        total_test_plan_data: Dict = None,
+        document_test_plan_data: Dict = None,
+        collection_name: str = None
+    ) -> Dict[str, Any]:
         """
-        블록들로부터 문제 생성
-
+        테스트 계획을 기반으로 향상된 문제 생성
+        
         Args:
-            blocks: 문서 블록들
-            num_objective: 객관식 문제 수
-            num_subjective: 주관식 문제 수
-            source_file: 원본 파일명
-            keywords: 키워드 목록
-            main_topics: 주요 주제 목록
-            summary: 문서 요약
-
+            total_test_plan_path: 전체 테스트 계획 파일 경로 (선택사항)
+            document_test_plan_path: 문서별 테스트 계획 파일 경로 (선택사항)
+            total_test_plan_data: 전체 테스트 계획 데이터 딕셔너리 (선택사항)
+            document_test_plan_data: 문서별 테스트 계획 데이터 딕셔너리 (선택사항)
+            collection_name: VectorDB 컶렉션명
+        
         Returns:
             Dict: 문제 생성 결과
         """
-        print("🤖 QuestionGeneratorAgent 시작")
-        print(f"🎯 목표: 객관식 {num_objective}개, 주관식 {num_subjective}개")
-
-        try:
-            # 1. 문제 생성
-            questions_blocks = self.question_generator.generate_questions_for_blocks(
-                blocks, num_objective, num_subjective
+        print("🚀 향상된 문제 생성기 시작")
+        
+        # 1. Test Plan 로드 (우선순위: 데이터 > 경로 > 자동 검색)
+        total_plan = None
+        document_plan = None
+        
+        if total_test_plan_data and document_test_plan_data:
+            # 직접 딕셔너리 데이터 사용
+            total_plan = total_test_plan_data
+            document_plan = document_test_plan_data
+            print("📋 Test Plan 데이터를 직접 딕셔너리로 받음")
+        elif total_test_plan_path and document_test_plan_path:
+            # 지정된 경로에서 로드
+            total_plan, document_plan = self.test_plan_handler.load_specific_test_plans(
+                total_test_plan_path, document_test_plan_path
             )
-
-            # 2. 생성된 문제 추출
-            all_questions = []
-            for block in questions_blocks:
-                if "questions" in block:
-                    all_questions.extend(block["questions"])
-
-            print(f"✅ 총 {len(all_questions)}개 문제 생성 완료")
-
-            # 3. 결과 저장
-            result = self._save_question_results(
-                questions=all_questions,
-                source_file=source_file,
-                keywords=keywords or [],
-                main_topics=main_topics or [],
-                summary=summary,
-            )
-
-            return result
-
-        except Exception as e:
-            print(f"❌ 문제 생성 실패: {e}")
-            return {
-                "status": "failed",
-                "error": str(e),
-                "questions": [],
-                "files_created": [],
-            }
-
-    def _save_question_results(
-        self,
-        questions: List[Dict],
-        source_file: str,
-        keywords: List[str],
-        main_topics: List[str],
-        summary: str,
-    ) -> Dict:
-        """문제 생성 결과 저장"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.splitext(os.path.basename(source_file))[0]
-        files_created = []
-
-        # 1. 생성된 문제 파일 저장
-        questions_dir = "data/outputs/generated_questions"
-        os.makedirs(questions_dir, exist_ok=True)
-
-        questions_data = {
-            "test_info": {
-                "source_file": source_file,
-                "collection_name": self.collection_name,
-                "generation_date": datetime.now().isoformat(),
-                "test_type": "auto_generated",
-            },
-            "question_summary": {
-                "total_questions": len(questions),
-                "objective_questions": len(
-                    [q for q in questions if q.get("type") == "OBJECTIVE"]
-                ),
-                "subjective_questions": len(
-                    [q for q in questions if q.get("type") == "SUBJECTIVE"]
-                ),
-                "difficulty_distribution": {
-                    "easy": len(
-                        [q for q in questions if q.get("difficulty_level") == "EASY"]
-                    ),
-                    "normal": len(
-                        [q for q in questions if q.get("difficulty_level") == "NORMAL"]
-                    ),
-                    "hard": len(
-                        [q for q in questions if q.get("difficulty_level") == "HARD"]
-                    ),
-                },
-            },
-            "questions": questions,
-            "source_keywords": keywords,
-            "source_topics": main_topics,
-        }
-
-        questions_file = f"{questions_dir}/{filename}_questions_{timestamp}.json"
-        with open(questions_file, "w", encoding="utf-8") as f:
-            json.dump(questions_data, f, ensure_ascii=False, indent=2)
-        print(f"💾 생성된 문제 저장: {questions_file}")
-        files_created.append(questions_file)
-
-        # 2. 테스트 요약 파일 생성
-        summary_file = self._save_test_summary(
-            questions, source_file, keywords, main_topics, summary, timestamp
-        )
-        if summary_file:
-            files_created.append(summary_file)
-
-        # 3. 테스트 config 파일 생성
-        config_file = self._save_test_config(questions, source_file, timestamp)
-        if config_file:
-            files_created.append(config_file)
-
-        return {
-            "status": "completed",
-            "questions": questions,
-            "total_questions": len(questions),
-            "objective_count": len(
-                [q for q in questions if q.get("type") == "OBJECTIVE"]
-            ),
-            "subjective_count": len(
-                [q for q in questions if q.get("type") == "SUBJECTIVE"]
-            ),
-            "files_created": files_created,
-            "collection_name": self.collection_name,
-        }
-
-    def _save_test_summary(
-        self,
-        questions: List[Dict],
-        source_file: str,
-        keywords: List[str],
-        main_topics: List[str],
-        summary: str,
-        timestamp: str,
-    ) -> str:
-        """테스트 요약 파일 저장"""
-        try:
-            filename = os.path.splitext(os.path.basename(source_file))[0]
-            summary_dir = "data/outputs/test_summaries"
-            os.makedirs(summary_dir, exist_ok=True)
-
-            objective_questions = [q for q in questions if q.get("type") == "OBJECTIVE"]
-            subjective_questions = [
-                q for q in questions if q.get("type") == "SUBJECTIVE"
-            ]
-
-            test_summary_data = {
-                "test_overview": {
-                    "title": f"{filename} - 자동 생성 테스트",
-                    "description": f"'{filename}' 문서를 기반으로 AI가 자동 생성한 평가 테스트입니다.",
-                    "source_document": source_file,
-                    "creation_date": datetime.now().isoformat(),
-                    "test_type": "종합 평가",
-                    "estimated_duration": f"{max(30, len(questions) * 2)}분",
-                },
-                "content_analysis": {
-                    "document_summary": (
-                        summary[:300] + "..." if len(summary) > 300 else summary
-                    ),
-                    "key_concepts": keywords[:10],
-                    "main_topics": main_topics[:5],
-                    "content_complexity": self._analyze_content_complexity(
-                        keywords, main_topics, questions
-                    ),
-                },
-                "test_structure": {
-                    "total_questions": len(questions),
-                    "question_breakdown": {
-                        "objective": {
-                            "count": len(objective_questions),
-                            "percentage": (
-                                round(
-                                    len(objective_questions) / len(questions) * 100, 1
-                                )
-                                if questions
-                                else 0
-                            ),
-                            "focus_areas": self._extract_question_topics(
-                                objective_questions
-                            ),
-                        },
-                        "subjective": {
-                            "count": len(subjective_questions),
-                            "percentage": (
-                                round(
-                                    len(subjective_questions) / len(questions) * 100, 1
-                                )
-                                if questions
-                                else 0
-                            ),
-                            "focus_areas": self._extract_question_topics(
-                                subjective_questions
-                            ),
-                        },
-                    },
-                    "difficulty_distribution": {
-                        "easy": len(
-                            [
-                                q
-                                for q in questions
-                                if q.get("difficulty_level") == "EASY"
-                            ]
-                        ),
-                        "normal": len(
-                            [
-                                q
-                                for q in questions
-                                if q.get("difficulty_level") == "NORMAL"
-                            ]
-                        ),
-                        "hard": len(
-                            [
-                                q
-                                for q in questions
-                                if q.get("difficulty_level") == "HARD"
-                            ]
-                        ),
-                    },
-                },
-                "assessment_guidelines": {
-                    "objective_scoring": "각 객관식 문항당 1점, 정답/오답으로 채점",
-                    "subjective_scoring": "문항별 배점에 따라 부분 점수 부여 가능",
-                    "total_points": len(objective_questions)
-                    + len(subjective_questions) * 5,
-                    "passing_criteria": "총점의 60% 이상 획득 시 합격",
-                },
-            }
-
-            summary_file = f"{summary_dir}/{filename}_test_summary_{timestamp}.json"
-            with open(summary_file, "w", encoding="utf-8") as f:
-                json.dump(test_summary_data, f, ensure_ascii=False, indent=2)
-            print(f"📋 테스트 요약 저장: {summary_file}")
-            return summary_file
-
-        except Exception as e:
-            print(f"⚠️ 테스트 요약 저장 실패: {e}")
-            return None
-
-    def _save_test_config(
-        self, questions: List[Dict], source_file: str, timestamp: str
-    ) -> str:
-        """테스트 설정 파일 저장"""
-        try:
-            filename = os.path.splitext(os.path.basename(source_file))[0]
-            config_dir = "data/outputs/test_configs"
-            os.makedirs(config_dir, exist_ok=True)
-
-            objective_questions = [q for q in questions if q.get("type") == "OBJECTIVE"]
-            subjective_questions = [
-                q for q in questions if q.get("type") == "SUBJECTIVE"
-            ]
-
-            test_config_data = {
-                "test_metadata": {
-                    "config_version": "1.0",
-                    "test_id": f"auto_test_{timestamp}",
-                    "source_document": source_file,
-                    "generation_system": "SKIB-AI Question Generator",
-                    "creation_timestamp": datetime.now().isoformat(),
-                },
-                "test_settings": {
-                    "time_limit": {
-                        "total_minutes": max(30, len(questions) * 2),
-                        "warning_at_minutes": max(25, len(questions) * 2 - 5),
-                        "automatic_submit": True,
-                    },
-                    "question_settings": {
-                        "randomize_order": False,
-                        "allow_review": True,
-                        "show_progress": True,
-                    },
-                },
-                "scoring_configuration": {
-                    "objective_questions": {
-                        "points_per_question": 1,
-                        "negative_marking": False,
-                    },
-                    "subjective_questions": {
-                        "points_per_question": 5,
-                        "allow_partial_credit": True,
-                        "manual_grading_required": True,
-                    },
-                    "total_points": len(objective_questions)
-                    + len(subjective_questions) * 5,
-                },
-            }
-
-            config_file = f"{config_dir}/{filename}_test_config_{timestamp}.json"
-            with open(config_file, "w", encoding="utf-8") as f:
-                json.dump(test_config_data, f, ensure_ascii=False, indent=2)
-            print(f"⚙️ 테스트 설정 저장: {config_file}")
-            return config_file
-
-        except Exception as e:
-            print(f"⚠️ 테스트 설정 저장 실패: {e}")
-            return None
-
-    def _analyze_content_complexity(
-        self, keywords: List[str], main_topics: List[str], questions: List[Dict]
-    ) -> str:
-        """콘텐츠 복잡도 분석"""
-        keywords_count = len(keywords)
-        topics_count = len(main_topics)
-        hard_questions = len(
-            [q for q in questions if q.get("difficulty_level") == "HARD"]
-        )
-
-        if keywords_count > 10 and topics_count > 5 and hard_questions > 2:
-            return "고급"
-        elif keywords_count > 5 and topics_count > 3:
-            return "중급"
+            if not total_plan or not document_plan:
+                return {"status": "failed", "error": "지정된 Test plan 파일 로드 실패"}
         else:
-            return "초급"
+            # 자동으로 최신 파일 찾기
+            total_plan, document_plan = self.test_plan_handler.load_latest_test_plans()
+            if not total_plan or not document_plan:
+                return {"status": "failed", "error": "Test plan 파일을 찾을 수 없습니다."}
+        
+        all_generated_questions = []
+        generation_summary = {
+            'total_documents': len(document_plan.get('document_plans', [])),
+            'documents_processed': [],
+            'total_questions_generated': 0,
+            'basic_questions': 0,
+            'extra_questions': 0
+        }
+        
+        # 2. 각 문서별로 문제 생성
+        for doc_plan in document_plan.get('document_plans', []):
+            document_name = doc_plan.get('document_name', 'Unknown')
+            keywords = doc_plan.get('keywords', [])
+            recommended = doc_plan.get('recommended_questions', {})
+            
+            print(f"\n📄 문서 처리: {document_name}")
+            print(f"🔑 키워드: {', '.join(keywords)}")
+            print(f"📊 추천 문제수: 객관식 {recommended.get('objective', 0)}개, 주관식 {recommended.get('subjective', 0)}개")
+            
+            # VectorDB에서 키워드 관련 콘텐츠 검색 (문서명을 자동으로 collection명으로 변환)
+            if document_name:
+                related_content = self.vector_search_handler.search_keywords_in_collection(keywords, document_name)
+            else:
+                # 문서명이 없는 경우 fallback 컬렉션들에서 검색
+                related_content = self.vector_search_handler.search_with_fallback_collections(
+                    keywords=keywords,
+                    primary_document_name=None
+                )
+            
+            doc_questions = []
+            
+            # 3. 기본 문제 생성 (추천 문제수)
+            basic_questions = self._generate_questions_with_context(
+                keywords=keywords,
+                related_content=related_content,
+                document_name=document_name,
+                num_objective=recommended.get('objective', 0),
+                num_subjective=recommended.get('subjective', 0),
+                question_type='basic'
+            )
+            doc_questions.extend(basic_questions)
+            
+            # 4. 여분 문제 생성 (키워드별 2문제씩)
+            extra_objective, extra_subjective = self.test_plan_handler.calculate_extra_questions(keywords)
+            
+            if extra_objective > 0 or extra_subjective > 0:
+                print(f"  🎯 여분 문제 생성: 객관식 {extra_objective}개, 주관식 {extra_subjective}개")
+                
+                extra_questions = self._generate_questions_with_context(
+                    keywords=keywords,
+                    related_content=related_content,
+                    document_name=document_name,
+                    num_objective=extra_objective,
+                    num_subjective=extra_subjective,
+                    question_type='advanced'
+                )
+                doc_questions.extend(extra_questions)
+            
+            # 결과 요약
+            basic_count = len(basic_questions)
+            extra_count = len(doc_questions) - basic_count
+            
+            generation_summary['documents_processed'].append({
+                'document_name': document_name,
+                'keywords': keywords,
+                'basic_questions': basic_count,
+                'extra_questions': extra_count,
+                'total_questions': len(doc_questions)
+            })
+            
+            generation_summary['basic_questions'] += basic_count
+            generation_summary['extra_questions'] += extra_count
+            
+            all_generated_questions.extend(doc_questions)
+            
+            print(f"  ✅ '{document_name}' 문제 생성 완료: 기본 {basic_count}개 + 여분 {extra_count}개 = 총 {len(doc_questions)}개")
+        
+        generation_summary['total_questions_generated'] = len(all_generated_questions)
+        
+        # 5. 결과 저장
+        result = self.result_saver.save_enhanced_questions(
+            questions=all_generated_questions,
+            summary=generation_summary,
+            total_plan=total_plan,
+            document_plan=document_plan
+        )
+        
+        return result
 
-    def _extract_question_topics(self, questions: List[Dict]) -> List[str]:
-        """문제에서 주요 주제 추출"""
-        topics = []
-        for q in questions[:3]:  # 상위 3개 문제만 분석
-            question_text = q.get("question", "")
-            # 간단한 키워드 추출
-            if "프로세스" in question_text:
-                topics.append("프로세스 관리")
-            if "업무" in question_text:
-                topics.append("업무 처리")
-            if "계약" in question_text:
-                topics.append("계약 관리")
-            if "등록" in question_text:
-                topics.append("등록 절차")
+    def _generate_questions_with_context(
+        self, 
+        keywords: List[str], 
+        related_content: List[Dict],
+        document_name: str,
+        num_objective: int,
+        num_subjective: int,
+        question_type: str = "basic"
+    ) -> List[Dict]:
+        """콘텍스트를 활용한 문제 생성 (기존 QuestionGenerator 활용)"""
+        if num_objective == 0 and num_subjective == 0:
+            return []
+        
+        try:
+            # 관련 콘텐츠를 블록 형태로 변환
+            context_blocks = self._convert_content_to_blocks(related_content, keywords)
+            
+            if not context_blocks:
+                print(f"  ⚠️ 콘텍스트 블록을 생성할 수 없습니다.")
+                return []
+            
+            # 기존 QuestionGenerator 활용
+            context_blocks = self.question_generator.generate_questions_for_blocks(
+                blocks=context_blocks,
+                num_objective=num_objective,
+                num_subjective=num_subjective
+            )
+            
+            # 생성된 문제 추출 및 메타데이터 추가
+            questions = []
+            for block in context_blocks:
+                if "questions" in block:
+                    for question in block["questions"]:
+                        # 메타데이터 추가
+                        question['generation_type'] = question_type
+                        question['document_source'] = document_name
+                        question['generated_at'] = datetime.now().isoformat()
+                        question['source_keywords'] = keywords
+                        questions.append(question)
+            
+            print(f"  ✅ {len(questions)}개 {question_type} 문제 생성 완료")
+            return questions
+            
+        except Exception as e:
+            print(f"  ❌ {question_type} 문제 생성 실패: {e}")
+            return []
 
-        return list(set(topics))[:3]  # 중복 제거 후 상위 3개 반환
+    def _convert_content_to_blocks(self, related_content: List[Dict], keywords: List[str]) -> List[Dict]:
+        """관련 콘텐츠를 블록 형태로 변환"""
+        return self.vector_search_handler.convert_content_to_blocks(related_content, keywords)
+
 
 
 # 편의 함수
-def generate_questions_from_document(
-    blocks: List[Dict],
-    collection_name: str = None,
-    num_objective: int = 3,
-    num_subjective: int = 3,
-    source_file: str = "document.pdf",
-    keywords: List[str] = None,
-    main_topics: List[str] = None,
-    summary: str = "",
-) -> Dict:
+def generate_enhanced_questions_from_test_plans(
+    total_test_plan_path: str = None,
+    document_test_plan_path: str = None,
+    total_test_plan_data: Dict = None,
+    document_test_plan_data: Dict = None,
+    collection_name: str = None
+) -> Dict[str, Any]:
     """
-    문서 블록들로부터 문제 생성 편의 함수
-
+    테스트 계획을 기반으로 향상된 문제 생성 편의 함수
+    
     Args:
-        blocks: 문서 블록들
-        collection_name: 컬렉션명
-        num_objective: 객관식 문제 수
-        num_subjective: 주관식 문제 수
-        source_file: 원본 파일명
-        keywords: 키워드 목록
-        main_topics: 주요 주제 목록
-        summary: 문서 요약
-
+        total_test_plan_path: 전체 테스트 계획 파일 경로 (선택사항)
+        document_test_plan_path: 문서별 테스트 계획 파일 경로 (선택사항)  
+        total_test_plan_data: 전체 테스트 계획 데이터 딕셔너리 (선택사항)
+        document_test_plan_data: 문서별 테스트 계획 데이터 딕셔너리 (선택사항)
+        collection_name: VectorDB 컬렉션명
+    
     Returns:
-        Dict: 문제 생성 결과
+        Dict: 향상된 문제 생성 결과
     """
-    agent = QuestionGeneratorAgent(collection_name)
-    return agent.generate_questions_from_blocks(
-        blocks,
-        num_objective,
-        num_subjective,
-        source_file,
-        keywords,
-        main_topics,
-        summary,
+    agent = QuestionGeneratorAgent()
+    return agent.generate_enhanced_questions_from_test_plans(
+        total_test_plan_path=total_test_plan_path,
+        document_test_plan_path=document_test_plan_path,
+        total_test_plan_data=total_test_plan_data,
+        document_test_plan_data=document_test_plan_data,
+        collection_name=collection_name
     )
+
+
