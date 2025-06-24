@@ -1,5 +1,5 @@
 # ai/api/feedback/schemas/feedback.py
-from typing import List, Optional
+from typing import List
 
 from pydantic import BaseModel, Field
 
@@ -26,19 +26,16 @@ class TrainerFeedbackItemDto(BaseModel):
 class FeedbackGenerationRequest(BaseModel):
     """피드백 생성 요청 스키마"""
 
-    test_id: str = Field(description="테스트 ID")
-    test_title: str = Field(description="테스트 제목")
-    questions: List[TrainerFeedbackItemDto] = Field(description="문제별 피드백 데이터")
-    overall_pass_rate: Optional[float] = Field(
-        None, description="전체 합격률", ge=0.0, le=100.0
+    # test_id: str = Field(description="테스트 ID")
+    # test_title: str = Field(description="테스트 제목")
+    test_summary: str = Field(
+        description="앞서 시험 생성 시에 정의한 시험 요약 및 목표"
     )
-    total_participants: Optional[int] = Field(None, description="총 응시자 수", ge=0)
+    questions: List[TrainerFeedbackItemDto] = Field(description="문제별 피드백 데이터")
 
     model_config = {
         "json_schema_extra": {
             "example": {
-                "test_id": "test_123",
-                "test_title": "프론트엔드 개발 역량 평가",
                 "questions": [
                     {
                         "questionId": "q1",
