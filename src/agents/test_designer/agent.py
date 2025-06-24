@@ -238,7 +238,7 @@ class TestDesignerAgent(BaseAgent):
             ]
 
             model = genai.GenerativeModel(
-                "gemini-2.5-pro", safety_settings=safety_settings
+                "gemini-2.5-flash", safety_settings=safety_settings
             )
 
             response = model.generate_content(
@@ -364,6 +364,37 @@ class TestDesignerAgent(BaseAgent):
 
         return config
 
+def _convert_document_name_to_collection(document_name: str) -> str:
+    """문서명을 VectorDB collection명으로 변환"""
+    try:
+        from utils.naming import filename_to_collection
+        # 문서명에서 .pdf 제거 후 collection명으로 변환
+        clean_name = document_name.replace('.pdf', '').replace('.PDF', '')
+        collection_name = filename_to_collection(clean_name)
+        
+        # 특정 패턴 보정 (실제 VectorDB collection명과 일치하도록)
+        if collection_name.startswith('c_2_ags'):
+            collection_name = collection_name.replace('c_2_ags', 'doc_2_ags')
+        elif collection_name.startswith('2_ags'):
+            collection_name = 'doc_' + collection_name
+        
+        return collection_name
+    except ImportError:
+        # utils.naming이 없으면 기본 변환 로직 사용
+        clean_name = document_name.replace('.pdf', '').replace('.PDF', '')
+        # 간단한 변환: 공백을 언더스코어로, 특수문자 제거
+        collection_name = clean_name.replace(' ', '_').replace('-', '_')
+        collection_name = ''.join(c.lower() if c.isalnum() or c == '_' else '_' for c in collection_name)
+        # 연속된 언더스코어 제거
+        while '__' in collection_name:
+            collection_name = collection_name.replace('__', '_')
+        
+        # 특정 패턴 보정
+        if collection_name.startswith('2_ags'):
+            collection_name = 'doc_' + collection_name
+            
+        return collection_name.strip('_')
+
 
 def design_test_from_documents(
     documents: List[Dict[str, Any]],
@@ -487,22 +518,21 @@ def _save_test_plans(result: Dict[str, Any], documents: List[Dict[str, Any]]):
             "document_plans": [],
         }
 
-        for config in document_configs:
-            # 원본 문서 정보 찾기
-            original_doc = next(
-                (
-                    doc
-                    for doc in documents
-                    if doc.get("document_id") == config.get("document_id")
-                ),
-                {},
-            )
+        for i, config in enumerate(document_configs):
+            # 원본 문서 정보 찾기 (인덱스 기반)
+            if i < len(documents):
+                original_doc = documents[i]
+            else:
+                original_doc = {}
 
+            # 원본 문서명을 collection명으로 변환
+            original_document_name = original_doc.get("document_name", f"문서_{config.get('document_id', i+1)}")
+            collection_name = _convert_document_name_to_collection(original_document_name)
+            
             doc_plan = {
                 "document_id": config.get("document_id"),
-                "document_name": original_doc.get(
-                    "document_name", f"문서_{config.get('document_id')}"
-                ),
+                "document_name": collection_name,  # collection명으로 저장
+                "original_document_name": original_document_name,  # 원본 문서명도 보존
                 "keywords": config.get("keywords", []),
                 "summary": original_doc.get("summary", ""),
                 "main_topics": original_doc.get("main_topics", []),

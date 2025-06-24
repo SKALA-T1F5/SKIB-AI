@@ -296,16 +296,26 @@ def upload_documents(
     blocks: List[Dict[str, Any]], collection_name: str, source_file: str = "document"
 ) -> int:
     """문서 블록 업로드 편의 함수"""
+    from .collection_utils import get_safe_collection_name
+    
+    # Collection 이름 정규화
+    normalized_collection_name = get_safe_collection_name(collection_name)
+    
     uploader = ChromaDBUploader()
-    return uploader.upload_document_blocks(blocks, collection_name, source_file)
+    return uploader.upload_document_blocks(blocks, normalized_collection_name, source_file)
 
 
 def upload_chunks(
     chunks: List[Dict[str, Any]], collection_name: str, batch_size: int = 50
 ) -> Dict[str, int]:
     """청크 배치 업로드 편의 함수"""
+    from .collection_utils import get_safe_collection_name
+    
+    # Collection 이름 정규화
+    normalized_collection_name = get_safe_collection_name(collection_name)
+    
     uploader = ChromaDBUploader()
-    return uploader.batch_upload(chunks, collection_name, batch_size)
+    return uploader.batch_upload(chunks, normalized_collection_name, batch_size)
 
 
 def batch_upload(

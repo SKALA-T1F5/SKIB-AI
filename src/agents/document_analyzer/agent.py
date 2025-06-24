@@ -30,7 +30,7 @@ class DocumentAnalyzerAgent:
         DocumentAnalyzer 초기화
 
         Args:
-            collection_name: ChromaDB 컬렉션명
+            collection_name: ChromaDB 컬렉션명 (None인 경우 문서명에서 자동 생성)
             auto_upload_chromadb: ChromaDB 자동 업로드 활성화 여부
         """
         self.collection_name = collection_name
@@ -38,9 +38,8 @@ class DocumentAnalyzerAgent:
 
         # 이미지 저장 디렉토리 설정
         if collection_name:
-            from utils.naming import filename_to_collection
-
-            normalized_name = filename_to_collection(collection_name)
+            from db.vectorDB.chromaDB.collection_utils import get_safe_collection_name
+            normalized_name = get_safe_collection_name(collection_name)
             self.image_save_dir = f"data/images/{normalized_name}"
         else:
             self.image_save_dir = "data/images/unified"
@@ -53,15 +52,21 @@ class DocumentAnalyzerAgent:
         """
         문서 종합 분석
 
-
         Args:
             pdf_path: PDF 파일 경로
             extract_keywords: 키워드 추출 여부
 
-
         Returns:
             DocumentAnalyzerState: 분석 결과
         """
+        # collection_name이 없는 경우 문서명에서 자동 생성
+        if not self.collection_name:
+            from db.vectorDB.chromaDB.collection_utils import get_safe_collection_name
+            import os
+            document_name = os.path.basename(pdf_path)
+            self.collection_name = get_safe_collection_name(document_name)
+            print(f"📋 Collection 이름 자동 생성: {self.collection_name}")
+        
         state = create_document_analyzer_state(pdf_path, self.collection_name)
 
         try:
@@ -217,6 +222,16 @@ class DocumentAnalyzerAgent:
         import json
         import os
         from datetime import datetime
+        
+        def convert_datetime_to_str(obj):
+            """datetime 객체를 문자열로 변환하는 헬퍼 함수"""
+            if isinstance(obj, datetime):
+                return obj.isoformat()
+            elif isinstance(obj, dict):
+                return {k: convert_datetime_to_str(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_datetime_to_str(item) for item in obj]
+            return obj
 
         filename = os.path.basename(pdf_path).replace(".pdf", "")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -273,7 +288,7 @@ class DocumentAnalyzerAgent:
                 "processing_date": datetime.now().isoformat(),
                 "analysis_type": "full_analysis",
             },
-            "analysis_result": state,
+            "analysis_result": convert_datetime_to_str(state),
             "pipeline_info": {
                 "pipeline_type": "document_analysis",
                 "pdf_path": pdf_path,

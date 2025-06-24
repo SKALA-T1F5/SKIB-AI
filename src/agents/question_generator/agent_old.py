@@ -37,6 +37,77 @@ class QuestionGeneratorAgent:
         self.vector_search_handler = VectorSearchHandler()
         self.result_saver = ResultSaver()
 
+    def generate_questions_from_blocks(
+        self,
+        blocks: List[Dict],
+        num_objective: int = 3,
+        num_subjective: int = 3,
+        source_file: str = "document.pdf",
+        keywords: List[str] = None,
+        main_topics: List[str] = None,
+        summary: str = "",
+    ) -> Dict:
+        """
+        블록들로부터 문제 생성
+
+        Args:
+            blocks: 문서 블록들
+            num_objective: 객관식 문제 수
+            num_subjective: 주관식 문제 수
+            source_file: 원본 파일명
+            keywords: 키워드 목록
+            main_topics: 주요 주제 목록
+            summary: 문서 요약
+
+        Returns:
+            Dict: 문제 생성 결과
+        """
+        print("🤖 QuestionGeneratorAgent 시작")
+        print(f"🎯 목표: 객관식 {num_objective}개, 주관식 {num_subjective}개")
+
+        try:
+            # 1. 문제 생성
+            questions_blocks = self.question_generator.generate_questions_for_blocks(
+                blocks, num_objective, num_subjective
+            )
+
+            # 2. 생성된 문제 추출
+            all_questions = []
+            for block in questions_blocks:
+                if "questions" in block:
+                    all_questions.extend(block["questions"])
+
+            print(f"✅ 총 {len(all_questions)}개 문제 생성 완료")
+
+            # 3. 결과 저장
+            files_created = self.result_saver.save_standard_question_results(
+                questions=all_questions,
+                source_file=source_file,
+                keywords=keywords or [],
+                main_topics=main_topics or [],
+                summary=summary,
+            )
+            
+            result = {
+                "status": "completed",
+                "questions": all_questions,
+                "total_questions": len(all_questions),
+                "objective_count": len([q for q in all_questions if q.get("type") == "OBJECTIVE"]),
+                "subjective_count": len([q for q in all_questions if q.get("type") == "SUBJECTIVE"]),
+                "files_created": files_created,
+                "collection_name": self.collection_name,
+            }
+
+            return result
+
+        except Exception as e:
+            print(f"❌ 문제 생성 실패: {e}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "questions": [],
+                "files_created": [],
+            }
 
 
 
@@ -260,3 +331,39 @@ def generate_enhanced_questions_from_test_plans(
     )
 
 
+def generate_questions_from_document(
+    blocks: List[Dict],
+    collection_name: str = None,
+    num_objective: int = 3,
+    num_subjective: int = 3,
+    source_file: str = "document.pdf",
+    keywords: List[str] = None,
+    main_topics: List[str] = None,
+    summary: str = "",
+) -> Dict:
+    """
+    문서 블록들로부터 문제 생성 편의 함수
+
+    Args:
+        blocks: 문서 블록들
+        collection_name: 컬렉션명
+        num_objective: 객관식 문제 수
+        num_subjective: 주관식 문제 수
+        source_file: 원본 파일명
+        keywords: 키워드 목록
+        main_topics: 주요 주제 목록
+        summary: 문서 요약
+
+    Returns:
+        Dict: 문제 생성 결과
+    """
+    agent = QuestionGeneratorAgent(collection_name)
+    return agent.generate_questions_from_blocks(
+        blocks,
+        num_objective,
+        num_subjective,
+        source_file,
+        keywords,
+        main_topics,
+        summary,
+    )
