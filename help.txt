@@ -1,6 +1,5 @@
 # conda 가상환경 생성
-conda create -n question-bank python=3.11
-conda activate question-bank
+conda activate skib
 
 # 텍스트 파일에 있는 모든 패키지 한 번에 설치
 pip install -r requirements.txt
