@@ -16,6 +16,10 @@ class Settings:
         # OpenAI API 키 (Kubernetes Secret 또는 .env)
         self.api_key = os.getenv("OPENAI_API_KEY")
 
+         # Google Search API 설정
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
+        self.google_cx_id = os.getenv("GOOGLE_CX_ID")
+
         # 경로 설정
         self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # config/
         self.ROOT_DIR = os.path.abspath(os.path.join(self.BASE_DIR, ".."))  # SKIB-AI/
