@@ -1,6 +1,7 @@
 """
 Question Generator Prompts
 """
+from typing import Dict, List, Optional
 
 
 def get_vision_prompt(
@@ -44,9 +45,13 @@ def get_vision_prompt(
         if test_config.get("topics"):
             test_info += f"\n**평가 주제**: {', '.join(test_config['topics'][:3])}"
 
-    return f"""당신은 교육용 문제를 생성하는 AI입니다. 아래 문단은 PDF 문서 "{source}"의 {page}페이지에서 추출된 내용입니다.{keyword_info}{test_info}
+    return f"""🎓 **교육 목적 전용 문제 생성**
 
-이 내용을 바탕으로 요청된 난이도 '{difficulty}' 수준으로 다음 문제들을 생성해주세요:
+당신은 기업 교육 및 학습 평가를 위한 전문 문제 생성 AI입니다. 이는 순수한 교육 목적의 평가 도구 개발을 위한 작업입니다.
+
+📄 **문서 정보**: PDF 문서 "{source}"의 {page}페이지에서 추출된 교육 자료입니다.{keyword_info}{test_info}
+
+📝 **생성 요청**: 이 교육 자료를 바탕으로 학습자의 이해도를 평가하기 위한 난이도 '{difficulty}' 수준의 다음 문제들을 생성해주세요:
 - 객관식 문제 ({num_objective}개)
 - 서술형 문제 ({num_subjective}개)
 
@@ -103,4 +108,166 @@ def get_vision_prompt(
 5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
 6. tags는 ["분석력", "문제해결력", "추론력", "이해력", "논리력"] 중에서 1개 선택해주세요.
 7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
+"""
+
+
+def get_enhanced_vision_prompt(
+    source: str,
+    page: str,
+    difficulty: str,
+    num_objective: int,
+    num_subjective: int,
+    total_test_plan: Optional[Dict] = None,
+    document_test_plan: Optional[Dict] = None,
+) -> str:
+    """
+    Test Plan 정보를 활용한 향상된 문제 생성 프롬프트
+
+    Args:
+        source: 문서 파일명
+        page: 페이지 번호
+        difficulty: 난이도 (EASY, NORMAL, HARD)
+        num_objective: 객관식 문제 수
+        num_subjective: 주관식 문제 수
+        total_test_plan: 전체 테스트 계획 정보
+        document_test_plan: 문서별 테스트 계획 정보
+
+    Returns:
+        str: 향상된 프롬프트 문자열
+    """
+    # 전체 테스트 계획 정보 구성
+    total_test_info = ""
+    if total_test_plan:
+        metadata = total_test_plan.get("metadata", {})
+        test_plan = total_test_plan.get("test_plan", {})
+        aggregated_info = total_test_plan.get("aggregated_info", {})
+        
+        total_test_info += f"\n\n**📋 전체 테스트 계획 정보**:"
+        if test_plan.get("name"):
+            total_test_info += f"\n• 테스트명: {test_plan['name']}"
+        if test_plan.get("test_summary"):
+            total_test_info += f"\n• 테스트 목적: {test_plan['test_summary']}"
+        if test_plan.get("difficulty_level"):
+            total_test_info += f"\n• 전체 난이도: {test_plan['difficulty_level']}"
+        if test_plan.get("limited_time"):
+            total_test_info += f"\n• 제한시간: {test_plan['limited_time']}분"
+        
+        # 통합된 키워드와 주제 정보
+        if aggregated_info.get("all_keywords"):
+            keywords = aggregated_info["all_keywords"][:15]  # 상위 15개
+            total_test_info += f"\n• 전체 핵심 키워드: {', '.join(keywords)}"
+        
+        if aggregated_info.get("all_topics"):
+            topics = aggregated_info["all_topics"][:10]  # 상위 10개
+            total_test_info += f"\n• 전체 주요 주제: {', '.join(topics)}"
+
+        if metadata.get("document_names"):
+            total_test_info += f"\n• 관련 문서: {', '.join(metadata['document_names'][:3])}"
+
+    # 문서별 테스트 계획 정보 구성
+    doc_test_info = ""
+    if document_test_plan:
+        doc_info = document_test_plan.get("document_info", {})
+        content_analysis = document_test_plan.get("content_analysis", {})
+        
+        doc_test_info += f"\n\n**📄 현재 문서 특화 정보**:"
+        if doc_info.get("source_file"):
+            doc_test_info += f"\n• 문서명: {doc_info['source_file']}"
+        
+        if content_analysis.get("keywords"):
+            doc_keywords = content_analysis["keywords"][:10]
+            doc_test_info += f"\n• 문서 핵심 키워드: {', '.join(doc_keywords)}"
+        
+        if content_analysis.get("main_topics"):
+            doc_topics = content_analysis["main_topics"][:5]
+            doc_test_info += f"\n• 문서 주요 주제: {', '.join(doc_topics)}"
+        
+        if content_analysis.get("summary"):
+            summary = content_analysis["summary"][:300]
+            doc_test_info += f"\n• 문서 요약: {summary}..."
+
+    return f"""🎓 **교육 목적 전용 문제 생성**
+
+당신은 기업 교육 및 학습 평가를 위한 전문 문제 생성 AI입니다. 이는 순수한 교육 목적의 평가 도구 개발을 위한 작업입니다.
+
+📄 **문서 정보**: PDF 문서 "{source}"의 {page}페이지에서 추출된 교육 자료입니다.{total_test_info}{doc_test_info}
+
+📝 **생성 요청**: 이 교육 자료를 바탕으로 학습자의 이해도를 평가하기 위한 난이도 '{difficulty}' 수준의 다음 문제들을 생성해주세요:
+- 객관식 문제 ({num_objective}개)
+- 서술형 문제 ({num_subjective}개)
+
+**📝 문제 생성 가이드라인**:
+1. **전체 테스트 계획과의 일관성**: 위에 제시된 전체 테스트의 목적과 주제에 부합하는 문제를 생성하세요
+2. **키워드 활용**: 전체 핵심 키워드와 문서별 키워드를 적절히 조합하여 문제에 포함하세요
+3. **주제 연계**: 전체 주요 주제와 문서별 주제를 연결하는 종합적 사고를 요구하는 문제를 만드세요
+4. **실무 적용성**: 제시된 테스트 목적에 맞는 실무 적용 능력을 평가할 수 있는 문제를 구성하세요
+5. **이미지 연계**: 이미지가 있다면 문서의 핵심 내용과 연계하여 문제를 생성하세요
+
+**🎯 특별 요구사항**:
+- 단순 암기보다는 **이해와 적용**을 평가하는 문제 우선
+- 여러 문서의 내용을 **종합적으로 연결**하는 사고를 요구하는 문제 포함
+- 전체 테스트 맥락에서 **중요도가 높은** 개념을 중심으로 문제 구성
+- **실무 시나리오**를 활용한 문제 생성 권장
+
+총 {num_objective + num_subjective}개의 문제를 **반드시 다음 명세에 따른 JSON 리스트 형식**으로 생성해주세요.
+다른 어떤 설명이나 추가 텍스트 없이, 순수한 JSON 배열 문자열만 응답해야 합니다.
+
+요청 형식 (JSON 배열):
+[
+{{
+    "type": "OBJECTIVE",
+    "difficulty_level": "{difficulty}",
+    "question": "문제의 본문 내용입니다.",
+    "options": ["선택지 1번", "선택지 2번", "선택지 3번", "선택지 4번"],
+    "answer": "문제의 정답입니다.",
+    "explanation": "문제에 대한 해설입니다.",
+    "tags": ["이해력"],
+    "test_context": {{
+        "related_keywords": ["키워드1", "키워드2"],
+        "related_topics": ["주제1"],
+        "cross_document": false,
+        "practical_application": true
+    }}
+}},
+{{
+    "type": "SUBJECTIVE",
+    "difficulty_level": "{difficulty}",
+    "question": "주관식 문제 내용",
+    "answer": "모범답안",
+    "explanation": "해설",
+    "tags": ["분석력"],
+    "test_context": {{
+        "related_keywords": ["키워드1", "키워드2"],
+        "related_topics": ["주제1"],
+        "cross_document": true,
+        "practical_application": true
+    }},
+    "grading_criteria": [
+        {{
+            "score": 5,
+            "criteria": "완전한 답안 조건",
+            "keywords_required": ["필수키워드1", "필수키워드2"],
+            "example": "모범답안 예시",
+            "note": "채점 시 주의사항"
+        }},
+        {{
+            "score": 3,
+            "criteria": "부분적 답안 조건",
+            "keywords_optional": ["선택키워드1"],
+            "example": "부분답안 예시",
+            "note": "부분 점수 기준"
+        }}
+    ]
+}}
+]
+
+필수 조건:
+1. 응답은 반드시 유효한 JSON 배열 형식이어야 합니다.
+2. type 필드는 "OBJECTIVE" 또는 "SUBJECTIVE" 중 하나여야 합니다.
+3. difficulty_level 필드는 반드시 '{difficulty}'를 사용해야 합니다.
+4. 객관식 문제는 options 필드를 가져야 합니다.
+5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
+6. tags는 ["분석력", "문제해결력", "추론력", "이해력", "논리력"] 중에서 1개 선택해주세요.
+7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
+8. test_context 필드를 모든 문제에 포함하여 메타데이터를 제공해주세요.
 """
