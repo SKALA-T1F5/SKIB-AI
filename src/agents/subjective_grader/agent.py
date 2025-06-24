@@ -4,6 +4,8 @@ import os
 from typing import List
 
 from dotenv import load_dotenv
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
 
 from api.grading.schemas.subjective_grading import GradingCriterion
@@ -12,12 +14,20 @@ from src.agents.subjective_grader.prompt import SYSTEM_PROMPT, build_user_prompt
 # openai 로드
 load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY")
-openai_client = AsyncOpenAI(api_key=api_key)
+openai_client = wrap_openai(AsyncOpenAI(api_key=api_key))
 AGENT_MODEL = os.getenv(
     "AGENT_SUBJECTIVE_GRADER_MODEL"
 )  # .env에 모델명 저장 (AGENT_SUBJECTIVE_GRADER_MODEL=gpt-4)✅
 
+if AGENT_MODEL is None:
+    raise ValueError("AGENT_SUBJECTIVE_GRADER_MODEL environment variable is not set.")
 
+
+@traceable(
+    run_type="chain",
+    name="Subjective Grader",
+    metadata={"agent_type": "subjective_grader", "model": AGENT_MODEL},
+)
 async def subjective_grader(
     user_answer: str, grading_criteria: List[GradingCriterion]
 ) -> float:
@@ -52,10 +62,7 @@ async def subjective_grader(
         result = json.loads(content)
 
         # 토큰 사용량 (차후 주석처리 ✅ )
-        usage = response.usage
-        print("🟨 사용 토큰:", usage.total_tokens)
-        print("└─ prompt_tokens:", usage.prompt_tokens)
-        print("└─ completion_tokens:", usage.completion_tokens)
+        response.usage
 
         return float(result["score"])
 
