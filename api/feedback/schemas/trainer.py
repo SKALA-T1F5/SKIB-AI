@@ -1,5 +1,5 @@
 # ai/api/feedback/schemas/feedback.py
-from typing import List
+from typing import List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -36,6 +36,7 @@ class FeedbackGenerationRequest(BaseModel):
     model_config = {
         "json_schema_extra": {
             "example": {
+                "test_summary": "프론트엔드 개발 환경 구축 및 DevOps 파이프라인 이해도를 평가합니다.",
                 "questions": [
                     {
                         "questionId": "q1",
@@ -50,56 +51,73 @@ class FeedbackGenerationRequest(BaseModel):
                         "correctRate": 85.5,
                     }
                 ],
-                "overall_pass_rate": 72.5,
-                "total_participants": 20,
             }
         }
     }
 
 
 class DocumentPerformance(BaseModel):
-    """문서별 성과 분석"""
+    document_name: str = Field(description="문서 이름", alias="documentName")
+    average_correct_rate: float = Field(
+        description="평균 정답률", alias="averageCorrectRate"
+    )
+    comment: str = Field(description="해당 문서에 대한 평가")
 
-    document_name: str = Field(description="문서명")
-    average_correct_rate: float = Field(description="평균 정답률", ge=0.0, le=100.0)
-    comment: str = Field(description="문서별 코멘트")
+    model_config = {"populate_by_name": True}  # v2 방식
+
+
+class Insight(BaseModel):
+    type: Literal["strength", "weakness"] = Field(
+        description="인사이트 유형 (강점 또는 약점)"
+    )
+    text: str = Field(description="인사이트 설명")
 
 
 class FeedbackGenerationResponse(BaseModel):
     """피드백 생성 응답 스키마"""
 
-    exam_goal: str = Field(description="시험 목표")
+    exam_goal: str = Field(description="시험 목표", alias="examGoal")
     performance_by_document: List[DocumentPerformance] = Field(
-        description="문서별 성과 분석"
+        description="문서별 성과 분석", alias="performanceByDocument"
     )
-    strengths: List[str] = Field(description="강점 분석")
-    weaknesses: List[str] = Field(description="약점 분석")
-    improvement_points: str = Field(description="개선점")
-    suggested_topics: List[str] = Field(description="추천 학습 주제")
-    overall_evaluation: str = Field(description="종합 평가")
+    insights: List[Insight] = Field(description="강점 및 약점 인사이트")
+    improvement_points: str = Field(description="개선점", alias="improvementPoints")
+    suggested_topics: List[str] = Field(
+        description="추천 학습 주제", alias="suggestedTopics"
+    )
+    overall_evaluation: str = Field(description="종합 평가", alias="overallEvaluation")
+    project_readiness: str = Field(
+        description="프로젝트 투입 준비도", alias="projectReadiness"
+    )
 
     model_config = {
+        "populate_by_name": True,
         "json_schema_extra": {
             "example": {
-                "exam_goal": "효율적인 프론트엔드 개발 환경 구축 역량을 확인합니다.",
-                "performance_by_document": [
+                "examGoal": "효율적인 프론트엔드 개발 환경 구축 역량 확인",
+                "performanceByDocument": [
                     {
-                        "document_name": "개발 Process 흐름도_sample",
-                        "average_correct_rate": 79.42,
-                        "comment": "DevOps 전반에 대한 이해 수준이 높으며 안정적인 흐름 파악",
+                        "documentName": "Aiper Front 개발환경 가이드",
+                        "averageCorrectRate": 93.9,
+                        "comment": "개발 환경 구축 및 최적화 기법에 대한 이해도가 매우 높으며, 실무 적용 능력이 뛰어납니다.",
                     }
                 ],
-                "strengths": [
-                    "#CI/CD와 #배포 관련 문항에서 높은 정답률을 기록하며 DevOps 파이프라인의 핵심 개념을 잘 이해하고 있음"
+                "insights": [
+                    {
+                        "type": "strength",
+                        "text": "'#프론트엔드개발환경' 구축 및 최적화 전략 전반에 대한 높은 이해도",
+                    },
+                    {
+                        "type": "weakness",
+                        "text": "개발 환경 구축 시 자주 발생하는 '#문제해결' 경험은 있으나, 구체적인 사례 기반 학습은 보완 가능",
+                    },
                 ],
-                "weaknesses": [
-                    "#빌드도구(Webpack), #환경변수(.env), #패키지관리(npm)와 같은 기초 개발환경에 대한 이해 부족이 드러남"
+                "improvementPoints": "실제 개발 환경에서 발생할 수 있는 다양한 장애 상황에 대한 대처 능력 향상을 위해 구체적인 문제 해결 사례를 학습하고 공유하는 것이 좋습니다.",
+                "suggestedTopics": [
+                    "다양한 프론트엔드 빌드 도구(Webpack, Vite 등) 비교 및 설정 실습"
                 ],
-                "improvement_points": "기초 개발환경인 빌드 도구, 환경 변수, 패키지 관리 개념을 명확히 정리하고 실습 중심으로 학습을 강화하며, 주관식 문항에서는 핵심 용어를 포함한 구체적 설명력을 높이는 연습이 필요합니다.",
-                "suggested_topics": [
-                    "패키지 보안 취약점 탐지 도구인 npm audit의 사용법과 보안 문제 해결 방법에 대한 문제를 추가 생성하기."
-                ],
-                "overall_evaluation": "본 시험은 응시자의 전반적인 프론트엔드 실무 역량을 파악하는 데 유의미한 결과를 제공하였습니다...",
+                "overallEvaluation": "프론트엔드 개발 환경 구축 및 최적화에 대한 이해도가 매우 높아 프로젝트 수행에 즉시 투입 가능합니다.",
+                "projectReadiness": "Excellent",
             }
-        }
+        },
     }
