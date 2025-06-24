@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 
 from ..base.agent import BaseAgent
-from ..base.state import BaseState, TestDesignerState
+from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
 
@@ -42,7 +42,7 @@ class TestDesignerAgent(BaseAgent):
         )
 
     async def plan(
-        self, input_data: Dict[str, Any], state: BaseState
+        self, input_data: Dict[str, Any], state: TestDesignerState
     ) -> Dict[str, Any]:
         """테스트 설계 계획 수립"""
         return {
@@ -56,33 +56,59 @@ class TestDesignerAgent(BaseAgent):
             "input_data": input_data,
         }
 
-    async def act(self, plan: Dict[str, Any], state: BaseState) -> Dict[str, Any]:
-        """테스트 설계 실행"""
+    async def act(
+        self, plan: Dict[str, Any], state: TestDesignerState
+    ) -> Dict[str, Any]:
+        """
+        테스트 설계 실행 - 간소화된 State 업데이트
+
+        최종 목표: { "requirements": requirements, "test_summary": test_summary, "test_config": test_config, "status": "completed" }
+        """
         input_data = plan["input_data"]
+
+        # state를 TestDesignerState로 캐스팅
+        designer_state = state
 
         # 1. 요구사항 분석
         self.update_progress(0.2, "요구사항 분석 중...")
         requirements = await self._analyze_requirements(input_data)
 
+        # State 업데이트
+        designer_state["test_requirements"] = requirements
+
         # 2. 테스트 요약 생성
         self.update_progress(0.5, "테스트 요약 생성 중...")
         test_summary = await self._generate_test_summary(requirements, input_data)
+
+        # State 업데이트
+        designer_state["test_summary"] = test_summary
 
         # 3. 테스트 config 생성
         self.update_progress(0.8, "테스트 설정 생성 중...")
         test_config = await self._create_test_config(test_summary, requirements)
 
-        return {
+        # State 업데이트
+        designer_state["test_config"] = test_config
+
+        # 최종 결과 반환 (기존 구조 유지)
+        result = {
             "requirements": requirements,
             "test_summary": test_summary,
             "test_config": test_config,
             "status": "completed",
         }
 
+        return result
+
     async def reflect(
-        self, result: Dict[str, Any], state: BaseState
+        self, result: Dict[str, Any], state: TestDesignerState
     ) -> tuple[bool, str]:
-        """결과 검증"""
+        """
+        결과 검증 - State 정보와 결과의 일관성 확인
+        """
+        designer_state = state
+
+        # 기존 검증 로직 유지
         required_fields = ["requirements", "test_summary", "test_config"]
         for field in required_fields:
             if field not in result:
@@ -95,10 +121,21 @@ class TestDesignerAgent(BaseAgent):
             or config.get("question_config", {}).get("total_questions", 0)
             or config.get("total_questions", 0)
         )
-        if num_questions > 0:
-            return True, "테스트 설계가 성공적으로 완료되었습니다."
-        else:
+
+        if num_questions <= 0:
             return False, "문제 수가 설정되지 않았습니다."
+
+        # State와 결과의 일관성 검증 (간단하게)
+        if designer_state.get("test_requirements") != result.get("requirements"):
+            return False, "State의 requirements와 결과가 일치하지 않습니다."
+
+        if designer_state.get("test_summary") != result.get("test_summary"):
+            return False, "State의 test_summary와 결과가 일치하지 않습니다."
+
+        if designer_state.get("test_config") != result.get("test_config"):
+            return False, "State의 test_config와 결과가 일치하지 않습니다."
+
+        return True, "테스트 설계가 성공적으로 완료되었습니다."
 
     async def _analyze_requirements(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """요구사항 분석"""
