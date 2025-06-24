@@ -1,19 +1,51 @@
-from typing import List
+from typing import (
+    List,
+)
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from api.question.schemas.question import DifficultyLevel, QuestionsByDocumentConfig
+from api.question.schemas.question import DifficultyLevel, QuestionResponse
 
 
-class FinalTestConfig(BaseModel):
-    name: str
-    difficulty_level: DifficultyLevel
-    limited_time: int
-    pass_score: int
-    retake: bool
-    document_configs: List[QuestionsByDocumentConfig]  # 사용자가 수정했을 수 있음
+class TestDocumentConfig(BaseModel):
+    document_id: int = Field(..., alias="documentId", description="문서 ID")
+    configured_objective_count: int = Field(
+        ..., alias="configuredObjectiveCount", description="객관식 문항 수"
+    )
+    configured_subjective_count: int = Field(
+        ..., alias="configuredSubjectiveCount", description="주관식 문항 수"
+    )
+
+    model_config = {"populate_by_name": True}
 
 
 class TestGenerationRequest(BaseModel):
-    final_test_config: FinalTestConfig  # 사용자 수정된 최종 설정
-    project_id: int
+    project_id: int = Field(..., alias="projectId", description="프로젝트 ID")
+    name: str = Field(..., description="테스트 이름")
+    summary: str = Field(..., description="테스트 요약")
+    difficulty_level: DifficultyLevel = Field(
+        ..., alias="difficultyLevel", description="난이도"
+    )
+    limited_time: int = Field(..., alias="limitedTime", description="제한 시간(분)")
+    pass_score: int = Field(..., alias="passScore", description="통과 점수(%)")
+    is_retake: bool = Field(..., alias="isRetake", description="재응시 여부")
+    document_configs: List[TestDocumentConfig] = Field(
+        ..., alias="documentConfigs", description="문서별 설정"
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class TestGenerationResponse(BaseModel):
+    """테스트 생성 응답 (문제 목록만 반환)"""
+
+    questions: List[QuestionResponse] = Field(..., description="생성된 문제 목록")
+    total_questions: int = Field(..., alias="totalQuestions", description="총 문제 수")
+    objective_count: int = Field(
+        ..., alias="objectiveCount", description="객관식 문항 수"
+    )
+    subjective_count: int = Field(
+        ..., alias="subjectiveCount", description="주관식 문항 수"
+    )
+
+    model_config = {"populate_by_name": True}
