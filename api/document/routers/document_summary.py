@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/summary/{documentId}", response_model=SummaryByDocumentResponse)
-async def build_summary_response(documentId: int):
+async def get_document_summary(documentId: int):
     """
     상태 기반으로 SummaryByDocumentResponse 객체 생성
     """
@@ -47,27 +47,10 @@ async def build_summary_response(documentId: int):
 
         raise HTTPException(status_code=404, detail="Document not found")
     except Exception as e:
-        logger.error(
-            f"Error in build_summary_response for document {documentId}: {str(e)}"
+        logger.error(f"Summary retrieval failed for document {documentId}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Summary retrieval failed: {str(e)}"
         )
-        raise HTTPException(status_code=500, detail="Internal server error")
-
-
-# TODO: Check the difference between this and the above function
-# @router.get("/summary/{documentId}", response_model=SummaryByDocumentResponse)
-# async def get_document_summary(documentId: int):
-#     """
-#     상태 기반으로 요약 정보 조회 (API용)
-#     """
-#     try:
-#         return build_summary_response(documentId)
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Summary retrieval failed for document {documentId}: {str(e)}")
-#         raise HTTPException(
-#             status_code=500, detail=f"Summary retrieval failed: {str(e)}"
-#         )
 
 
 async def process_document_background(
