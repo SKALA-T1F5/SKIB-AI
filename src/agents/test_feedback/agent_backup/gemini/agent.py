@@ -44,8 +44,8 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
         )
         content = response.text.strip()
         if content.startswith("```"):
-            content = re.sub(r"^```(?:json)?\s*", "", content)  
-            content = re.sub(r"\s*```$", "", content)           
+            content = re.sub(r"^```(?:json)?\s*", "", content)  # 앞쪽 제거
+            content = re.sub(r"\s*```$", "", content)           # 뒤쪽 제거
 
         result = json.loads(content)
 
