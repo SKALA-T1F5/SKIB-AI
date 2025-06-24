@@ -86,7 +86,7 @@ async def generate_test_plan(request: TestPlanRequest):
 
                 document_configs.append(
                     TestPlanByDocument(
-                        documentId=doc_summary.documentId,
+                        document_id=doc_summary.documentId,
                         keywords=doc_summary.keywords[:3],  # 상위 3개 키워드
                         recommendedObjective=obj_count,
                         recommendedSubjective=subj_count,
