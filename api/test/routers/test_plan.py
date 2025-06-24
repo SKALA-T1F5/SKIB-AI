@@ -52,7 +52,7 @@ async def generate_test_plan(request: TestPlanRequest):
         # Agent 결과에서 필요한 정보 추출
         test_config = result.get("test_config", {})
         test_summary = result.get("test_summary", {})
-        test_title = test_summary.get("test_title", "")
+        test_title = test_summary.get("name", "")
         test_summary = test_summary.get("test_summary", "")
 
         # 난이도 매핑
