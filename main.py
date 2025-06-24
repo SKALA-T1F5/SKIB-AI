@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from api.document.routers.document_summary import router as document_summary_router
 from api.document.routers.document_upload import router as document_router
+from api.feedback.routers.trainer import router as document_grading_router
 from api.grading.routers.subjective_grading import router as grading_router
 
 # from api.question.routers.question import router as question_router
@@ -21,3 +22,4 @@ app.include_router(grading_router)
 app.include_router(document_router)
 app.include_router(document_summary_router)
 app.include_router(test_plan_router)
+app.include_router(document_grading_router)
