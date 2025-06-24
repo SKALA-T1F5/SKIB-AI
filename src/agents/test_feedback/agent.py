@@ -156,7 +156,9 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
         # print("└─ prompt_tokens:", usage.prompt_tokens)
         # print("└─ completion_tokens:", usage.completion_tokens)
         
+        print(result)
         return result
+
 
     except Exception as e:
         raise RuntimeError(f"시험 피드백 생성 오류: {str(e)}")
