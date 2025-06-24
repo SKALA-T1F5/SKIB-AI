@@ -1,5 +1,5 @@
 # agents/test_feedback/prompt.py
-# v16: gemini용 prompt 추가 (v14 기반)
+# v18: user_prompt projectReadiness 추가
 
 from typing import List, Dict, Any
 import json
@@ -15,13 +15,14 @@ SYSTEM_PROMPT = """
 시험 결과를 분석하여 아래 항목을 JSON 형식으로 작성하세요:
 1. examGoal: 시험 목표를 40자 이내로 요약
 2. performanceByDocument: 각 문서별 평균 정답률과 실무 관점 코멘트
-3. insights: 반드시 총 4개 (강점/약점 비율은 조정 가능, 단 최소 1개씩은 포함해야 함)
-   - 문항의 questionText와 '#keyword'를 참고해 개념 관점에서 text 작성
-   - 예: "'#지식베이스'와 검색 '#알고리즘'의 역할 구분이 불명확함"
-4. improvementPoints: 실무 중심의 구체적인 개선 방안
+3. insights: 총 4개, [예상 결과]를 기준으로 비율 조정
+  - [예상 결과] 'Excellent' : strength 3개 + weakness 1개 / 'Pass' : strength 2개 + weakness 2개 / 'Fail' : strength 1개 + weakness 3개
+  - 문항의 questionText와 '#keyword'를 참고해 개념 관점에서 text 작성
+  - 예: "'#지식베이스'와 검색 '#알고리즘'의 역할 구분이 불명확함"
+4. improvementPoints: 실무 중심의 구체적인 개선 방안 1문장으로 작성
 5. suggestedTopics: 실습 또는 구성요소 수준의 주제 3개 (예: "법령 적용 사례 비교 학습" 등)
 6. overallEvaluation: ProjectReadiness를 종합적으로 평가하여 작성합니다.
-7. insights 이외에는 '#keyword' 형식을 사용하지 않습니다. insights 는 강점/약점 최소 1개씩은 포함하였는지 검토하세요.
+7. insights 이외에는 '#keyword' 형식을 사용하지 않습니다. 평균 averageCorrectRate 값을 기준으로 비율 조정되었는지 검토합니다.
 
 [Output Format]
 {
@@ -108,7 +109,7 @@ SYSTEM_PROMPT = """
 
 # 2. 사용자 프롬프트 생성 함수
 # 시험목표와 선택된 문항별응시결과, 문서별 집계정보를 받아 AI가 이해할 수 있는 프롬프트 문자열을 생성
-def build_user_prompt(exam_goal: str, selected_questions: List[Dict[str, Any]], performance_by_document: List[Dict[str, Any]]) -> str:
+def build_user_prompt(exam_goal: str, selected_questions: List[Dict[str, Any]], performance_by_document: List[Dict[str, Any]], project_readiness_result: str) -> str:
     # 문항별 결과를 문자열로 변환
     questions_text = ""
     for result in selected_questions:
@@ -126,7 +127,10 @@ def build_user_prompt(exam_goal: str, selected_questions: List[Dict[str, Any]], 
         [문항별 결과 (상하위 5개씩)]
         {questions_text}
         
-        위 정보를 기반으로 학습자의 강점/약점, 개선점, 프로젝트 참여 적정성을 포함한 피드백을 다음 JSON 형식으로 제공하세요.
+        [예상 결과]
+        {project_readiness_result}
+        
+        위 정보를 바탕으로 시험 결과를 분석하고 JSON 형식으로 피드백을 제공하세요.
         """
     
     return prompt

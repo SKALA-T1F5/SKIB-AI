@@ -39,6 +39,7 @@ async def run_test():
     print(f"\n4️⃣ 인사이트 분석:")
     strengths = [ins['text'] for ins in result.get('insights', []) if ins.get('type') == 'strength']
     weaknesses = [ins['text'] for ins in result.get('insights', []) if ins.get('type') == 'weakness']
+
     print(f"\n└─ 강점:")
     for strength in strengths:
         print(f"  • {strength}")

@@ -3,7 +3,6 @@ import os
 import openai
 from google import genai
 import json
-from collections import defaultdict
 import re
 
 from openai import AsyncOpenAI
@@ -13,6 +12,8 @@ from utils.parse_json_response import parse_json_response
 
 from dotenv import load_dotenv
 from src.agents.test_feedback.prompt import SYSTEM_PROMPT, build_user_prompt
+from src.agents.test_feedback.tools.document_performance import calc_performance_by_document
+from src.agents.test_feedback.tools.question_selector import select_top_bottom_questions
 
 
 #openai 로드
@@ -28,58 +29,16 @@ gemini_client = genai.Client(api_key=gemini_api_key)
 GEMINI_MODEL = os.getenv("GEMINI_AGENT_TEST_FEEDBACK_MODEL") #.env에 모델명 저장 (GEMINI_AGENT_TEST_FEEDBACK_MODEL=gemini-2.5-flash)✅
 
 
-def calc_performance_by_document(question_results: List[Dict[str, Any]]):
-    doc_map = defaultdict(list)
-    for q in question_results:
-        doc_map[q['documentName']].append(q)
-    performance = []
-    for doc, questions in doc_map.items():
-        avg = sum(q['correctRate'] for q in questions) / len(questions)
-        keywords = list({q['keyword'] for q in questions if 'keyword' in q})
-        performance.append({
-            "documentName": doc,
-            "averageCorrectRate": round(avg, 2),
-            "countQuestions": len(questions),  # 문서별 총 문제 개수 추가
-            "keywords": keywords
-        })
-    return performance
-
-def select_top_bottom_questions(question_results: List[Dict[str, Any]], top_count: int = 5, bottom_count: int = 5) -> List[Dict[str, Any]]:
-    """
-    전체 문제 중 정답률 기준 상위 5개, 하위 5개 문제를 선택하여 총 10개 문제를 반환
-    """
-    # 정답률 기준으로 전체 문제 정렬
-    sorted_questions = sorted(question_results, key=lambda x: x['correctRate'], reverse=True)
-    
-    selected_questions = []
-    
-    # 상위 5개 선택
-    top_questions = sorted_questions[:top_count]
-    selected_questions.extend(top_questions)
-    
-    # 하위 5개 선택 (중복 방지)
-    if len(sorted_questions) > top_count + bottom_count:
-        bottom_questions = sorted_questions[-(bottom_count):]
-    elif len(sorted_questions) > top_count:
-        bottom_questions = sorted_questions[top_count:]
-    else:
-        bottom_questions = []
-    
-    selected_questions.extend(bottom_questions)
-    
-    return selected_questions
-
-
 async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     OpenAI를 이용하여 시험목표와 문항별 응시 결과를 분석하고 종합적인 피드백을 반환
     """
     # 1. 사전 데이터 계산
-    performance_by_document = calc_performance_by_document(question_results)
+    performance_by_document, project_readiness_result = calc_performance_by_document(question_results)
     selected_questions = select_top_bottom_questions(question_results)
 
-    # 2. 최종 프롬프트 구성
-    USER_PROMPT = build_user_prompt(exam_goal, selected_questions, performance_by_document)
+    # 2. 최종 프롬프트 구성 (선택된 문제만 전달)
+    USER_PROMPT = build_user_prompt(exam_goal, selected_questions, performance_by_document, project_readiness_result)
 
     # 3. MODEL 호출
     try:
@@ -133,13 +92,6 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
 
         # 4. AI 결과 후처리
         # 4-1. projectReadiness를 문서별 최소 정답률 기준으로 계산하여 결과에 추가
-        min_rate = min(doc['averageCorrectRate'] for doc in performance_by_document) if performance_by_document else 0
-        if min_rate >= 90:
-            project_readiness_result = "Excellent"
-        elif min_rate >= 60:
-            project_readiness_result = "Pass"
-        else:
-            project_readiness_result = "Fail"
         result['projectReadiness'] = project_readiness_result
         
         # 4-2. averageCorrectRate만 실제 값으로 덮어쓰기
@@ -149,16 +101,13 @@ async def test_feedback(exam_goal: str, question_results: List[Dict[str, Any]]) 
             if name in doc_rate_map:
                 doc['averageCorrectRate'] = doc_rate_map[name]
 
-
         # 토큰 사용량 (차후 주석처리 ✅ )
         # usage = response.usage
         # print("🟨 사용 토큰:", usage.total_tokens)
         # print("└─ prompt_tokens:", usage.prompt_tokens)
         # print("└─ completion_tokens:", usage.completion_tokens)
         
-        print(result)
         return result
-
 
     except Exception as e:
         raise RuntimeError(f"시험 피드백 생성 오류: {str(e)}")
