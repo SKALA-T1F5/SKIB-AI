@@ -39,12 +39,3 @@ class TestGenerationResponse(BaseModel):
     """테스트 생성 응답 (문제 목록만 반환)"""
 
     questions: List[QuestionResponse] = Field(..., description="생성된 문제 목록")
-    total_questions: int = Field(..., alias="totalQuestions", description="총 문제 수")
-    objective_count: int = Field(
-        ..., alias="objectiveCount", description="객관식 문항 수"
-    )
-    subjective_count: int = Field(
-        ..., alias="subjectiveCount", description="주관식 문항 수"
-    )
-
-    model_config = {"populate_by_name": True}

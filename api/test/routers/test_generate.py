@@ -125,9 +125,6 @@ async def generate_test_questions(request: TestGenerationRequest):
 
         return TestGenerationResponse(
             questions=questions,
-            totalQuestions=len(questions),
-            objectiveCount=objective_count,
-            subjectiveCount=subjective_count,
         )
 
     except Exception as e:
