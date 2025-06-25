@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.question.schemas.question import (
     DifficultyLevel,
+    GenerationType,
     GradingCriterion,
     QuestionResponse,
     QuestionType,
@@ -32,7 +33,7 @@ async def generate_test_questions(request: TestGenerationRequest):
             # 실제로는 문서 ID를 통해 키워드를 조회해야 합니다
             document_plan = {
                 "document_name": f"document_{doc_config.documentId}",  # 실제로는 문서명 조회 필요
-                "keywords": [],  # 실제로는 문서별 키워드 조회 필요
+                "keywords": doc_config.keywords,
                 "recommended_questions": {
                     "objective": doc_config.configured_objective_count,
                     "subjective": doc_config.configured_subjective_count,
@@ -98,6 +99,9 @@ async def generate_test_questions(request: TestGenerationRequest):
 
             question_response = QuestionResponse(
                 type=question_type,
+                generationType=GenerationType(
+                    q.get("generation_type", None).upper()
+                ),  # Provide a default or appropriate value
                 difficulty_level=difficulty,
                 question=q.get("question", ""),
                 options=(
@@ -114,14 +118,6 @@ async def generate_test_questions(request: TestGenerationRequest):
                 tags=q.get("tags", []),
             )
             questions.append(question_response)
-
-        # 6. 응답 데이터 구성
-        objective_count = len(
-            [q for q in questions if q.type == QuestionType.objective]
-        )
-        subjective_count = len(
-            [q for q in questions if q.type == QuestionType.subjective]
-        )
 
         return TestGenerationResponse(
             questions=questions,

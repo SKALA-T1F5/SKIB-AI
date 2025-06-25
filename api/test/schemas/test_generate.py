@@ -9,6 +9,7 @@ from api.question.schemas.question import DifficultyLevel, QuestionResponse
 
 class TestDocumentConfig(BaseModel):
     documentId: int = Field(..., alias="documentId", description="문서 ID")
+    keywords: List[str] = Field(..., description="문서 관련 키워드 목록")
     configured_objective_count: int = Field(
         ..., alias="configuredObjectiveCount", description="객관식 문항 수"
     )
