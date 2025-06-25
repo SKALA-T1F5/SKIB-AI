@@ -32,6 +32,11 @@ spec:
                 secretKeyRef:
                   name: open-ai-secret
                   key: OPENAI_API_KEY
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-version
+                  key: AGENT_SUBJECTIVE_GRADER_MODEL
             - name: CHROMADB_URL
               valueFrom:
                 secretKeyRef:
