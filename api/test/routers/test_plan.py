@@ -88,8 +88,8 @@ async def generate_test_plan(request: TestPlanRequest):
                     TestPlanByDocument(
                         document_id=doc_summary.document_id,
                         keywords=doc_summary.keywords,
-                        recommendedObjective=obj_count,
-                        recommendedSubjective=subj_count,
+                        configuredObjectiveCount=obj_count,
+                        configuredSubjectiveCount=subj_count,
                     )
                 )
 
