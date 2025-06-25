@@ -103,7 +103,7 @@ class TextAnalyzer(BaseTool):
 
     async def classify_text_type(self, content: str) -> str:
         """
-        텍스트 타입 분류 (기존 _classify_text_type 로직)
+        텍스트 타입 분류 (text_extractor.py의 _classify_text_type과 통합된 로직)
 
         Args:
             content: 분류할 텍스트
@@ -111,33 +111,9 @@ class TextAnalyzer(BaseTool):
         Returns:
             str: 텍스트 타입 ("heading", "section", "paragraph")
         """
-        if not content or not content.strip():
-            return "paragraph"
-
-        content = content.strip()
-        content_lower = content.lower()
-
-        # 제목/헤딩 패턴
-        if len(content) < 100 and (
-            content.isupper()
-            or any(
-                keyword in content_lower
-                for keyword in ["챕터", "chapter", "목차", "제", "부"]
-            )
-            or content.endswith(":")
-            or content.count("\n") == 0
-        ):
-            return "heading"
-
-        # 섹션 패턴
-        if len(content) < 200 and any(
-            keyword in content_lower
-            for keyword in ["그림", "figure", "표", "table", "부록", "appendix"]
-        ):
-            return "section"
-
-        # 기본은 문단
-        return "paragraph"
+        # text_extractor.py의 _classify_text_type 함수와 동일한 로직 사용
+        from .text_extractor import _classify_text_type
+        return _classify_text_type(content)
 
     async def clean_text(self, text: str) -> str:
         """
