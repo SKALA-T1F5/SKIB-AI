@@ -19,11 +19,11 @@ class TestPlanRequest(BaseModel):
 class TestPlanByDocument(BaseModel):
     document_id: int = Field(..., description="문서 ID")
     keywords: List[str] = Field(..., description="키워드 목록")
-    recommended_objective: int = Field(
-        ..., alias="recommendedObjective", description="추천 객관식 문항 수"
+    configured_objective_count: int = Field(
+        ..., alias="configuredObjectiveCount", description="객관식 문항 수"
     )
-    recommended_subjective: int = Field(
-        ..., alias="recommendedSubjective", description="추천 주관식 문항 수"
+    configured_subjective_count: int = Field(
+        ..., alias="configuredSubjectiveCount", description="주관식 문항 수"
     )
 
     model_config = {"populate_by_name": True}
