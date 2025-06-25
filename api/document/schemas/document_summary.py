@@ -18,7 +18,7 @@ class SummaryByDocumentResponse(BaseModel):
 
     summary: str
     keywords: List[str]  # main_topics + key_concepts 조합
-    documentId: int
+    document_id: int
 
 
 class DocumentSummaryRequest(BaseModel):
