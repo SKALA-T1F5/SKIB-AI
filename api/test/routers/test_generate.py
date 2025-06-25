@@ -31,7 +31,7 @@ async def generate_test_questions(request: TestGenerationRequest):
             # 각 문서별 키워드는 별도로 관리되어야 하므로
             # 실제로는 문서 ID를 통해 키워드를 조회해야 합니다
             document_plan = {
-                "document_name": f"document_{doc_config.document_id}",  # 실제로는 문서명 조회 필요
+                "document_name": f"document_{doc_config.documentId}",  # 실제로는 문서명 조회 필요
                 "keywords": [],  # 실제로는 문서별 키워드 조회 필요
                 "recommended_questions": {
                     "objective": doc_config.configured_objective_count,
