@@ -32,7 +32,7 @@ spec:
                 secretKeyRef:
                   name: open-ai-secret
                   key: OPENAI_API_KEY
-            - name: OPENAI_API_KEY
+            - name: AGENT_SUBJECTIVE_GRADER_MODEL
               valueFrom:
                 secretKeyRef:
                   name: agent-model-secret
@@ -62,6 +62,32 @@ spec:
                 secretKeyRef:
                   name: chromadb-secret
                   key: EMBEDDING_MODEL
+            - name: LANGSMITH_TRACING
+              valueFrom:
+                secretKeyRef:
+                  name: langsmith-secret
+                  key: LANGSMITH_TRACING
+            - name: LANGSMITH_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: langsmith-secret
+                  key: LANGSMITH_ENDPOINT
+            - name: LANGSMITH_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: langsmith-secret
+                  key: LANGSMITH_API_KEY
+            - name: LANGSMITH_PROJECT
+              valueFrom:
+                secretKeyRef:
+                  name: langsmith-secret
+                  key: LANGSMITH_PROJECT
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gemini-secret
+                  key: GEMINI_API_KEY
+
           volumeMounts:
             - name: document-volume
               mountPath: /data
