@@ -90,36 +90,6 @@ class ResultSaver:
             print(f"💾 여분 문제 저장: {extra_file}")
             print(f"🎯 여분 문제 수: {len(extra_questions)}개")
         
-        # 3. 통합 파일도 저장 (기존 호환성 유지)
-        combined_data = {
-            **common_metadata,
-            "question_type": "combined",
-            "total_questions": len(questions),
-            "basic_questions_count": len(basic_questions),
-            "extra_questions_count": len(extra_questions),
-            "questions_by_document": {},
-            "all_questions": questions
-        }
-        
-        # 문서별 통합 분류
-        for question in questions:
-            doc_name = question.get('document_source', 'Unknown')
-            if doc_name not in combined_data["questions_by_document"]:
-                combined_data["questions_by_document"][doc_name] = {
-                    "basic_questions": [],
-                    "extra_questions": []
-                }
-            
-            if question.get('generation_type') == 'basic':
-                combined_data["questions_by_document"][doc_name]["basic_questions"].append(question)
-            else:
-                combined_data["questions_by_document"][doc_name]["extra_questions"].append(question)
-        
-        combined_file = f"{output_dir}/combined_questions_{timestamp}.json"
-        with open(combined_file, 'w', encoding='utf-8') as f:
-            json.dump(combined_data, f, ensure_ascii=False, indent=2)
-        files_created.append(combined_file)
-        print(f"💾 통합 문제 저장: {combined_file}")
         
         print(f"\n📊 총 문제 수: {len(questions)}개")
         print(f"📈 기본 문제: {len(basic_questions)}개")
@@ -136,8 +106,7 @@ class ResultSaver:
             "files_created": files_created,
             "file_details": {
                 "basic_file": files_created[0] if basic_questions else None,
-                "extra_file": files_created[1] if extra_questions and len(files_created) > 1 else files_created[0] if extra_questions else None,
-                "combined_file": files_created[-1]
+                "extra_file": files_created[1] if extra_questions and len(files_created) > 1 else files_created[0] if extra_questions else None
             }
         }
     
