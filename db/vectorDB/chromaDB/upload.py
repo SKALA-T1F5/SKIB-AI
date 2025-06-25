@@ -2,8 +2,10 @@
 ChromaDB 문서 업로드 및 임베딩 생성
 """
 
+import hashlib
 import logging
-from typing import Any, Dict, List
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from sentence_transformers import SentenceTransformer
 
@@ -13,19 +15,80 @@ from .utils import create_or_get_collection
 logger = logging.getLogger(__name__)
 
 
+class DuplicateAction(Enum):
+    """중복 발견 시 처리 방식"""
+    SKIP = "skip"          # 중복 시 스킵
+    OVERWRITE = "overwrite"  # 중복 시 덮어쓰기
+    ERROR = "error"        # 중복 시 에러 발생
+
+
+def generate_content_hash(content: str, metadata: Optional[Dict] = None) -> str:
+    """
+    문서 내용 기반 고유 해시 ID 생성
+    
+    Args:
+        content: 문서 내용
+        metadata: 메타데이터 (파일명, 크기 등)
+    
+    Returns:
+        str: 고유 해시 ID
+    """
+    # 내용 기반 해시
+    content_hash = hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
+    
+    # 메타데이터 추가 정보 (있는 경우)
+    if metadata:
+        # 파일명, 페이지, 블록 타입 등으로 세분화
+        extra_info = f"{metadata.get('source_file', '')}"
+        extra_info += f"_p{metadata.get('page', 0)}"
+        extra_info += f"_{metadata.get('element_type', 'text')}"
+        extra_info += f"_{metadata.get('element_index', 0)}"
+        
+        extra_hash = hashlib.sha256(extra_info.encode('utf-8')).hexdigest()[:8]
+        return f"{content_hash}_{extra_hash}"
+    
+    return content_hash
+
+
+def check_document_exists(collection, chunk_id: str) -> bool:
+    """
+    문서 존재 여부 확인
+    
+    Args:
+        collection: ChromaDB 컬렉션
+        chunk_id: 확인할 문서 ID
+    
+    Returns:
+        bool: 존재 여부
+    """
+    try:
+        result = collection.get(ids=[chunk_id])
+        return len(result.get('ids', [])) > 0
+    except Exception as e:
+        logger.warning(f"문서 존재 여부 확인 실패: {e}")
+        return False
+
+
 class ChromaDBUploader:
     """ChromaDB 업로드 관리 클래스"""
 
-    def __init__(self, embedding_model: str = "BAAI/bge-base-en"):
+    def __init__(
+        self, 
+        embedding_model: str = "BAAI/bge-base-en",
+        duplicate_action: DuplicateAction = DuplicateAction.SKIP
+    ):
         """
         업로더 초기화
 
         Args:
             embedding_model: 임베딩 모델명
+            duplicate_action: 중복 발견 시 처리 방식
         """
         self.client = get_client()
         self.embedding_model = SentenceTransformer(embedding_model)
+        self.duplicate_action = duplicate_action
         logger.info(f"🧮 임베딩 모델 로드: {embedding_model}")
+        logger.info(f"🔄 중복 처리 방식: {duplicate_action.value}")
 
     def upload_chunk(
         self,
@@ -33,15 +96,17 @@ class ChromaDBUploader:
         collection_name: str,
         metadata: Dict[str, Any] = None,
         chunk_id: str = None,
+        duplicate_action: Optional[DuplicateAction] = None,
     ) -> bool:
         """
-        단일 청크 업로드
+        단일 청크 업로드 (중복 방지 기능 포함)
 
         Args:
             content: 텍스트 내용
             collection_name: 컬렉션 이름
             metadata: 메타데이터
-            chunk_id: 청크 ID (없으면 자동 생성)
+            chunk_id: 청크 ID (없으면 해시 기반 자동 생성)
+            duplicate_action: 중복 처리 방식 (없으면 기본값 사용)
 
         Returns:
             업로드 성공 여부
@@ -61,10 +126,26 @@ class ChromaDBUploader:
                 {"project": collection_name, "upload_method": "chromadb_uploader"}
             )
 
-            # 청크 ID 생성
+            # 청크 ID 생성 (해시 기반)
             if not chunk_id:
-                existing_count = collection.count()
-                chunk_id = f"{collection_name}_{existing_count}"
+                chunk_id = f"{collection_name}_{generate_content_hash(content, metadata)}"
+
+            # 중복 검사 및 처리
+            action = duplicate_action or self.duplicate_action
+            if check_document_exists(collection, chunk_id):
+                if action == DuplicateAction.SKIP:
+                    logger.info(f"⏭️ 중복 문서 스킵: {chunk_id}")
+                    return True
+                elif action == DuplicateAction.ERROR:
+                    logger.error(f"❌ 중복 문서 발견: {chunk_id}")
+                    raise ValueError(f"중복 문서가 이미 존재합니다: {chunk_id}")
+                elif action == DuplicateAction.OVERWRITE:
+                    logger.info(f"🔄 중복 문서 덮어쓰기: {chunk_id}")
+                    # 기존 문서 삭제
+                    try:
+                        collection.delete(ids=[chunk_id])
+                    except Exception as e:
+                        logger.warning(f"기존 문서 삭제 실패: {e}")
 
             # 임베딩 생성
             embedding = self.embedding_model.encode(content).tolist()
@@ -85,18 +166,23 @@ class ChromaDBUploader:
             return False
 
     def batch_upload(
-        self, chunks: List[Dict[str, Any]], collection_name: str, batch_size: int = 50
+        self, 
+        chunks: List[Dict[str, Any]], 
+        collection_name: str, 
+        batch_size: int = 50,
+        duplicate_action: Optional[DuplicateAction] = None
     ) -> Dict[str, int]:
         """
-        배치 업로드
+        배치 업로드 (중복 방지 기능 포함)
 
         Args:
             chunks: 청크 데이터 리스트
             collection_name: 컬렉션 이름
             batch_size: 배치 크기
+            duplicate_action: 중복 처리 방식 (없으면 기본값 사용)
 
         Returns:
-            업로드 통계 {"successful": int, "failed": int, "total": int}
+            업로드 통계 {"successful": int, "failed": int, "total": int, "skipped": int, "overwritten": int}
         """
         try:
             collection = create_or_get_collection(
@@ -105,6 +191,9 @@ class ChromaDBUploader:
 
             successful = 0
             failed = 0
+            skipped = 0
+            overwritten = 0
+            action = duplicate_action or self.duplicate_action
 
             for i in range(0, len(chunks), batch_size):
                 batch = chunks[i : i + batch_size]
@@ -131,13 +220,37 @@ class ChromaDBUploader:
                             }
                         )
 
+                        # 해시 기반 ID 생성
+                        chunk_id = chunk.get("id")
+                        if not chunk_id:
+                            chunk_id = f"{collection_name}_{generate_content_hash(content, metadata)}"
+
+                        # 중복 검사 및 처리
+                        if check_document_exists(collection, chunk_id):
+                            if action == DuplicateAction.SKIP:
+                                skipped += 1
+                                logger.debug(f"⏭️ 중복 문서 스킵: {chunk_id}")
+                                continue
+                            elif action == DuplicateAction.ERROR:
+                                failed += 1
+                                logger.error(f"❌ 중복 문서 발견: {chunk_id}")
+                                continue
+                            elif action == DuplicateAction.OVERWRITE:
+                                overwritten += 1
+                                logger.debug(f"🔄 중복 문서 덮어쓰기: {chunk_id}")
+                                # 기존 문서 삭제
+                                try:
+                                    collection.delete(ids=[chunk_id])
+                                except Exception as e:
+                                    logger.warning(f"기존 문서 삭제 실패: {e}")
+
                         # 임베딩 생성
                         embedding = self.embedding_model.encode(content).tolist()
 
                         documents.append(content)
                         metadatas.append(metadata)
                         embeddings.append(embedding)
-                        ids.append(chunk.get("id", f"{collection_name}_{i + j}"))
+                        ids.append(chunk_id)
 
                     if documents:
                         collection.add(
@@ -155,28 +268,42 @@ class ChromaDBUploader:
                     logger.error(f"❌ 배치 {i//batch_size + 1} 업로드 실패: {e}")
                     failed += len(batch)
 
-            result = {"successful": successful, "failed": failed, "total": len(chunks)}
+            result = {
+                "successful": successful, 
+                "failed": failed, 
+                "total": len(chunks),
+                "skipped": skipped,
+                "overwritten": overwritten
+            }
 
-            logger.info(f"📊 배치 업로드 완료: {successful}/{len(chunks)}개 성공")
+            logger.info(f"📊 배치 업로드 완료: {successful}/{len(chunks)}개 성공, {skipped}개 스킵, {overwritten}개 덮어쓰기")
             return result
 
         except Exception as e:
             logger.error(f"❌ 배치 업로드 실패: {e}")
-            return {"successful": 0, "failed": len(chunks), "total": len(chunks)}
+            return {
+                "successful": 0, 
+                "failed": len(chunks), 
+                "total": len(chunks),
+                "skipped": 0,
+                "overwritten": 0
+            }
 
     def upload_document_blocks(
         self,
         blocks: List[Dict[str, Any]],
         collection_name: str,
         source_file: str = "document",
+        duplicate_action: Optional[DuplicateAction] = None,
     ) -> int:
         """
-        문서 블록들을 업로드 (이미지 블록 포함)
+        문서 블록들을 업로드 (이미지 블록 포함, 중복 방지)
 
         Args:
             blocks: 문서 블록 리스트
             collection_name: 컬렉션 이름
             source_file: 소스 파일명
+            duplicate_action: 중복 처리 방식
 
         Returns:
             업로드된 청크 수
@@ -210,7 +337,7 @@ class ChromaDBUploader:
             }
             chunks.append(chunk)
 
-        result = self.batch_upload(chunks, collection_name)
+        result = self.batch_upload(chunks, collection_name, duplicate_action=duplicate_action)
         return result["successful"]
 
     def _process_image_block(self, block: Dict[str, Any]) -> str:
