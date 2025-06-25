@@ -35,7 +35,7 @@ spec:
             - name: OPENAI_API_KEY
               valueFrom:
                 secretKeyRef:
-                  name: llm-version
+                  name: agent-model-secret
                   key: AGENT_SUBJECTIVE_GRADER_MODEL
             - name: CHROMADB_URL
               valueFrom:
