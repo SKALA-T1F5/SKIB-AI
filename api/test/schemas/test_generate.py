@@ -20,7 +20,7 @@ class TestDocumentConfig(BaseModel):
 
 
 class TestGenerationRequest(BaseModel):
-    project_id: int = Field(..., alias="projectId", description="프로젝트 ID")
+    # project_id: int = Field(..., alias="projectId", description="프로젝트 ID")
     name: str = Field(..., description="테스트 이름")
     summary: str = Field(..., description="테스트 요약")
     difficulty_level: DifficultyLevel = Field(
