@@ -22,14 +22,14 @@ from fastapi import Form
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    documentId: int = Form(...),
+    document_id: int = Form(...),
     project_id: int = Form(...),
     name: str = Form(...),
 ):
     try:
         # ✅ 직접 매핑하여 Pydantic 객체 생성
         metadata = DocumentUploadMetaRequest(
-            documentId=documentId, project_id=project_id, name=name
+            documentId=document_id, project_id=project_id, name=name
         )
 
         set_status(metadata.documentId, StatusEnum.PROCESSING)
