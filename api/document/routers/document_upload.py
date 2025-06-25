@@ -10,6 +10,7 @@ from api.document.schemas.document_upload import (
     DocumentUploadMetaRequest,
     DocumentUploadResponse,
 )
+from utils.naming import filename_to_collection
 
 router = APIRouter(prefix="/api/document", tags=["Document"])
 logger = logging.getLogger(__name__)
@@ -27,9 +28,11 @@ async def upload_document(
     name: str = Form(...),
 ):
     try:
+        new_name = filename_to_collection(name)
+
         # ✅ 직접 매핑하여 Pydantic 객체 생성
         metadata = DocumentUploadMetaRequest(
-            documentId=document_id, project_id=project_id, name=name
+            documentId=document_id, project_id=project_id, name=new_name
         )
 
         set_status(metadata.documentId, StatusEnum.PROCESSING)
