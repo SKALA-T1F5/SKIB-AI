@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 
 from api.question.schemas.question import (
     DifficultyLevel,
+    GradingCriterion,
     QuestionResponse,
     QuestionType,
 )
@@ -68,13 +69,11 @@ async def generate_test_questions(request: TestGenerationRequest):
         questions = []
         generated_questions = result.get("questions", [])
 
+        print(generated_questions)
+
         for q in generated_questions:
-            # 문제 타입 변환
-            question_type = (
-                QuestionType.objective
-                if q.get("type") == "객관식"
-                else QuestionType.subjective
-            )
+
+            question_type = QuestionType(q.get("type"))
 
             # 난이도 매핑
             difficulty_map = {
@@ -85,6 +84,17 @@ async def generate_test_questions(request: TestGenerationRequest):
             difficulty = difficulty_map.get(
                 q.get("difficulty", "medium"), DifficultyLevel.normal
             )
+
+            valid_criteria_fields = {"score", "criteria", "example", "note"}
+            raw_criteria = q.get("grading_criteria", [])
+
+            grading_criteria = [
+                GradingCriterion(
+                    **{k: v for k, v in criterion.items() if k in valid_criteria_fields}
+                )
+                for criterion in raw_criteria
+                if isinstance(criterion, dict)
+            ]
 
             question_response = QuestionResponse(
                 type=question_type,
@@ -97,9 +107,7 @@ async def generate_test_questions(request: TestGenerationRequest):
                 ),
                 answer=q.get("answer", ""),
                 explanation=q.get("explanation"),
-                grading_criteria=q.get(
-                    "grading_criteria", ""
-                ),  # Provide default or fetched grading_criteria
+                grading_criteria=grading_criteria,
                 documentId=q.get("document_id", 0),  # 실제 문서 ID 매핑 필요
                 document_name=q.get("document_source", ""),
                 keywords=q.get("source_keywords", []),
