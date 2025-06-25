@@ -50,7 +50,7 @@ def _generate_gemini_questions(
             {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
 
-        model = genai.GenerativeModel("gemini-2.5-flash", safety_settings=safety_settings)
+        model = genai.GenerativeModel("gemini-2.0-flash-exp", safety_settings=safety_settings)
 
         # Gemini용 메시지 구성
         gemini_parts = [system_prompt]
@@ -564,11 +564,16 @@ class QuestionGenerator:
 
                 # 청크별 질문 수 분배
                 chunk_obj = min(
-                    remaining_obj, max(1, remaining_obj // (len(vision_chunks) - i))
-                )
+                    remaining_obj, max(0, remaining_obj // max(1, len(vision_chunks) - i))
+                ) if remaining_obj > 0 else 0
                 chunk_subj = min(
-                    remaining_subj, max(1, remaining_subj // (len(vision_chunks) - i))
-                )
+                    remaining_subj, max(0, remaining_subj // max(1, len(vision_chunks) - i))
+                ) if remaining_subj > 0 else 0
+                
+                # 마지막 청크에서 남은 문제들 모두 할당
+                if i == len(vision_chunks) - 1:
+                    chunk_obj = remaining_obj
+                    chunk_subj = remaining_subj
 
                 if chunk_obj == 0 and chunk_subj == 0:
                     continue

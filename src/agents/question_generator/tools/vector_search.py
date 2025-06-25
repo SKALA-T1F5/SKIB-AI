@@ -26,7 +26,37 @@ class VectorSearchHandler:
         if document_name.startswith(('doc_', 'c_')) and '_' in document_name:
             return document_name
         
-        # 문서명 변환 로직
+        # 우선 원본 이름 그대로 시도 (doc_ 접두사 없이)
+        original_name = document_name
+        
+        # ChromaDB에서 실제 컬렉션 존재 여부 확인
+        try:
+            if self.searcher and hasattr(self.searcher, 'client'):
+                collections = self.searcher.client.list_collections()
+                collection_names = [c.name for c in collections]
+                
+                # 정확히 일치하는 컬렉션 찾기
+                if original_name in collection_names:
+                    print(f"📝 문서명 변환: '{document_name}' → '{original_name}' (정확 일치)")
+                    return original_name
+                
+                # doc_ 접두사가 있는 버전 확인
+                doc_prefixed = f"doc_{original_name}"
+                if doc_prefixed in collection_names:
+                    print(f"📝 문서명 변환: '{document_name}' → '{doc_prefixed}' (doc_ 접두사)")
+                    return doc_prefixed
+                
+                # 부분 일치 검색
+                partial_matches = [name for name in collection_names if original_name in name or name in original_name]
+                if partial_matches:
+                    best_match = partial_matches[0]
+                    print(f"📝 문서명 변환: '{document_name}' → '{best_match}' (부분 일치)")
+                    return best_match
+                    
+        except Exception as e:
+            print(f"⚠️ 컬렉션 목록 확인 실패: {e}")
+        
+        # Fallback: 문서명 변환 로직
         import re
         
         # 특수문자 제거 및 소문자 변환
@@ -42,11 +72,7 @@ class VectorSearchHandler:
         if not clean_name:
             return "unified_collection"
         
-        # doc_ 접두사 추가 (이미 있으면 추가하지 않음)
-        if not clean_name.startswith('doc_'):
-            clean_name = f"doc_{clean_name}"
-        
-        print(f"📝 문서명 변환: '{document_name}' → '{clean_name}'")
+        print(f"📝 문서명 변환: '{document_name}' → '{clean_name}' (fallback)")
         return clean_name
     
     def search_keywords_in_collection(
@@ -57,7 +83,7 @@ class VectorSearchHandler:
     ) -> List[Dict]:
         """문서명을 기반으로 컬렉션에서 키워드 관련 콘텐츠 검색"""
         if not self.searcher:
-            print("⚠️ VectorDB 검색기가 초기화되지 않았습니다.")
+            print("⚠️ VectorDB에서 관련 문서 검색에 실패했습니다. 검색기가 초기화되지 않았습니다.")
             return []
         
         # 문서명을 collection명으로 변환
@@ -93,7 +119,7 @@ class VectorSearchHandler:
         
         # 검색 결과가 없는 경우 fallback 시도
         if not all_content:
-            print(f"⚠️ 컬렉션 '{collection_name}'에서 검색 결과 없음. Fallback 컬렉션에서 재시도...")
+            print(f"⚠️ VectorDB에서 관련 문서 검색에 실패했습니다. 컬렉션 '{collection_name}'에서 검색 결과 없음. Fallback 컬렉션에서 재시도...")
             fallback_results = self.search_with_fallback_collections(
                 keywords=keywords,
                 primary_document_name=None  # 이미 실패했으므로 None
@@ -101,6 +127,8 @@ class VectorSearchHandler:
             if fallback_results:
                 print(f"✅ Fallback 검색으로 {len(fallback_results)}개 콘텐츠 발견")
                 all_content.extend(fallback_results)
+            else:
+                print("⚠️ VectorDB에서 관련 문서 검색에 실패했습니다. 모든 컬렉션에서 검색 결과를 찾을 수 없습니다.")
         
         print(f"📊 총 {len(all_content)}개 관련 콘텐츠 발견")
         return all_content
@@ -148,6 +176,7 @@ class VectorSearchHandler:
     def _search_in_specific_collection(self, keywords: List[str], collection_name: str, max_results_per_keyword: int = 3) -> List[Dict]:
         """특정 컬렉션에서 직접 검색 (변환 없이)"""
         if not self.searcher:
+            print("⚠️ VectorDB에서 관련 문서 검색에 실패했습니다. 검색기가 사용할 수 없습니다.")
             return []
         
         all_content = []
