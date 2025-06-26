@@ -41,7 +41,7 @@ async def get_document_summary(documentId: int):
                     summary=result.get("summary", ""),
                     keywords=result.get("keywords", []),
                     documentId=documentId,
-                    documentName=result.get("documentName", ""),
+                    name=result.get("document_name", ""),
                 )
             else:
                 raise HTTPException(status_code=404, detail="Summary result not found")
@@ -90,7 +90,7 @@ async def process_document_background(
                 "summary": content_analysis.get("summary", ""),
                 "keywords": keywords,
                 "document_id": documentId,
-                "document_name": result.get("filename", ""),
+                "name": result.get("filename", ""),
             }
 
             # 1. 결과 저장
