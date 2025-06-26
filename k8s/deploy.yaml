@@ -22,7 +22,7 @@ spec:
         - name: amdp-registry
       containers:
         - name: sk-team-09-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-66-523204957637
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-67-c7a12a1cc0a3
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
