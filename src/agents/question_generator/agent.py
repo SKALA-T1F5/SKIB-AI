@@ -20,6 +20,7 @@ class QuestionGeneratorAgent:
     def __init__(self, collection_name: str = None):
         self.collection_name = collection_name
         # 이미지 저장 디렉토리 설정
+        # TODO 이미지 저장은 여기서 안 하는데?
         if collection_name:
             from utils.naming import filename_to_collection
 
@@ -64,7 +65,7 @@ class QuestionGeneratorAgent:
             document_plan = document_test_plan_data
             print("📋 Test Plan 데이터를 직접 딕셔너리로 받음")
         elif total_test_plan_path and document_test_plan_path:
-            # 지정된 경로에서 로드
+            # 지정된 경로에서 로드 -> Local Test용
             total_plan, document_plan = self.test_plan_handler.load_specific_test_plans(
                 total_test_plan_path, document_test_plan_path
             )
@@ -89,8 +90,10 @@ class QuestionGeneratorAgent:
         }
 
         # 2. 각 문서별로 문제 생성
+        # TODO 문서별로 병렬 처리할 수 있도록 리팩토링 필요
         for doc_plan in document_plan.get("document_plans", []):
             document_name = doc_plan.get("document_name", "Unknown")
+            document_id = doc_plan.get("document_id", None)
             keywords = doc_plan.get("keywords", [])
             recommended = doc_plan.get("recommended_questions", {})
 
@@ -122,6 +125,7 @@ class QuestionGeneratorAgent:
                 keywords=keywords,
                 related_content=related_content,
                 document_name=document_name,
+                document_id=document_id,
                 num_objective=recommended.get("objective", 0),
                 num_subjective=recommended.get("subjective", 0),
                 question_type="BASIC",
@@ -142,6 +146,7 @@ class QuestionGeneratorAgent:
                     keywords=keywords,
                     related_content=related_content,
                     document_name=document_name,
+                    document_id=document_id,
                     num_objective=extra_objective,
                     num_subjective=extra_subjective,
                     question_type="EXTRA",
@@ -188,6 +193,7 @@ class QuestionGeneratorAgent:
         keywords: List[str],
         related_content: List[Dict],
         document_name: str,
+        document_id: int,
         num_objective: int,
         num_subjective: int,
         question_type: str = "BASIC",
@@ -206,6 +212,7 @@ class QuestionGeneratorAgent:
             #     return []
 
             # 기존 QuestionGenerator 활용
+            # TODO: context_blocks overwrite -> WHY?
             context_blocks = self.question_generator.generate_questions_for_blocks(
                 blocks=context_blocks,
                 num_objective=num_objective,
@@ -222,7 +229,8 @@ class QuestionGeneratorAgent:
 
                         # 메타데이터 추가
                         question["generation_type"] = question_type
-                        question["document_source"] = document_name
+                        question["document_name"] = document_name
+                        question["document_id"] = document_id
                         question["generated_at"] = datetime.now().isoformat()
                         question["source_keywords"] = used_keywords
                         questions.append(question)
@@ -242,6 +250,7 @@ class QuestionGeneratorAgent:
             related_content, keywords
         )
 
+    # TODO 문제에서 실제 사용된 키워드 추출 로직 점검 필요 -> [] 처리 될때 있음.
     def _extract_used_keywords(
         self, question: Dict, available_keywords: List[str]
     ) -> List[str]:
@@ -299,7 +308,6 @@ def generate_enhanced_questions_from_test_plans(
     document_test_plan_path: str = None,
     total_test_plan_data: Dict = None,
     document_test_plan_data: Dict = None,
-    collection_name: str = None,
 ) -> Dict[str, Any]:
     """
     테스트 계획을 기반으로 향상된 문제 생성 편의 함수
@@ -320,5 +328,4 @@ def generate_enhanced_questions_from_test_plans(
         document_test_plan_path=document_test_plan_path,
         total_test_plan_data=total_test_plan_data,
         document_test_plan_data=document_test_plan_data,
-        collection_name=collection_name,
     )
