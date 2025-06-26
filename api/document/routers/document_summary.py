@@ -40,7 +40,8 @@ async def get_document_summary(documentId: int):
                 return SummaryByDocumentResponse(
                     summary=result.get("summary", ""),
                     keywords=result.get("keywords", []),
-                    document_id=documentId,
+                    documentId=documentId,
+                    documentName=result.get("documentName", ""),
                 )
             else:
                 raise HTTPException(status_code=404, detail="Summary result not found")
