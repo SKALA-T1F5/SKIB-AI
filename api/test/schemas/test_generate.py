@@ -5,19 +5,19 @@ from typing import (
 from pydantic import BaseModel, Field
 
 from api.question.schemas.question import DifficultyLevel, QuestionResponse
+from api.test.schemas.test_plan import TestPlanByDocument
 
+# class TestDocumentConfig(BaseModel):
+#     documentId: int = Field(..., alias="documentId", description="문서 ID")
+#     keywords: List[str] = Field(..., description="문서 관련 키워드 목록")
+#     configured_objective_count: int = Field(
+#         ..., alias="configuredObjectiveCount", description="객관식 문항 수"
+#     )
+#     configured_subjective_count: int = Field(
+#         ..., alias="configuredSubjectiveCount", description="주관식 문항 수"
+#     )
 
-class TestDocumentConfig(BaseModel):
-    documentId: int = Field(..., alias="documentId", description="문서 ID")
-    keywords: List[str] = Field(..., description="문서 관련 키워드 목록")
-    configured_objective_count: int = Field(
-        ..., alias="configuredObjectiveCount", description="객관식 문항 수"
-    )
-    configured_subjective_count: int = Field(
-        ..., alias="configuredSubjectiveCount", description="주관식 문항 수"
-    )
-
-    model_config = {"populate_by_name": True}
+#     model_config = {"populate_by_name": True}
 
 
 class TestGenerationRequest(BaseModel):
@@ -29,7 +29,7 @@ class TestGenerationRequest(BaseModel):
     limited_time: int = Field(..., alias="limitedTime", description="제한 시간(분)")
     pass_score: int = Field(..., alias="passScore", description="통과 점수(%)")
     is_retake: bool = Field(..., alias="isRetake", description="재응시 여부")
-    document_configs: List[TestDocumentConfig] = Field(
+    document_configs: List[TestPlanByDocument] = Field(
         ..., alias="documentConfigs", description="문서별 설정"
     )
 

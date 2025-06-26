@@ -53,6 +53,8 @@ class QuestionResponse(BaseModel):
         None, description="문제 관련 태그 목록 (예: 문해력, 논리력)"
     )
 
+    model_config = {"populate_by_name": True}
+
 
 # 수정 요청용 스키마 (모든 필드 Optional)
 class QuestionUpdate(BaseModel):
