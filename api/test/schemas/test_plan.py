@@ -17,7 +17,8 @@ class TestPlanRequest(BaseModel):
 
 
 class TestPlanByDocument(BaseModel):
-    document_id: int = Field(..., description="문서 ID")
+    documentId: int = Field(..., description="문서 ID")
+    document_name: str = Field(..., alias="documentName", description="문서 이름")
     keywords: List[str] = Field(..., description="키워드 목록")
     configured_objective_count: int = Field(
         ..., alias="configuredObjectiveCount", description="객관식 문항 수"
