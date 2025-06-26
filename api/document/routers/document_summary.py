@@ -127,16 +127,16 @@ async def notify_springboot_completion(documentId: int, summary_data: Dict) -> b
         logger.info(f"📡 전송 대상 데이터: {summary_data}")
 
         async with httpx.AsyncClient() as client:
-            response = await client.put(
-                f"http://localhost:8080/api/document/summary/{documentId}",
-                json=summary_data,
-                headers={"Content-Type": "application/json"},
-            )
             # response = await client.put(
-            #     f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{documentId}",
+            #     f"http://localhost:8080/api/document/summary/{documentId}",
             #     json=summary_data,
             #     headers={"Content-Type": "application/json"},
             # )
+            response = await client.put(
+                f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{documentId}",
+                json=summary_data,
+                headers={"Content-Type": "application/json"},
+            )
 
             logger.info(f"📡 SpringBoot 응답 코드: {response.status_code}")
             logger.info(f"📡 SpringBoot 응답 내용: {response.text}")
