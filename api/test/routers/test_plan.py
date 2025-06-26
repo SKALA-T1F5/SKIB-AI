@@ -86,7 +86,8 @@ async def generate_test_plan(request: TestPlanRequest):
 
                 document_configs.append(
                     TestPlanByDocument(
-                        document_id=doc_summary.document_id,
+                        documentId=doc_summary.document_id,
+                        documentName=getattr(doc_summary, "document_name", ""),
                         keywords=doc_summary.keywords,
                         configuredObjectiveCount=obj_count,
                         configuredSubjectiveCount=subj_count,
