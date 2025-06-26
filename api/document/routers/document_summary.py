@@ -90,6 +90,7 @@ async def process_document_background(
                 "summary": content_analysis.get("summary", ""),
                 "keywords": keywords,
                 "document_id": documentId,
+                "document_name": result.get("filename", ""),
             }
 
             # 1. 결과 저장
