@@ -8,6 +8,7 @@ from api.feedback.routers.trainer import router as document_grading_router
 from api.grading.routers.subjective_grading import router as grading_router
 from api.test.routers.test_generate import router as test_generate_router
 from api.test.routers.test_plan import router as test_plan_router
+from api.trainee_assistant.routers import trainee_assistant
 from services.middleware import LoggingMiddleware  # 위 클래스 저장 파일 경로
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -22,3 +23,4 @@ app.include_router(document_router)
 app.include_router(document_summary_router)
 app.include_router(test_plan_router)
 app.include_router(document_grading_router)
+app.include_router(trainee_assistant.router)
