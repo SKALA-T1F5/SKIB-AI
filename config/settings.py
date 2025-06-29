@@ -18,6 +18,12 @@ class Settings:
 
         self.subjective_grader_model = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL")
 
+        # Redis 설정
+        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+        self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
+        self.redis_db = int(os.getenv("REDIS_DB", "0"))
+        self.redis_password = os.getenv("REDIS_PASSWORD", None)
+
         # 경로 설정
         self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # config/
         self.ROOT_DIR = os.path.abspath(os.path.join(self.BASE_DIR, ".."))  # SKIB-AI/
