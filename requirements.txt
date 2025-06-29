@@ -144,3 +144,6 @@ jiter==0.10.0                     # 빠른 JSON 파서
 # ✅ 테스트 도구
 pytest==8.4.0                        # 기본 테스트 프레임워크
 pytest-asyncio==1.0.0                # 비동기 코드용 pytest 확장
+
+# redis 디비 관련
+redis[async]
