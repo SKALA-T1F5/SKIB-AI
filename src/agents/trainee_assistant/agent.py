@@ -8,6 +8,7 @@ import openai
 from openai import AsyncOpenAI
 
 from config.settings import settings
+from db.redisDB.session_manager import append_message, load_message_history
 from src.agents.trainee_assistant.prompt import SYSTEM_PROMPT, build_user_prompt
 
 # OpenAI 로드
@@ -58,9 +59,14 @@ async def trainee_assistant_chat(
 
 # FastAPI 라우터용 함수
 async def get_chat_response(
-    user_question: str, question_info: dict, message_history: list
+    user_id: str, user_question: str, question_info: dict
 ) -> str:
-    """
-    FastAPI에서 사용할 챗봇 응답 함수
-    """
-    return await trainee_assistant_chat(user_question, question_info, message_history)
+    message_history = await load_message_history(user_id)
+    await append_message(user_id, "user", user_question)
+
+    response = await trainee_assistant_chat(
+        user_question, question_info, message_history
+    )
+
+    await append_message(user_id, "assistant", response)
+    return response
