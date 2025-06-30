@@ -46,7 +46,7 @@ torch==2.7.0                    # PyTorch (딥러닝 프레임워크)
 torchvision==0.22.0              # 이미지 관련 PyTorch 모델
 langgraph==0.5.0                  # LangGraph
 langgraph-checkpoint==2.1.0       # LangGraph Checkpoint
-langgraph-prebuilt==0.2.2        # LangGraph Prebuilt
+langgraph-prebuilt==0.5.0         # LangGraph Prebuilt
 langgraph-sdk==0.1.70             # LangGraph SDK
 
 # ✅ 컴퓨터 비전 / 이미지 처리
