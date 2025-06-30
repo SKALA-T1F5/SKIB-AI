@@ -87,6 +87,36 @@ spec:
                 secretKeyRef:
                   name: gemini-secret
                   key: GEMINI_API_KEY
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: redisdb-secret
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: redisdb-secret
+                  key: REDIS_PORT
+            - name: REDIS_DB
+              valueFrom:
+                secretKeyRef:
+                  name: redisdb-secret
+                  key: REDIS_DB
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redisdb-secret
+                  key: REDIS_PASSWORD
+            - name: ENV
+              valueFrom:
+                secretKeyRef:
+                  name: skib-env
+                  key: ENV
+            - name: BACKEND_URL
+              valueFrom:
+                secretKeyRef:
+                  name: skib-env
+                  key: BACKEND_URL
 
           volumeMounts:
             - name: document-volume
