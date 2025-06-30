@@ -67,8 +67,8 @@ async def generate_test_plan(request: TestPlanRequest):
         )
 
         # 문서별 문항 수 배분 계산
-        total_objective = test_config.get("num_objective", 5)
-        total_subjective = test_config.get("num_subjective", 3)
+        total_objective = test_config.get("num_objective")
+        total_subjective = test_config.get("num_subjective")
         document_count = len(request.document_summaries)
 
         document_configs = []
