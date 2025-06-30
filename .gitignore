@@ -21,4 +21,7 @@ data/
 # Deployment files
 /k8s/open-ai-secret.yaml
 /k8s/chromadb-secret.yaml
+/k8s/agent-model-secret.yaml
+/k8s/langsmith-secret.yaml
+/k8s/gemini-secret.yaml
 chroma.sqlite3

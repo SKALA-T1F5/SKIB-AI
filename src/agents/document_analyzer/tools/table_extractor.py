@@ -5,16 +5,34 @@ from typing import List
 def _extract_tables(
     plumber_page, pymupdf_page, page_no: int, image_save_dir: str
 ) -> List[dict]:
-    from .extract_utils import _estimate_table_bbox, _extract_bbox_image
+    """
+    테이블 추출 (중복 제거 개선 버전)
+    
+    Args:
+        plumber_page: pdfplumber 페이지 객체
+        pymupdf_page: PyMuPDF 페이지 객체
+        page_no: 페이지 번호
+        image_save_dir: 이미지 저장 디렉토리
+    
+    Returns:
+        List[dict]: 중복이 제거된 테이블 블록 리스트
+    """
+    from .extract_utils import _estimate_table_bbox, _extract_bbox_image, _remove_duplicate_tables
 
     blocks = []
     tables = plumber_page.extract_tables()
+    
+    print(f"      📊 {len(tables)}개 테이블 감지됨")
+    
     for table_idx, table in enumerate(tables):
         if table and len(table) > 1:
             try:
-                table_bbox = _estimate_table_bbox(plumber_page, table)
+                # 개선된 bbox 추정 (테이블 인덱스 전달)
+                table_bbox = _estimate_table_bbox(plumber_page, table, table_idx)
                 if table_bbox:
-                    table_image = _extract_bbox_image(pymupdf_page, table_bbox, dpi=150)
+                    table_image = _extract_bbox_image(
+                        pymupdf_page, table_bbox, dpi=150
+                    )
                     if (
                         table_image
                         and table_image.width > 50
@@ -24,16 +42,18 @@ def _extract_tables(
                         table_path = os.path.join(image_save_dir, table_filename)
                         table_image.save(table_path, "PNG")
                         table_text = _format_table_text(table)
+                        
+                        # 메타데이터에 bbox 정보 추가 (중복 제거용)
                         blocks.append(
                             {
                                 "type": "table",
                                 "content": table_text,
-                                "image_path": table_filename,
+                                "path": table_filename,
                                 "metadata": {
                                     "page": page_no,
                                     "element_type": "table",
                                     "element_index": table_idx,
-                                    "bbox": table_bbox,
+                                    "bbox": table_bbox,  # 중복 제거를 위한 bbox 정보
                                     "rows": len(table),
                                     "columns": len(table[0]) if table[0] else 0,
                                     "width": table_image.width,
@@ -45,8 +65,23 @@ def _extract_tables(
                         print(
                             f"      ✅ 표 추출: {table_filename} ({len(table)}행×{len(table[0]) if table[0] else 0}열)"
                         )
+                else:
+                    print(f"      ⚠️ 테이블 {table_idx} bbox 추정 실패")
             except Exception as e:
-                print(f"      ❌ 표 추출 실패: {e}")
+                print(f"      ❌ 표 추출 실패 (테이블 {table_idx}): {e}")
+    
+    # 중복 제거 적용
+    if len(blocks) > 1:
+        print(f"      🔄 중복 테이블 검사 중... ({len(blocks)}개 → ", end="")
+        unique_blocks = _remove_duplicate_tables(blocks, overlap_threshold=0.7)
+        removed_count = len(blocks) - len(unique_blocks)
+        print(f"{len(unique_blocks)}개)")
+        
+        if removed_count > 0:
+            print(f"      ✨ 중복 테이블 {removed_count}개 제거됨")
+        
+        return unique_blocks
+    
     return blocks
 
 

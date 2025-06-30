@@ -18,6 +18,11 @@ class DifficultyLevel(str, Enum):
     hard = "HARD"
 
 
+class GenerationType(str, Enum):
+    basic = "BASIC"  # 기본 생성
+    extra = "EXTRA"  # 여분 생성
+
+
 class QuestionsByDocumentConfig(BaseModel):
     documentId: int
     keywords: List[str]
@@ -28,6 +33,9 @@ class QuestionsByDocumentConfig(BaseModel):
 # 공통 베이스 모델
 class QuestionResponse(BaseModel):
     type: QuestionType = Field(..., description="문제 유형 (OBJECTIVE 또는 SUBJECTIVE)")
+    generation_type: GenerationType = Field(
+        ..., alias="generationType", description="문제 생성 유형 (BASIC 또는 EXTRA)"
+    )
     difficulty_level: DifficultyLevel = Field(..., description="문제 난이도")
     question: str = Field(..., description="문제 본문 텍스트")
     options: Optional[List[str]] = Field(
@@ -44,6 +52,8 @@ class QuestionResponse(BaseModel):
     tags: Optional[List[str]] = Field(
         None, description="문제 관련 태그 목록 (예: 문해력, 논리력)"
     )
+
+    model_config = {"populate_by_name": True}
 
 
 # 수정 요청용 스키마 (모든 필드 Optional)

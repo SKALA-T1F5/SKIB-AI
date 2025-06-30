@@ -5,43 +5,41 @@
 import json
 import os
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 
 class ResultSaver:
     """문제 생성 결과 저장 클래스"""
-    
+
     @staticmethod
     def save_enhanced_questions(
-        questions: List[Dict], 
-        summary: Dict,
-        total_plan: Dict,
-        document_plan: Dict
+        questions: List[Dict], summary: Dict, total_plan: Dict, document_plan: Dict
     ) -> Dict[str, Any]:
         """향상된 문제 생성 결과 저장 (기본/여분 문제 분리)"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
+
         # 기본 문제와 여분 문제 분리
-        basic_questions = [q for q in questions if q.get('generation_type') == 'basic']
-        extra_questions = [q for q in questions if q.get('generation_type') == 'advanced']
-        
+        basic_questions = [q for q in questions if q.get("generation_type") == "BASIC"]
+        extra_questions = [q for q in questions if q.get("generation_type") == "EXTRA"]
+
         # 공통 메타데이터
+        # TODO document_plan에 맞게 추출되었는지 검증 로직 필요
         common_metadata = {
             "generation_info": {
                 "method": "enhanced_vector_search",
                 "generated_at": datetime.now().isoformat(),
                 "generation_summary": summary,
                 "test_plans_used": {
-                    "total_plan_name": total_plan.get('test_plan', {}).get('name'),
-                    "document_count": summary['total_documents']
-                }
+                    "total_plan_name": total_plan.get("test_plan", {}).get("name"),
+                    "document_count": summary["total_documents"],
+                },
             }
         }
-        
+
         output_dir = "data/outputs/generated_questions"
         os.makedirs(output_dir, exist_ok=True)
         files_created = []
-        
+
         # 1. 기본 문제 저장
         if basic_questions:
             basic_data = {
@@ -49,23 +47,23 @@ class ResultSaver:
                 "question_type": "basic",
                 "total_questions": len(basic_questions),
                 "questions_by_document": {},
-                "all_questions": basic_questions
+                "all_questions": basic_questions,
             }
-            
+
             # 문서별 기본 문제 분류
             for question in basic_questions:
-                doc_name = question.get('document_source', 'Unknown')
+                doc_name = question.get("document_name", "Unknown")
                 if doc_name not in basic_data["questions_by_document"]:
                     basic_data["questions_by_document"][doc_name] = []
                 basic_data["questions_by_document"][doc_name].append(question)
-            
+
             basic_file = f"{output_dir}/basic_questions_{timestamp}.json"
-            with open(basic_file, 'w', encoding='utf-8') as f:
+            with open(basic_file, "w", encoding="utf-8") as f:
                 json.dump(basic_data, f, ensure_ascii=False, indent=2)
             files_created.append(basic_file)
             print(f"💾 기본 문제 저장: {basic_file}")
             print(f"📈 기본 문제 수: {len(basic_questions)}개")
-        
+
         # 2. 여분 문제 저장
         if extra_questions:
             extra_data = {
@@ -73,59 +71,28 @@ class ResultSaver:
                 "question_type": "extra",
                 "total_questions": len(extra_questions),
                 "questions_by_document": {},
-                "all_questions": extra_questions
+                "all_questions": extra_questions,
             }
-            
+
             # 문서별 여분 문제 분류
             for question in extra_questions:
-                doc_name = question.get('document_source', 'Unknown')
+                doc_name = question.get("document_name", "Unknown")
                 if doc_name not in extra_data["questions_by_document"]:
                     extra_data["questions_by_document"][doc_name] = []
                 extra_data["questions_by_document"][doc_name].append(question)
-            
+
             extra_file = f"{output_dir}/extra_questions_{timestamp}.json"
-            with open(extra_file, 'w', encoding='utf-8') as f:
+            with open(extra_file, "w", encoding="utf-8") as f:
                 json.dump(extra_data, f, ensure_ascii=False, indent=2)
             files_created.append(extra_file)
             print(f"💾 여분 문제 저장: {extra_file}")
             print(f"🎯 여분 문제 수: {len(extra_questions)}개")
-        
-        # 3. 통합 파일도 저장 (기존 호환성 유지)
-        combined_data = {
-            **common_metadata,
-            "question_type": "combined",
-            "total_questions": len(questions),
-            "basic_questions_count": len(basic_questions),
-            "extra_questions_count": len(extra_questions),
-            "questions_by_document": {},
-            "all_questions": questions
-        }
-        
-        # 문서별 통합 분류
-        for question in questions:
-            doc_name = question.get('document_source', 'Unknown')
-            if doc_name not in combined_data["questions_by_document"]:
-                combined_data["questions_by_document"][doc_name] = {
-                    "basic_questions": [],
-                    "extra_questions": []
-                }
-            
-            if question.get('generation_type') == 'basic':
-                combined_data["questions_by_document"][doc_name]["basic_questions"].append(question)
-            else:
-                combined_data["questions_by_document"][doc_name]["extra_questions"].append(question)
-        
-        combined_file = f"{output_dir}/combined_questions_{timestamp}.json"
-        with open(combined_file, 'w', encoding='utf-8') as f:
-            json.dump(combined_data, f, ensure_ascii=False, indent=2)
-        files_created.append(combined_file)
-        print(f"💾 통합 문제 저장: {combined_file}")
-        
+
         print(f"\n📊 총 문제 수: {len(questions)}개")
         print(f"📈 기본 문제: {len(basic_questions)}개")
         print(f"🎯 여분 문제: {len(extra_questions)}개")
         print(f"📁 생성된 파일: {len(files_created)}개")
-        
+
         return {
             "status": "completed",
             "total_questions": len(questions),
@@ -136,18 +103,21 @@ class ResultSaver:
             "files_created": files_created,
             "file_details": {
                 "basic_file": files_created[0] if basic_questions else None,
-                "extra_file": files_created[1] if extra_questions and len(files_created) > 1 else files_created[0] if extra_questions else None,
-                "combined_file": files_created[-1]
-            }
+                "extra_file": (
+                    files_created[1]
+                    if extra_questions and len(files_created) > 1
+                    else files_created[0] if extra_questions else None
+                ),
+            },
         }
-    
+
     @staticmethod
     def save_standard_question_results(
         questions: List[Dict],
         source_file: str,
         keywords: List[str],
         main_topics: List[str],
-        summary: str
+        summary: str,
     ) -> List[str]:
         """표준 형식으로 문제 결과 저장"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -208,7 +178,7 @@ class ResultSaver:
             files_created.append(config_file)
 
         return files_created
-    
+
     @staticmethod
     def _save_test_summary(
         questions: List[Dict],
@@ -380,7 +350,7 @@ class ResultSaver:
         except Exception as e:
             print(f"⚠️ 테스트 설정 저장 실패: {e}")
             return None
-    
+
     @staticmethod
     def _analyze_content_complexity(
         keywords: List[str], main_topics: List[str], questions: List[Dict]

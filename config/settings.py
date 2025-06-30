@@ -16,6 +16,8 @@ class Settings:
         # OpenAI API 키 (Kubernetes Secret 또는 .env)
         self.api_key = os.getenv("OPENAI_API_KEY")
 
+        self.subjective_grader_model = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL")
+
         # 경로 설정
         self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # config/
         self.ROOT_DIR = os.path.abspath(os.path.join(self.BASE_DIR, ".."))  # SKIB-AI/

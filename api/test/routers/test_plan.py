@@ -8,7 +8,7 @@ from api.test.schemas.test_plan import (
 )
 from src.agents.test_designer.agent import TestDesignerAgent
 
-router = APIRouter(prefix="/api/test", tags=["Test Plan"])
+router = APIRouter(prefix="/api/test", tags=["Test"])
 
 
 @router.post("/plan", response_model=TestPlanResponse)
@@ -25,7 +25,7 @@ async def generate_test_plan(request: TestPlanRequest):
         for doc_summary in request.document_summaries:
             all_keywords.extend(doc_summary.keywords)
             all_summaries.append(
-                f"문서 {doc_summary.documentId}: {doc_summary.summary}"
+                f"문서 {doc_summary.document_id}: {doc_summary.summary}"
             )
 
         # 중복 키워드 제거
@@ -86,10 +86,11 @@ async def generate_test_plan(request: TestPlanRequest):
 
                 document_configs.append(
                     TestPlanByDocument(
-                        document_id=doc_summary.documentId,
-                        keywords=doc_summary.keywords[:3],  # 상위 3개 키워드
-                        recommendedObjective=obj_count,
-                        recommendedSubjective=subj_count,
+                        documentId=doc_summary.document_id,
+                        documentName=getattr(doc_summary, "name", ""),
+                        keywords=doc_summary.keywords,
+                        configuredObjectiveCount=obj_count,
+                        configuredSubjectiveCount=subj_count,
                     )
                 )
 

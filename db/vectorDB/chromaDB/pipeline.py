@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from .client import get_client
 from .search import ChromaDBSearcher
-from .upload import ChromaDBUploader
+from .upload import ChromaDBUploader, DuplicateAction
 from .utils import get_collection_info, list_collections
 
 logger = logging.getLogger(__name__)
@@ -16,17 +16,24 @@ logger = logging.getLogger(__name__)
 class ChromaDBPipeline:
     """ChromaDB 통합 파이프라인"""
 
-    def __init__(self, embedding_model: str = "BAAI/bge-base-en"):
+    def __init__(
+        self, 
+        embedding_model: str = "BAAI/bge-base-en",
+        duplicate_action: DuplicateAction = DuplicateAction.SKIP
+    ):
         """
         파이프라인 초기화
 
         Args:
             embedding_model: 임베딩 모델명
+            duplicate_action: 중복 발견 시 처리 방식
         """
         self.client = get_client()
-        self.uploader = ChromaDBUploader(embedding_model)
+        self.uploader = ChromaDBUploader(embedding_model, duplicate_action)
         self.searcher = ChromaDBSearcher(embedding_model)
+        self.duplicate_action = duplicate_action
         logger.info(f"🚀 ChromaDB 파이프라인 초기화 완료")
+        logger.info(f"🔄 중복 처리 방식: {duplicate_action.value}")
 
     def process_and_upload_document(
         self,
@@ -34,15 +41,17 @@ class ChromaDBPipeline:
         collection_name: str,
         source_file: str,
         recreate_collection: bool = False,
+        duplicate_action: DuplicateAction = None,
     ) -> Dict[str, Any]:
         """
-        문서 블록 처리 및 업로드
+        문서 블록 처리 및 업로드 (중복 방지 기능 포함)
 
         Args:
             document_blocks: 문서 블록 리스트
             collection_name: 컬렉션 이름
             source_file: 소스 파일명
             recreate_collection: 컬렉션 재생성 여부
+            duplicate_action: 중복 처리 방식 (없으면 기본값 사용)
 
         Returns:
             처리 결과 딕셔너리
@@ -56,9 +65,10 @@ class ChromaDBPipeline:
 
                 create_or_get_collection(collection_name, recreate=True)
 
-            # 문서 블록 업로드
+            # 문서 블록 업로드 (중복 방지 적용)
+            action = duplicate_action or self.duplicate_action
             uploaded_count = self.uploader.upload_document_blocks(
-                document_blocks, collection_name, source_file
+                document_blocks, collection_name, source_file, duplicate_action=action
             )
 
             # 결과 정보 수집

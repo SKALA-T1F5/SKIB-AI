@@ -41,6 +41,7 @@ async def get_document_summary(documentId: int):
                     summary=result.get("summary", ""),
                     keywords=result.get("keywords", []),
                     documentId=documentId,
+                    name=result.get("document_name", ""),
                 )
             else:
                 raise HTTPException(status_code=404, detail="Summary result not found")
@@ -70,6 +71,7 @@ async def process_document_background(
             }
         )
 
+        # TODO 이미 한번 전처리를 진행한 파일인지 확인 후 로직 진행 추가 필요
         result = await pipeline.run(
             {
                 "document_path": file_path,
@@ -88,7 +90,8 @@ async def process_document_background(
             summary_data = {
                 "summary": content_analysis.get("summary", ""),
                 "keywords": keywords,
-                "documentId": documentId,
+                "document_id": documentId,
+                "name": result.get("filename", ""),
             }
 
             # 1. 결과 저장
@@ -127,10 +130,15 @@ async def notify_springboot_completion(documentId: int, summary_data: Dict) -> b
 
         async with httpx.AsyncClient() as client:
             response = await client.put(
-                f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{documentId}",
+                f"http://localhost:8080/api/document/summary/{documentId}",
                 json=summary_data,
                 headers={"Content-Type": "application/json"},
             )
+            # response = await client.put(
+            #     f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{documentId}",
+            #     json=summary_data,
+            #     headers={"Content-Type": "application/json"},
+            # )
 
             logger.info(f"📡 SpringBoot 응답 코드: {response.status_code}")
             logger.info(f"📡 SpringBoot 응답 내용: {response.text}")

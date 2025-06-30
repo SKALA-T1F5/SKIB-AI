@@ -18,7 +18,10 @@ class SummaryByDocumentResponse(BaseModel):
 
     summary: str
     keywords: List[str]  # main_topics + key_concepts 조합
-    documentId: int
+    document_id: int = Field(..., alias="documentId", description="문서 ID")
+    name: str = Field(..., description="문서 이름")
+
+    model_config = {"populate_by_name": True}  # v2 방식
 
 
 class DocumentSummaryRequest(BaseModel):
