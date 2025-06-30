@@ -90,7 +90,7 @@ spec:
 
           volumeMounts:
             - name: document-volume
-              mountPath: /data
+              mountPath: /
       volumes:
         - name: document-volume
           persistentVolumeClaim:
