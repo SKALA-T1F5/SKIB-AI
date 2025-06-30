@@ -12,6 +12,7 @@ class Settings:
         # 환경 정보
         self.env = os.getenv("ENV", "local")
         self.debug = self.env == "local"
+        self.backend_url = os.getenv("BACKEND_URL", "http://localhost:8080")
 
         # OpenAI API 키 (Kubernetes Secret 또는 .env)
         self.api_key = os.getenv("OPENAI_API_KEY")
