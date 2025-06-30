@@ -19,9 +19,6 @@ class Settings:
 
         self.subjective_grader_model = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL")
 
-        self.google_api_key = os.getenv("GOOGLE_API_KEY")
-        self.google_cse_id = os.getenv("GOOGLE_CSE_ID")
-
         # Redis 설정
         self.redis_host = os.getenv("REDIS_HOST", "localhost")
         self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
