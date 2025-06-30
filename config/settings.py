@@ -19,6 +19,15 @@ class Settings:
 
         self.subjective_grader_model = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL")
 
+        self.google_api_key = os.getenv("GOOGLE_API_KEY")
+        self.google_cse_id = os.getenv("GOOGLE_CSE_ID")
+
+        # Redis 설정
+        self.redis_host = os.getenv("REDIS_HOST", "localhost")
+        self.redis_port = int(os.getenv("REDIS_PORT", "6379"))
+        self.redis_db = int(os.getenv("REDIS_DB", "0"))
+        self.redis_password = os.getenv("REDIS_PASSWORD", None)
+
         # 경로 설정
         self.BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # config/
         self.ROOT_DIR = os.path.abspath(os.path.join(self.BASE_DIR, ".."))  # SKIB-AI/
@@ -32,6 +41,9 @@ class Settings:
         self.PROJECT_DIR_BASE = os.path.join(
             self.DOCUMENT_UPLOAD_DIR, "projects"
         )  # SKIB-AI/data/documents/projects/
+
+        # ChromaDB 저장 경로
+        self.CHROMA_DIR = os.path.join(self.DATA_DIR, "chroma_data")
 
 
 settings = Settings()

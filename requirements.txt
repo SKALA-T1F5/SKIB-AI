@@ -44,7 +44,7 @@ tokenizers==0.21.1               # Hugging Face tokenizer 지원
 tiktoken==0.9.0                  # OpenAI tokenizer 지원
 torch==2.7.0                    # PyTorch (딥러닝 프레임워크)
 torchvision==0.22.0              # 이미지 관련 PyTorch 모델
-langgraph==0.4.8                  # LangGraph
+langgraph==0.5.0                  # LangGraph
 langgraph-checkpoint==2.1.0       # LangGraph Checkpoint
 langgraph-prebuilt==0.2.2        # LangGraph Prebuilt
 langgraph-sdk==0.1.70             # LangGraph SDK
@@ -144,3 +144,8 @@ jiter==0.10.0                     # 빠른 JSON 파서
 # ✅ 테스트 도구
 pytest==8.4.0                        # 기본 테스트 프레임워크
 pytest-asyncio==1.0.0                # 비동기 코드용 pytest 확장
+
+# redis 디비 관련
+redis[async]
+
+konlpy==0.6.0                     # 한국어 자연어 처리
