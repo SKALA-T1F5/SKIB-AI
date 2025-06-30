@@ -10,6 +10,7 @@ from api.document.schemas.document_summary import (
     get_result,
     set_result,
 )
+from config.settings import settings
 from src.pipelines.document_processing.pipeline import DocumentProcessingPipeline
 
 router = APIRouter(prefix="/api/document", tags=["Document"])
@@ -98,7 +99,6 @@ async def process_document_background(
             set_result(documentId, summary_data)
             set_status(documentId, StatusEnum.DONE)
 
-            # TODO SpringBoot 연결 후 확인 필요
             # # 2. SpringBoot에 알림
             success = await notify_springboot_completion(documentId, summary_data)
 
@@ -127,31 +127,28 @@ async def notify_springboot_completion(documentId: int, summary_data: Dict) -> b
     """SpringBoot에 처리 완료 알림"""
     try:
         logger.info(f"📡 전송 대상 데이터: {summary_data}")
+        url = f"{settings.backend_url}/api/document/summary/{documentId}"
+        logger.info(f"🌍 전송 대상 URL: {url}")
 
         async with httpx.AsyncClient() as client:
             response = await client.put(
-                f"http://localhost:8080/api/document/summary/{documentId}",
+                url,
                 json=summary_data,
                 headers={"Content-Type": "application/json"},
             )
-            # response = await client.put(
-            #     f"https://skib-backend.skala25a.project.skala-ai.com/api/document/summary/{documentId}",
-            #     json=summary_data,
-            #     headers={"Content-Type": "application/json"},
-            # )
 
-            logger.info(f"📡 SpringBoot 응답 코드: {response.status_code}")
-            logger.info(f"📡 SpringBoot 응답 내용: {response.text}")
+        logger.info(f"📡 SpringBoot 응답 코드: {response.status_code}")
+        logger.info(f"📡 SpringBoot 응답 내용: {response.text}")
 
-            if response.status_code == 200:
-                logger.info(f"✅ SpringBoot 알림 성공: documentId={documentId}")
-                return True
-            else:
-                logger.error(
-                    f"🚫 SpringBoot 알림 실패: 상태 코드 {response.status_code}"
-                )
-                return False
+        if response.status_code == 200:
+            logger.info(f"✅ SpringBoot 알림 성공: documentId={documentId}")
+            return True
+        else:
+            logger.error(
+                f"🚫 SpringBoot 알림 실패: 상태 코드 {response.status_code}, 응답 내용: {response.text}"
+            )
+            return False
 
     except Exception as e:
-        logger.error(f"❌ SpringBoot 알림 중 오류 발생: {str(e)}")
+        logger.exception(f"❌ SpringBoot 알림 중 예외 발생: {str(e)}")
         return False
