@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Optional, TypedDict
+from typing import List
 
 from konlpy.tag import Okt
 from langgraph.graph import StateGraph
@@ -14,20 +14,11 @@ from src.agents.trainee_assistant.prompt_1 import (
     build_prompt_from_docs,
     system_prompt_no_context,
 )
+from src.pipelines.trainee_assistant.state import ChatState
 
 logger = logging.getLogger(__name__)
 
 openai_client = AsyncOpenAI(api_key=settings.api_key)
-
-
-class ChatState(TypedDict):
-    user_id: str
-    question: str
-    question_id: str
-    document_name: Optional[str]
-    test_questions: List[Question]
-    chroma_docs: Optional[List[dict]]
-    answer: Optional[str]
 
 
 okt = Okt()
