@@ -89,6 +89,9 @@ class QuestionGeneratorAgent:
             "extra_questions": 0,
         }
 
+        # 전체 테스트 계획에서 난이도 추출
+        difficulty = total_plan.get("test_plan", {}).get("difficulty_level", "NORMAL")
+        
         # 2. 각 문서별로 문제 생성
         # TODO 문서별로 병렬 처리할 수 있도록 리팩토링 필요
         for doc_plan in document_plan.get("document_plans", []):
@@ -102,6 +105,7 @@ class QuestionGeneratorAgent:
             print(
                 f"📊 추천 문제수: 객관식 {recommended.get('objective', 0)}개, 주관식 {recommended.get('subjective', 0)}개"
             )
+            print(f"🎯 난이도: {difficulty}")
 
             # VectorDB에서 키워드 관련 콘텐츠 검색 (문서명을 자동으로 collection명으로 변환)
             if document_name:
@@ -129,6 +133,9 @@ class QuestionGeneratorAgent:
                 num_objective=recommended.get("objective", 0),
                 num_subjective=recommended.get("subjective", 0),
                 question_type="BASIC",
+                difficulty=difficulty,
+                total_test_plan=total_plan,
+                document_test_plan=doc_plan,
             )
             doc_questions.extend(basic_questions)
 
@@ -150,6 +157,9 @@ class QuestionGeneratorAgent:
                     num_objective=extra_objective,
                     num_subjective=extra_subjective,
                     question_type="EXTRA",
+                    difficulty=difficulty,
+                    total_test_plan=total_plan,
+                    document_test_plan=doc_plan,
                 )
                 doc_questions.extend(extra_questions)
 
@@ -197,6 +207,9 @@ class QuestionGeneratorAgent:
         num_objective: int,
         num_subjective: int,
         question_type: str = "BASIC",
+        difficulty: str = "NORMAL",
+        total_test_plan: Dict = None,
+        document_test_plan: Dict = None,
     ) -> List[Dict]:
         """콘텍스트를 활용한 문제 생성 (기존 QuestionGenerator 활용)"""
         if num_objective == 0 and num_subjective == 0:
@@ -217,6 +230,9 @@ class QuestionGeneratorAgent:
                 blocks=context_blocks,
                 num_objective=num_objective,
                 num_subjective=num_subjective,
+                difficulty=difficulty,
+                total_test_plan=total_test_plan,
+                document_test_plan=document_test_plan,
             )
 
             # 생성된 문제 추출 및 메타데이터 추가

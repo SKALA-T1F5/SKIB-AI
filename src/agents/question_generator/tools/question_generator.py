@@ -505,7 +505,8 @@ class QuestionGenerator:
             return {}
 
     def generate_questions_for_blocks(
-        self, blocks: List[Dict], num_objective: int = 3, num_subjective: int = 3
+        self, blocks: List[Dict], num_objective: int = 3, num_subjective: int = 3, 
+        difficulty: str = "NORMAL", total_test_plan: Dict = None, document_test_plan: Dict = None
     ) -> List[Dict]:
         """
         블록들에 대해 GPT-4 Vision으로 질문 생성
@@ -579,14 +580,27 @@ class QuestionGenerator:
                     continue
 
                 try:
-                    # Gemini 2.5 Pro로 질문 생성 (키워드와 주제 활용)
-                    questions = generate_question(
-                        messages=chunk["messages"],
-                        source=chunk["metadata"].get("source", "unknown"),
-                        page=str(chunk["metadata"].get("page", "N/A")),
-                        num_objective=chunk_obj,
-                        num_subjective=chunk_subj,
-                    )
+                    # Gemini 2.5 Pro로 질문 생성 (테스트 계획 활용)
+                    if total_test_plan or document_test_plan:
+                        questions = generate_question_with_test_plan(
+                            messages=chunk["messages"],
+                            source=chunk["metadata"].get("source", "unknown"),
+                            page=str(chunk["metadata"].get("page", "N/A")),
+                            num_objective=chunk_obj,
+                            num_subjective=chunk_subj,
+                            difficulty=difficulty,
+                            total_test_plan=total_test_plan,
+                            document_test_plan=document_test_plan,
+                        )
+                    else:
+                        questions = generate_question(
+                            messages=chunk["messages"],
+                            source=chunk["metadata"].get("source", "unknown"),
+                            page=str(chunk["metadata"].get("page", "N/A")),
+                            num_objective=chunk_obj,
+                            num_subjective=chunk_subj,
+                            difficulty=difficulty,
+                        )
 
                     # 첫 번째 블록에 질문 추가 (청크 대표)
                     if chunk["block_indices"] and questions:
