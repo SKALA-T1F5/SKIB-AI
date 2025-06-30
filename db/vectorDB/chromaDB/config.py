@@ -31,8 +31,9 @@ class ChromaDBConfig:
         self.password = os.getenv("CHROMADB_PASSWORD", "Skala25a!23$")
         self.use_remote = os.getenv("USE_REMOTE_CHROMADB", "true").lower() == "true"
 
-        # 로컬 설정
-        self.local_path = os.getenv("LOCAL_CHROMADB_PATH", "chroma_data")
+        # 로컬 설정 - settings.py의 CHROMA_DIR 사용
+        from config.settings import settings
+        self.local_path = os.getenv("LOCAL_CHROMADB_PATH", settings.CHROMA_DIR)
 
         # 임베딩 설정
         self.embedding_model = os.getenv("EMBEDDING_MODEL", "BAAI/bge-base-en")
