@@ -9,7 +9,7 @@ from api.trainee_assistant.schemas.trainee_assistant import QuestionPayload
 from config.settings import settings
 from db.redisDB.session_manager import append_message, load_message_history
 from db.vectorDB.chromaDB.search import ChromaDBSearcher
-from src.agents.trainee_assistant.vector_search import (
+from src.agents.trainee_assistant.v1.v2.vector_search import (
     build_prompt_from_docs,
     search_chromadb,
 )

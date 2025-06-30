@@ -8,13 +8,11 @@ from api.trainee_assistant.schemas.trainee_assistant import (
     InitializeTestRequest,
     QuestionPayload,
 )
-from db.redisDB.redis_client import redis_client
 from db.redisDB.session_manager import (
     clear_user_session,
     load_test_questions,
     save_test_questions,
 )
-from src.agents.trainee_assistant.respond import generate_answer, generate_answer_stream
 from src.pipelines.trainee_assistant.trainee_assistant import build_langgraph
 
 router = APIRouter(prefix="/chat", tags=["Trainee Assistant"])
@@ -28,19 +26,6 @@ async def initialize_test_context(payload: InitializeTestRequest):
 
     await save_test_questions(user_id, test_questions)
     return {"msg": "테스트 문항 초기화 완료"}
-
-
-@router.post("/ask")
-async def ask_question(payload: QuestionPayload):
-    answer = await generate_answer(payload)
-    return {"answer": answer}
-
-
-# @router.post("/ask/stream")
-# async def ask_question_stream(payload: QuestionPayload):
-#     return await generate_answer_stream(
-#         user_id=payload.userId, user_question=payload.question
-#     )
 
 
 @router.post("/ask-graph")

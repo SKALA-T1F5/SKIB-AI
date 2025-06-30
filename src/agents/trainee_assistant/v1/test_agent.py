@@ -5,7 +5,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
 
-from src.agents.trainee_assistant.agent import get_chat_response
+from agents.trainee_assistant.v1.agent import get_chat_response
 from src.agents.trainee_assistant.example_data.example_data_1 import example_inputs
 
 

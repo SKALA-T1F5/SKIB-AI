@@ -7,9 +7,9 @@ from typing import Any, Dict, List, Optional
 import openai
 from openai import AsyncOpenAI
 
+from agents.trainee_assistant.v1.prompt import SYSTEM_PROMPT, build_user_prompt
 from config.settings import settings
 from db.redisDB.session_manager import append_message, load_message_history
-from src.agents.trainee_assistant.prompt import SYSTEM_PROMPT, build_user_prompt
 
 # OpenAI 로드
 api_key = settings.api_key
