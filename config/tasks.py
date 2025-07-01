@@ -1,6 +1,6 @@
 from typing import Any, Dict
 
-from api.document.routers.document_summary import process_document_background
+from api.document.services.document_summary import process_document_background
 from config.celery_app import celery_app
 
 
