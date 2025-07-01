@@ -5,6 +5,8 @@ from typing import Any, Dict, List, Optional
 
 from langgraph.graph import END, StateGraph
 
+from api.document.schemas.document_status import DocumentProcessingStatus
+from api.websocket.services.springboot_notifier import notify_document_progress
 from db.vectorDB.chromaDB.pipeline import ChromaDBPipeline
 from src.agents.document_analyzer.tools.keyword_summary import (
     extract_keywords_and_summary,
@@ -94,6 +96,15 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             )
             self.logger.info(f"Filename: {initial_state.get('filename')}")
 
+            print(f"Initial state: {initial_state.get('documentId')}")
+            print(f"Session ID: {self.config.get('task_id')}")
+            # 전처리 시작 알림
+            await notify_document_progress(
+                task_id=self.config.get("task_id"),
+                document_id=initial_state.get("documentId"),
+                status=DocumentProcessingStatus.PREPROCESSING_START,
+            )
+
             config = {
                 "configurable": {
                     "thread_id": session_id or initial_state["pipeline_id"]
@@ -121,6 +132,14 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
         self.logger.info(f"Parsing document: {state['document_path']}")
+        print(f"Initial state: {state.get('documentId')}")
+        print(f"Session ID: {self.config.get('task_id')}")
+        # 전처리 시작 알림
+        await notify_document_progress(
+            task_id=self.config.get("task_id"),
+            document_id=state.get("documentId"),
+            status=DocumentProcessingStatus.PARSING_DOCUMENT,
+        )
         try:
             blocks = parse_pdf_unified(state["document_path"])
             text_blocks = [
@@ -153,6 +172,12 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     async def _analyze_content_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
+        # 전처리 시작 알림
+        await notify_document_progress(
+            task_id=self.config.get("task_id"),
+            document_id=state.get("documentId"),
+            status=DocumentProcessingStatus.ANALYZING_CONTENT,
+        )
         try:
             blocks = state["parsed_blocks"]
             total_text, sections = "", []
@@ -188,6 +213,12 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     async def _extract_keywords_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
+        # 요약 시작 알림
+        await notify_document_progress(
+            task_id=self.config.get("task_id"),
+            document_id=state.get("documentId"),
+            status=DocumentProcessingStatus.SUMMARIZING,
+        )
         try:
             blocks = state["parsed_blocks"]
             filename = extract_metadata(state)["filename"]
@@ -213,6 +244,12 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     async def _store_vectors_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
+        # 벡터 저장 시작 알림
+        await notify_document_progress(
+            task_id=self.config.get("task_id"),
+            document_id=state.get("documentId"),
+            status=DocumentProcessingStatus.STORING_VECTORDB,
+        )
         try:
             if not self.config.get("enable_vectordb", True):
                 return {
