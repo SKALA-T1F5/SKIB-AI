@@ -1,18 +1,17 @@
 # api/document/routers/document_upload.py (리팩토링)
-import asyncio
 import logging
 from uuid import uuid4
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from api.document.crud.document import save_document_locally
-from api.document.routers.document_summary import process_document_background
 from api.document.schemas.document_status import DocumentProcessingStatus
 from api.document.schemas.document_upload import (
     DocumentUploadMetaRequest,
     DocumentUploadResponse,
 )
 from api.websocket.services.springboot_notifier import notify_document_progress
+from config.tasks import process_document_task
 from utils.naming import filename_to_collection
 
 router = APIRouter(prefix="/api/document", tags=["Document"])
@@ -57,15 +56,12 @@ async def upload_document(
             status=DocumentProcessingStatus.UPLOAD_COMPLETED,
         )
 
-        # 백그라운드에서 문서 처리 실행
-        asyncio.create_task(
-            process_document_background(
-                task_id=task_id,
-                file_path=result["project_path"],
-                documentId=metadata.documentId,
-                project_id=metadata.project_id,
-                filename=metadata.name,
-            )
+        process_document_task.delay(
+            task_id=task_id,
+            file_path=str(result["project_path"]),
+            documentId=metadata.documentId,
+            project_id=metadata.project_id,
+            filename=metadata.name,
         )
 
         return DocumentUploadResponse(
@@ -76,132 +72,6 @@ async def upload_document(
     except Exception as e:
         logger.exception("🔥 [UPLOAD ERROR] 문서 업로드 중 예외 발생")
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
-
-
-async def background_document_processing(
-    task_id: str, file_path: str, documentId: int, project_id: int, filename: str
-):
-    """백그라운드에서 문서 처리 수행"""
-    try:
-        from src.pipelines.document_processing.pipeline import (
-            DocumentProcessingPipeline,
-        )
-
-        # 전처리 시작 알림
-        await notify_document_progress(
-            task_id=task_id,
-            document_id=documentId,
-            status=DocumentProcessingStatus.PREPROCESSING,
-        )
-
-        pipeline = DocumentProcessingPipeline(
-            config={
-                "enable_vectordb": True,
-                "timeout_seconds": 600,
-                "max_retries": 3,
-            }
-        )
-
-        # 파이프라인 실행
-        result = await pipeline.run(
-            {
-                "document_path": file_path,
-                "documentId": documentId,
-                "project_id": project_id,
-                "filename": filename,
-            }
-        )
-
-        if result.get("processing_status") == "completed":
-            # 요약 생성 알림
-            await notify_document_progress(
-                task_id=task_id,
-                document_id=documentId,
-                status=DocumentProcessingStatus.SUMMARIZING,
-            )
-
-            # 결과 처리
-            content_analysis = result.get("content_analysis", {})
-            main_topics = content_analysis.get("main_topics", [])
-            key_concepts = content_analysis.get("key_concepts", [])
-            keywords = (main_topics + key_concepts)[:10]
-
-            summary_data = {
-                "summary": content_analysis.get("summary", ""),
-                "keywords": keywords,
-                "document_id": documentId,
-                "name": result.get("filename", ""),
-            }
-
-            # SpringBoot에 요약 데이터 전송 (기존 API 사용)
-            success = await notify_springboot_summary_completion(
-                documentId, summary_data
-            )
-
-            if success:
-                # 완료 알림
-                await notify_document_progress(
-                    task_id=task_id,
-                    document_id=documentId,
-                    status=DocumentProcessingStatus.SUMMARY_COMPLETED,
-                )
-                logger.info(f"✅ 문서 처리 완료: {documentId}")
-            else:
-                # 실패 알림
-                await notify_document_progress(
-                    task_id=task_id,
-                    document_id=documentId,
-                    status=DocumentProcessingStatus.FAILED,
-                    error_code="SUMMARY_UPLOAD_FAILED",
-                )
-        else:
-            # 파이프라인 실패
-            await notify_document_progress(
-                task_id=task_id,
-                document_id=documentId,
-                status=DocumentProcessingStatus.FAILED,
-                error_code="PROCESSING_FAILED",
-            )
-
-    except Exception as e:
-        # 예외 발생시 실패 알림
-        await notify_document_progress(
-            task_id=task_id,
-            document_id=documentId,
-            status=DocumentProcessingStatus.FAILED,
-            error_code="PROCESSING_EXCEPTION",
-        )
-        logger.error(f"❌ 백그라운드 문서 처리 실패: {documentId} - {e}")
-
-
-async def notify_springboot_summary_completion(
-    documentId: int, summary_data: dict
-) -> bool:
-    """SpringBoot에 요약 완료 알림 (기존 API 사용)"""
-    try:
-        import httpx
-
-        from config.settings import settings
-
-        url = f"{settings.backend_url}/api/document/summary/{documentId}"
-
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.put(
-                url,
-                json=summary_data,
-                headers={"Content-Type": "application/json"},
-            )
-
-        if response.status_code == 200:
-            logger.info(f"✅ SpringBoot 요약 알림 성공: documentId={documentId}")
-            return True
-        else:
-            logger.error(f"🚫 SpringBoot 요약 알림 실패: {response.status_code}")
-            return False
-
-    except Exception as e:
-        logger.error(f"❌ SpringBoot 요약 알림 예외: {e}")
-        return False
 
 
 # @router.get("/upload/progress/{task_id}")
