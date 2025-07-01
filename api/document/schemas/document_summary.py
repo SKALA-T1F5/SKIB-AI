@@ -24,12 +24,6 @@ class SummaryByDocumentResponse(BaseModel):
     model_config = {"populate_by_name": True}  # v2 방식
 
 
-class DocumentSummaryRequest(BaseModel):
-    """문서 요약 요청"""
-
-    documentId: int
-
-
 class DocumentSummaryResponse(BaseModel):
     """문서 요약 응답 (FastAPI 내부용 - 상세)"""
 
