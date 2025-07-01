@@ -1,7 +1,5 @@
 # main.py (기존 코드 + 추가)
-import asyncio
 import os
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
@@ -15,36 +13,32 @@ from api.test.routers.test_plan import router as test_plan_router
 from api.trainee_assistant.routers import trainee_assistant
 
 # 백그라운드 워커
-from api.websocket.services.springboot_notifier import (
-    start_retry_worker,
-    stop_retry_worker,
-)
 from services.middleware import LoggingMiddleware
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """앱 시작/종료시 실행되는 라이프사이클 관리"""
-    # 시작시: 백그라운드 재시도 워커 시작
-    retry_task = asyncio.create_task(start_retry_worker())
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     """앱 시작/종료시 실행되는 라이프사이클 관리"""
+#     # 시작시: 백그라운드 재시도 워커 시작
+#     retry_task = asyncio.create_task(start_retry_worker())
 
-    yield
+#     yield
 
-    # 종료시: 백그라운드 워커 중지
-    stop_retry_worker()
-    retry_task.cancel()
-    try:
-        await retry_task
-    except asyncio.CancelledError:
-        pass
+#     # 종료시: 백그라운드 워커 중지
+#     stop_retry_worker()
+#     retry_task.cancel()
+#     try:
+#         await retry_task
+#     except asyncio.CancelledError:
+#         pass
 
 
 app = FastAPI(
     title="SKIB-AI FastAPI Server",
     version="1.0.0",
-    lifespan=lifespan,  # 라이프사이클 관리 추가
+    # lifespan=lifespan,  # 라이프사이클 관리 추가
 )
 
 # 미들웨어 및 라우터 등록
