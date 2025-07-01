@@ -51,24 +51,31 @@ async def generate_test_plan(request: TestPlanRequest):
 
         # Agent 결과에서 필요한 정보 추출
         test_config = result.get("test_config", {})
-        test_summary = result.get("test_summary", {})
-        test_title = test_summary.get("name", "")
-        test_summary = test_summary.get("test_summary", "")
+        test_summary_data = result.get("test_summary", {})
+        test_title = test_summary_data.get("name", "")
+        test_summary_text = test_summary_data.get("test_summary", "")
 
-        # 난이도 매핑
+        # 난이도 매핑 (test_summary에서 가져오기)
         difficulty_mapping = {
-            "easy": DifficultyLevel.easy,
-            "medium": DifficultyLevel.normal,
-            "hard": DifficultyLevel.hard,
+            "EASY": DifficultyLevel.easy,
+            "NORMAL": DifficultyLevel.normal,
+            "HARD": DifficultyLevel.hard,
         }
 
-        difficulty_level = difficulty_mapping.get(
-            test_config.get("difficulty", "medium"), DifficultyLevel.normal
-        )
+        # Gemini가 반환한 difficulty_level 사용
+        gemini_difficulty = test_summary_data.get("difficulty_level", "NORMAL")
+        difficulty_level = difficulty_mapping.get(gemini_difficulty, DifficultyLevel.normal)
 
-        # 문서별 문항 수 배분 계산
-        total_objective = test_config.get("num_objective")
-        total_subjective = test_config.get("num_subjective")
+        # Gemini가 추천한 문제 수 사용 (document_configs에서 추출)
+        document_configs_from_gemini = test_summary_data.get("document_configs", [])
+        total_objective = sum(config.get("recommended_objective", 0) for config in document_configs_from_gemini)
+        total_subjective = sum(config.get("recommended_subjective", 0) for config in document_configs_from_gemini)
+        
+        # 기본값 설정 (Gemini 추천이 없을 경우)
+        if total_objective == 0:
+            total_objective = test_config.get("num_objective", 5)
+        if total_subjective == 0:
+            total_subjective = test_config.get("num_subjective", 3)
         document_count = len(request.document_summaries)
 
         document_configs = []
@@ -94,15 +101,14 @@ async def generate_test_plan(request: TestPlanRequest):
                     )
                 )
 
-        # 응답 생성
-        # TODO: 현재 state 맞게 출력되고 있는지 확인 X
+        # 응답 생성 (Gemini 결과 활용)
         response = TestPlanResponse(
             name=test_title,
-            summary=test_summary,
+            summary=test_summary_text,
             difficultyLevel=difficulty_level,
-            limitedTime=test_config.get("time_limit", 60),
-            passScore=test_config.get("pass_score", 70),
-            isRetake=test_config.get("retake_allowed", True),
+            limitedTime=test_summary_data.get("limited_time", 60),
+            passScore=test_summary_data.get("pass_score", 70),
+            isRetake=test_summary_data.get("retake", True),
             documentConfigs=document_configs,
         )
 

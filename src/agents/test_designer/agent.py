@@ -174,11 +174,8 @@ class TestDesignerAgent(BaseAgent):
 ## 분석 대상 문서들:
 {chr(10).join(documents_info)}
 
-## 사용자 요구사항:
+## 사용자 요구사항 (문제 수, 난이도 등 모든 요구사항을 반영해주세요):
 {requirements.get('user_prompt', '표준 테스트 계획을 수립해주세요')}
-
-## 목표 난이도:
-{requirements.get('target_difficulty', 'NORMAL')}
 
 다음 JSON 형식으로 응답해주세요:
 
@@ -208,14 +205,16 @@ class TestDesignerAgent(BaseAgent):
 ```
 
 ## 지침:
-1. **전체 테스트명**: 모든 문서의 주제를 아우르는 포괄적인 이름
-2. **테스트 요약**: 전체 테스트의 목적과 평가 범위를 명확히 설명
-3. **제한시간**: 문서 수와 문제 수를 고려하여 적절히 설정 (60-120분)
-4. **통과점수**: 난이도에 따라 조정 (EASY: 60%, NORMAL: 70%, HARD: 80%)
-5. **문서별 키워드**: 각 문서에서 가장 중요한 키워드 5-8개 선별
-6. **문제 수 추천**: 문서의 복잡도와 중요도에 따라 객관식/주관식 문제 수 조정
-   - 객관식: 2-8개 (기본 개념 확인)
-   - 주관식: 1-5개 (심화 이해 평가)
+1. **사용자 요구사항 최우선**: 위의 사용자 요구사항에 명시된 문제 수, 난이도, 기타 조건을 정확히 반영하세요
+2. **전체 테스트명**: 모든 문서의 주제를 아우르는 포괄적인 이름
+3. **테스트 요약**: 전체 테스트의 목적과 평가 범위를 명확히 설명
+4. **제한시간**: 문서 수와 문제 수를 고려하여 적절히 설정 (60-120분)
+5. **통과점수**: 난이도에 따라 조정 (EASY: 60%, NORMAL: 70%, HARD: 80%)
+6. **문서별 키워드**: 각 문서에서 가장 중요한 키워드 5-8개 선별
+7. **문제 수 추천**: 사용자가 요청한 문제 수가 있다면 그대로 반영하고, 없다면 문서의 복잡도와 중요도에 따라 조정
+   - 객관식: 2-10개 (기본 개념 확인)
+   - 주관식: 1-8개 (심화 이해 평가)
+8. **객관식/주관식 문제 수 조정**: 객관식/주관식 문제 수를 적절히 배분.
 
 반드시 유효한 JSON 형식으로만 응답하세요.
 """
@@ -304,45 +303,49 @@ class TestDesignerAgent(BaseAgent):
             "test_type": requirements["test_type"],
         }
 
-        # 문제 수 계산 (사용자 프롬프트 분석)
-        user_prompt = requirements["user_prompt"].lower()
+        # 문제 수 계산 (사용자 프롬프트 분석) - 주석처리: Gemini가 직접 판단하도록 변경
+        # user_prompt = requirements["user_prompt"].lower()
 
-        # 문제 수 추출 시도
+        # # 문제 수 추출 시도
+        # num_objective = 5  # 기본값
+        # num_subjective = 3  # 기본값
+
+        # if "객관식" in user_prompt:
+        #     if any(word in user_prompt for word in ["개", "문제"]):
+        #         try:
+        #             # "객관식 10개" 또는 "객관식 10문제" 같은 패턴 찾기
+        #             import re
+
+        #             matches = re.findall(r"객관식.*?(\d+)", user_prompt)
+        #             if matches:
+        #                 num_objective = int(matches[0])
+        #             # TODO : 예외 처리 개선
+        #         except:  # noqa: E722
+        #             pass
+
+        # if "주관식" in user_prompt:
+        #     if any(word in user_prompt for word in ["개", "문제"]):
+        #         try:
+        #             import re
+
+        #             matches = re.findall(r"주관식.*?(\d+)", user_prompt)
+        #             if matches:
+        #                 num_subjective = int(matches[0])
+        #             # TODO : 예외 처리 개선
+        #         except:  # noqa: E722
+        #             pass
+
+        # 기본값 설정 (Gemini가 사용자 프롬프트를 보고 조정할 것)
         num_objective = 5  # 기본값
         num_subjective = 3  # 기본값
 
-        if "객관식" in user_prompt:
-            if "개" in user_prompt:
-                try:
-                    # "객관식 10개" 같은 패턴 찾기
-                    import re
-
-                    matches = re.findall(r"객관식.*?(\d+)", user_prompt)
-                    if matches:
-                        num_objective = int(matches[0])
-                # TODO : 예외 처리 개선
-                except:  # noqa: E722
-                    pass
-
-        if "주관식" in user_prompt:
-            if "개" in user_prompt:
-                try:
-                    import re
-
-                    matches = re.findall(r"주관식.*?(\d+)", user_prompt)
-                    if matches:
-                        num_subjective = int(matches[0])
-                # TODO : 예외 처리 개선
-                except:  # noqa: E722
-                    pass
-
-        # 난이도별 조정
-        if requirements["target_difficulty"] == "easy":
-            num_objective = max(3, num_objective - 2)
-            num_subjective = max(2, num_subjective - 1)
-        elif requirements["target_difficulty"] == "hard":
-            num_objective = min(10, num_objective + 3)
-            num_subjective = min(7, num_subjective + 2)
+        # 난이도별 조정 (주석처리)
+        # if requirements["target_difficulty"] == "easy":
+        #     num_objective = max(3, num_objective - 2)
+        #     num_subjective = max(2, num_subjective - 1)
+        # elif requirements["target_difficulty"] == "hard":
+        #     num_objective = min(10, num_objective + 3)
+        #     num_subjective = min(7, num_subjective + 2)
 
         config = {
             **base_config,
