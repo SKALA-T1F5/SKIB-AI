@@ -6,6 +6,7 @@ from uuid import uuid4
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from api.document.crud.document import save_document_locally
+from api.document.routers.document_summary import process_document_background
 from api.document.schemas.document_status import DocumentProcessingStatus
 from api.document.schemas.document_upload import (
     DocumentUploadMetaRequest,
@@ -58,7 +59,7 @@ async def upload_document(
 
         # 백그라운드에서 문서 처리 실행
         asyncio.create_task(
-            background_document_processing(
+            process_document_background(
                 task_id=task_id,
                 file_path=result["project_path"],
                 documentId=metadata.documentId,

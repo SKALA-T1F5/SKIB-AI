@@ -1,18 +1,23 @@
 import asyncio
-import time
-
 import logging
+import time
 from typing import Dict
 
 import httpx
 from fastapi import APIRouter, HTTPException
 
-from api.document.schemas.document_status import StatusEnum, get_status, set_status
+from api.document.schemas.document_status import (
+    DocumentProcessingStatus,
+    StatusEnum,
+    get_status,
+    set_status,
+)
 from api.document.schemas.document_summary import (
     SummaryByDocumentResponse,
     get_result,
     set_result,
 )
+from api.websocket.services.springboot_notifier import notify_document_progress
 from config.settings import settings
 from src.pipelines.document_processing.pipeline import DocumentProcessingPipeline
 
@@ -59,13 +64,20 @@ async def get_document_summary(documentId: int):
 
 
 async def process_document_background(
-    file_path: str, documentId: int, project_id: int, filename: str
+    task_id: str, file_path: str, documentId: int, project_id: int, filename: str
 ):
     """
     문서 전처리 백그라운드 실행
     """
     try:
         logger.info(f"Starting background processing for documentId: {documentId}")
+
+        # 전처리 시작 알림
+        await notify_document_progress(
+            task_id=task_id,
+            document_id=documentId,
+            status=DocumentProcessingStatus.PREPROCESSING,
+        )
 
         pipeline = DocumentProcessingPipeline(
             config={
@@ -105,23 +117,52 @@ async def process_document_background(
             success = await notify_springboot_completion(documentId, summary_data)
 
             if success:
-                # 3. 전송 성공 → DONE
                 set_status(documentId, StatusEnum.DONE)
-                logger.info(f"✅ Processing completed for documentId: {documentId}")
+                # 3. 전송 성공 → DONE
+                await notify_document_progress(
+                    task_id=task_id,
+                    document_id=documentId,
+                    status=DocumentProcessingStatus.SUMMARY_COMPLETED,
+                )
+                logger.info(f"✅ 문서 처리 완료: {documentId}")
             else:
                 # 4. 3번 재시도 모두 실패 → FAILED
                 set_status(documentId, StatusEnum.FAILED)
+
+                # 실패 알림
+                await notify_document_progress(
+                    task_id=task_id,
+                    document_id=documentId,
+                    status=DocumentProcessingStatus.FAILED,
+                    error_code="SUMMARY_UPLOAD_FAILED",
+                )
+
                 logger.error(
                     f"❌ SpringBoot 전송 3번 재시도 모두 실패: documentId: {documentId}"
                 )
         else:
             # Pipeline 자체 실패 → FAILED
             set_status(documentId, StatusEnum.FAILED)
+
+            await notify_document_progress(
+                task_id=task_id,
+                document_id=documentId,
+                status=DocumentProcessingStatus.FAILED,
+                error_code="PROCESSING_FAILED",
+            )
             logger.error(f"❌ Pipeline failed for documentId: {documentId}")
 
     except Exception as e:
         # 예외 발생 시 실패 상태
         set_status(documentId, StatusEnum.FAILED)
+
+        await notify_document_progress(
+            task_id=task_id,
+            document_id=documentId,
+            status=DocumentProcessingStatus.FAILED,
+            error_code="PROCESSING_EXCEPTION",
+        )
+
         logger.error(
             f"❌ Exception in background processing for documentId {documentId}: {str(e)}"
         )
