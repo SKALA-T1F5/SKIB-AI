@@ -15,4 +15,4 @@ WORKDIR /app
 
 EXPOSE 8000 8081 8080
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-max-requests", "200"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port 8000 --limit-max-requests 200 & celery -A config.tasks worker --loglevel=info --concurrency=4 & wait"]
