@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Optional
 
 from api.trainee_assistant.schemas.trainee_assistant import Question
 from db.redisDB.redis_client import redis_client
@@ -57,3 +57,27 @@ async def clear_user_session(user_id: str):
         get_chat_history_key(user_id),
     ]
     await redis_client.delete(*keys)
+
+
+def get_test_progress_key(task_id: str) -> str:
+    """테스트 진행률 Redis 키 생성"""
+    return f"test_progress:{task_id}"
+
+
+async def save_test_progress(task_id: str, progress_data: dict):
+    """테스트 진행률 저장 (JSON 형태)"""
+    key = get_test_progress_key(task_id)
+    await redis_client.set(key, json.dumps(progress_data), ex=3600)  # 1시간 TTL
+
+
+async def load_test_progress(task_id: str) -> Optional[dict]:
+    """테스트 진행률 로드"""
+    key = get_test_progress_key(task_id)
+    raw = await redis_client.get(key)
+    return json.loads(raw) if raw else None
+
+
+async def clear_test_progress(task_id: str):
+    """테스트 진행률 삭제"""
+    key = get_test_progress_key(task_id)
+    await redis_client.delete(key)

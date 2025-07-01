@@ -1,4 +1,3 @@
-from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
 
@@ -31,11 +30,8 @@ class DocumentStatusUpdateDto(BaseModel):
 
     model_config = ConfigDict(use_enum_values=True)
 
-    taskId: str = Field(..., description="작업 ID")
     documentId: int = Field(..., description="문서 ID")
     status: DocumentProcessingStatus = Field(..., description="현재 처리 단계")
-    errorCode: Optional[str] = Field(default=None, description="실패시 에러 코드")
-    timestamp: datetime = Field(default_factory=datetime.now, description="타임스탬프")
 
 
 class SpringBootDocumentResponse(BaseModel):
