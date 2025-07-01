@@ -203,27 +203,27 @@ async def notify_springboot_summary_completion(
         return False
 
 
-@router.get("/upload/progress/{task_id}")
-async def get_document_processing_progress(task_id: str):
-    """문서 처리 진행률 조회"""
-    try:
-        from api.websocket.services.progress_tracker import get_task_progress
+# @router.get("/upload/progress/{task_id}")
+# async def get_document_processing_progress(task_id: str):
+#     """문서 처리 진행률 조회"""
+#     try:
+#         from api.websocket.services.progress_tracker import get_task_progress
 
-        progress_data = await get_task_progress(task_id)
+#         progress_data = await get_task_progress(task_id)
 
-        if not progress_data:
-            raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+#         if not progress_data:
+#             raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
 
-        return {
-            "task_id": progress_data.task_id,
-            "status": progress_data.status.value,
-            "progress": progress_data.progress,
-            "message": progress_data.message,
-            "updated_at": progress_data.updated_at.isoformat(),
-        }
+#         return {
+#             "task_id": progress_data.task_id,
+#             "status": progress_data.status.value,
+#             "progress": progress_data.progress,
+#             "message": progress_data.message,
+#             "updated_at": progress_data.updated_at.isoformat(),
+#         }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"❌ 문서 진행률 조회 실패 ({task_id}): {e}")
-        raise HTTPException(status_code=500, detail="Progress retrieval failed")
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"❌ 문서 진행률 조회 실패 ({task_id}): {e}")
+#         raise HTTPException(status_code=500, detail="Progress retrieval failed")
