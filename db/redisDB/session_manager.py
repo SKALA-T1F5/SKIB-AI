@@ -1,5 +1,5 @@
 import json
-from typing import List
+from typing import List, Optional
 
 from api.trainee_assistant.schemas.trainee_assistant import Question
 from db.redisDB.redis_client import redis_client
