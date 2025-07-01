@@ -142,7 +142,7 @@ async def _notify_springboot_test_status(
 async def _notify_springboot_document_status(
     task_id: str,
     document_id: int,
-    status: "DocumentProcessingStatus",
+    status: DocumentProcessingStatus,
     error_code: Optional[str] = None,
 ) -> bool:
     """SpringBoot에 문서 상태 알림 (PUT 방식)"""
@@ -227,7 +227,7 @@ async def notify_test_progress(
 async def notify_document_progress(
     task_id: str,
     document_id: int,
-    status: "DocumentProcessingStatus",
+    status: DocumentProcessingStatus,
     error_code: Optional[str] = None,
 ) -> bool:
     """문서 처리 진행률 알림"""

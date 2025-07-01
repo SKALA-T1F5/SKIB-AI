@@ -39,6 +39,7 @@ class DocumentAnalyzerAgent:
         # 이미지 저장 디렉토리 설정
         if collection_name:
             from db.vectorDB.chromaDB.collection_utils import get_safe_collection_name
+
             normalized_name = get_safe_collection_name(collection_name)
             self.image_save_dir = f"data/images/{normalized_name}"
         else:
@@ -61,12 +62,14 @@ class DocumentAnalyzerAgent:
         """
         # collection_name이 없는 경우 문서명에서 자동 생성
         if not self.collection_name:
-            from db.vectorDB.chromaDB.collection_utils import get_safe_collection_name
             import os
+
+            from db.vectorDB.chromaDB.collection_utils import get_safe_collection_name
+
             document_name = os.path.basename(pdf_path)
             self.collection_name = get_safe_collection_name(document_name)
             print(f"📋 Collection 이름 자동 생성: {self.collection_name}")
-        
+
         state = create_document_analyzer_state(pdf_path, self.collection_name)
 
         try:
@@ -222,7 +225,7 @@ class DocumentAnalyzerAgent:
         import json
         import os
         from datetime import datetime
-        
+
         def convert_datetime_to_str(obj):
             """datetime 객체를 문자열로 변환하는 헬퍼 함수"""
             if isinstance(obj, datetime):

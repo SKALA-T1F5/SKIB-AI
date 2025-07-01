@@ -113,6 +113,7 @@ class TextAnalyzer(BaseTool):
         """
         # text_extractor.py의 _classify_text_type 함수와 동일한 로직 사용
         from .text_extractor import _classify_text_type
+
         return _classify_text_type(content)
 
     async def clean_text(self, text: str) -> str:

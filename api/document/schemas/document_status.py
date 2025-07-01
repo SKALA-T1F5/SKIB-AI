@@ -19,8 +19,11 @@ class DocumentProcessingStatus(str, Enum):
     """문서 처리 단계"""
 
     UPLOAD_COMPLETED = "UPLOAD_COMPLETED"  # 업로드 완료
-    PREPROCESSING = "PREPROCESSING"  # 전처리 중
+    PREPROCESSING_START = "PREPROCESSING_START"  # 전처리 시작
+    PARSING_DOCUMENT = "PARSING_DOCUMENT"  # 파싱 중
+    ANALYZING_CONTENT = "ANALYZING_CONTENT"  # 분석 중
     SUMMARIZING = "SUMMARIZING"  # 요약 중
+    STORING_VECTORDB = "STORING_VECTORDB"  # 벡터DB 저장 중
     SUMMARY_COMPLETED = "SUMMARY_COMPLETED"  # 요약 완료
     FAILED = "FAILED"  # 실패
 
