@@ -96,8 +96,6 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
             )
             self.logger.info(f"Filename: {initial_state.get('filename')}")
 
-            print(f"Initial state: {initial_state.get('documentId')}")
-            print(f"Session ID: {self.config.get('task_id')}")
             # 전처리 시작 알림
             await notify_document_progress(
                 task_id=self.config.get("task_id"),
@@ -132,9 +130,8 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
         self.logger.info(f"Parsing document: {state['document_path']}")
-        print(f"Initial state: {state.get('documentId')}")
-        print(f"Session ID: {self.config.get('task_id')}")
-        # 전처리 시작 알림
+
+        # 문서 파싱 시작 알림
         await notify_document_progress(
             task_id=self.config.get("task_id"),
             document_id=state.get("documentId"),
@@ -172,7 +169,7 @@ class DocumentProcessingPipeline(BasePipeline[DocumentProcessingState]):
     async def _analyze_content_node(
         self, state: DocumentProcessingState
     ) -> Dict[str, Any]:
-        # 전처리 시작 알림
+        # 문서 분석 시작 알림
         await notify_document_progress(
             task_id=self.config.get("task_id"),
             document_id=state.get("documentId"),
