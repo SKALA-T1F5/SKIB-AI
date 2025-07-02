@@ -22,7 +22,7 @@ def process_document_task(
         return {"status": "failed", "error": str(e)}
 
 
-@celery_app.task(name="generate_test")
+@celery_app.task(name="generate_test", queue="generation_queue")
 def generate_test_task(
     task_id: str, test_id: int, request_data: Dict[str, Any]
 ) -> Dict[str, Any]:
