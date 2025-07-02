@@ -34,7 +34,7 @@ spec:
               "--limit-max-requests",
               "200",
             ]
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-103-7420d2e81be3
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-104-adaa3ec54ecd
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
