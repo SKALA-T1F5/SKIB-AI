@@ -21,6 +21,7 @@ from api.test.schemas.test_plan import TestPlanByDocument
 
 
 class TestGenerationRequest(BaseModel):
+    test_id: int = Field(..., alias="testId", description="테스트 ID")
     name: str = Field(..., description="테스트 이름")
     summary: str = Field(..., description="테스트 요약")
     difficulty_level: DifficultyLevel = Field(
@@ -39,4 +40,16 @@ class TestGenerationRequest(BaseModel):
 class TestGenerationResponse(BaseModel):
     """테스트 생성 응답 (문제 목록만 반환)"""
 
+    test_id: int = Field(..., alias="testId", description="생성된 테스트 ID")
+    message: str = Field(..., description="상태 메시지")
+
+    model_config = {"populate_by_name": True}
+
+
+class TestGenerationResultResponse(BaseModel):
+    """테스트 생성 응답 (문제 목록만 반환)"""
+
+    test_id: int = Field(..., alias="testId", description="생성된 테스트 ID")
     questions: List[QuestionResponse] = Field(..., description="생성된 문제 목록")
+
+    model_config = {"populate_by_name": True}
