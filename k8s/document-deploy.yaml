@@ -22,21 +22,19 @@ spec:
         - name: amdp-registry
       containers:
         - name: sk-team-09-ai
-          command: ["uvicorn"]
-          args:
-            [
-              "main:app",
-              "--host",
-              "0.0.0.0",
-              "--port",
-              "8000",
-              "--limit-max-requests",
-              "200",
-            ]
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-89-680926219674
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-82-c1d64f4fb1c0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config.tasks"
+            - "worker"
+            - "--loglevel=info"
+            - "-Q"
+            - "preprocessing_queue"
+            - "--concurrency=4"
           env:
             - name: OPENAI_API_KEY
               valueFrom:
@@ -128,11 +126,3 @@ spec:
                 secretKeyRef:
                   name: skib-env
                   key: BACKEND_URL
-
-          volumeMounts:
-            - name: document-volume
-              mountPath: /data
-      volumes:
-        - name: document-volume
-          persistentVolumeClaim:
-            claimName: skib-documents-ai-pvc
