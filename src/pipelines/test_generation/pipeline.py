@@ -29,7 +29,7 @@ class TestGenerationPipeline(BasePipeline[TestGenerationState]):
 
     def _get_node_list(self) -> List[str]:
         """메인 파이프라인 노드 목록"""
-        return ["load_test_plans", "create_smart_batches", "collect_results"]
+        return ["load_test_plans", "create_smart_batches", "process_document_batches", "collect_results"]
 
     def _get_default_state(self) -> Dict[str, Any]:
         """기본 State 설정"""
