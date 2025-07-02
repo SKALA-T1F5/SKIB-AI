@@ -56,8 +56,8 @@ pipeline {
                      // Set commands and args
                     def commandMap = [
                       'deploy.yaml'              : ['command: [\"uvicorn\"]', 'args: [\"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--limit-max-requests\", \"200\"]'],
-                      'document-deploy.yaml'     : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"preprocessing_queue\"]'],
-                      'test-deploy.yaml'         : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"generation_queue\"]']
+                      'document_deploy.yaml'     : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"preprocessing_queue\"]'],
+                      'test_deploy.yaml'         : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"generation_queue\"]']
                     ]
 
                     def yamls = ['deploy.yaml', 'document-deploy.yaml', 'test-deploy.yaml']
