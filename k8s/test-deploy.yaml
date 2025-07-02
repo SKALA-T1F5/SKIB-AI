@@ -7,7 +7,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sk-team-09-ai
+      app: sk-team-09-ai-test
   template:
     metadata:
       annotations:
