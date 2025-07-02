@@ -34,7 +34,7 @@ spec:
               "--limit-max-requests",
               "200",
             ]
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-96-910d9b471e32
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-97-2f7bce1cfed9
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -164,7 +164,7 @@ spec:
         - name: amdp-registry
       containers:
         - name: sk-team-09-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-96-910d9b471e32
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-97-2f7bce1cfed9
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
@@ -304,7 +304,7 @@ spec:
         - name: amdp-registry
       containers:
         - name: sk-team-09-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-96-910d9b471e32
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-97-2f7bce1cfed9
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
