@@ -9,6 +9,7 @@ Test Generation Pipeline용 Celery Task - Question Generation
 import logging
 from typing import Any, Dict
 
+from agents.question_generator.agent import QuestionGeneratorAgent
 from config.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -64,9 +65,9 @@ def question_generation_task(
         logger.info(f"📋 컨텍스트 로드 완료: {len(contexts)}개")
 
         # 2. 문제 생성
-        from src.agents.question_generator.agent import generate_questions_for_batch
+        agent = QuestionGeneratorAgent()
 
-        result = generate_questions_for_batch(
+        result = agent.generate_questions_from_contexts(
             contexts=contexts,
             target_questions=target_questions,
             document_metadata=document_metadata,
@@ -199,6 +200,7 @@ def regenerate_questions_task(
 
         # 기본 문제 생성 Task 재호출
         return question_generation_task(
+            self,
             pipeline_id=pipeline_id,
             batch_id=batch_id,
             target_questions=target_questions,
