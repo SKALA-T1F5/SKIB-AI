@@ -1,8 +1,7 @@
-# === Main API Server (uvicorn) ===
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sk-team-09-ai
+  name: sk-team-09-ai-test
   namespace: sk-team-09
 spec:
   replicas: 1
@@ -22,22 +21,20 @@ spec:
       imagePullSecrets:
         - name: amdp-registry
       containers:
-        - name: sk-team-09-ai
-          command: ["uvicorn"]
-          args:
-            [
-              "main:app",
-              "--host",
-              "0.0.0.0",
-              "--port",
-              "8000",
-              "--limit-max-requests",
-              "200",
-            ]
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-101-621b909b2b15
+        - name: sk-team-09-ai-test
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-96-910d9b471e32
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
+          command: ["celery"]
+          args:
+            - "-A"
+            - "config.tasks"
+            - "worker"
+            - "--loglevel=info"
+            - "-Q"
+            - "generation_queue"
+            - "--concurrency=4"
           env:
             - name: OPENAI_API_KEY
               valueFrom:
