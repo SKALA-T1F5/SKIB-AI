@@ -23,3 +23,9 @@ celery_app.conf.update(
     timezone="Asia/Seoul",
     enable_utc=True,
 )
+celery_app.autodiscover_tasks(
+    [
+        "api.document",
+        "api.document.tasks",
+    ]
+)
