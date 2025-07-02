@@ -53,6 +53,7 @@ pipeline {
             steps {
                 script {
                     def newImageLine = "          image: ${env.IMAGE_REGISTRY}/${env.IMAGE_NAME}:${env.FINAL_IMAGE_TAG}"
+                    def gitRepoPath = env.GIT_URL.replaceFirst(/^https?:\/\//, '')
                      // Set commands and args
                     def commandMap = [
                       'deploy.yaml'              : ['command: [\"uvicorn\"]', 'args: [\"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--limit-max-requests\", \"200\"]'],
