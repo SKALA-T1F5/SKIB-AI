@@ -7,7 +7,7 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sk-team-09-ai-document
+      app: sk-team-09-ai
   template:
     metadata:
       annotations:
@@ -15,7 +15,7 @@ spec:
         prometheus.io/port: "8001"
         prometheus.io/path: "/actuator/prometheus"
       labels:
-        app: sk-team-09-ai-document
+        app: sk-team-09-ai
     spec:
       serviceAccountName: default
       imagePullSecrets:
