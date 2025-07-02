@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, Dict
 
 from api.document.services.document_summary import process_document_background
+from api.test.services.test_generate import test_generation_background
 from config.celery_app import celery_app
 
 
@@ -19,3 +20,24 @@ def process_document_task(
         return {"status": "completed", "result": result}
     except Exception as e:
         return {"status": "failed", "error": str(e)}
+
+
+@celery_app.task(name="generate_test")
+def generate_test_task(
+    task_id: str, test_id: int, request_data: Dict[str, Any]
+) -> Dict[str, Any]:
+    """테스트 생성 Celery Task"""
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        result = loop.run_until_complete(
+            test_generation_background(task_id, test_id, request_data)
+        )
+        return {"status": "completed", "result": result}
+    except Exception as e:
+        return {"status": "failed", "error": str(e)}
+    finally:
+        loop.close()
