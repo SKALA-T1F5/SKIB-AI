@@ -18,7 +18,7 @@ async def grade_subjective_answer(payload: SubjectiveGradingRequest):
         raise HTTPException(status_code=400, detail="채점 기준이 존재하지 않습니다.")
 
     try:
-        score = await subjective_grader(payload.user_answer, payload.grading_criteria)
+        score = await subjective_grader(payload.response, payload.grading_criteria)
         # score = await subjective_grader(payload.user_answer, payload.grading_criteria)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"채점 실패: {str(e)}")

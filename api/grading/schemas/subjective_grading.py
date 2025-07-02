@@ -13,11 +13,13 @@ class GradingCriterion(BaseModel):
 
 
 class SubjectiveGradingRequest(BaseModel):
-    question_id: str = Field(..., description="문제의 고유 ID")
-    user_answer: str = Field(..., description="사용자가 작성한 주관식 답변")
+    question_id: str = Field(..., alias="questionId", description="문제의 고유 ID")
+    response: str = Field(..., description="사용자가 작성한 주관식 답변")
     grading_criteria: List[GradingCriterion] = Field(
         ..., description="채점을 위한 기준 리스트"
     )
+
+    model_config = {"populate_by_name": True}
 
 
 class SubjectiveGradingResponse(BaseModel):
