@@ -62,11 +62,13 @@ pipeline {
 
                     def yamls = ['deploy.yaml', 'document-deploy.yaml', 'test-deploy.yaml']
                     yamls.each { file ->
-                        sh "sed -i 's|^[[:space:]]*image:.*$|${newImageLine}|g' ./k8s/${file}"
-                        sh "sed -i '/^[[:space:]]*command:/d' ./k8s/${file}"
-                        sh "sed -i '/^[[:space:]]*args:/d' ./k8s/${file}"
-                        sh "sed -i '/containers:/a \\ \ \ \ \ ${commandMap[file][0]}\\n\ \ \ \ \ ${commandMap[file][1]}' ./k8s/${file}"
-                        sh "cat ./k8s/${file}"
+                        sh """
+                            sed -i 's|^[[:space:]]*image:.*\$|${newImageLine}|g' ./k8s/${file}
+                            sed -i '/^[[:space:]]*command:/d' ./k8s/${file}
+                            sed -i '/^[[:space:]]*args:/d' ./k8s/${file}
+                            sed -i '/containers:/a \\\\ \\ \\ \\ \\ ${commandMap[file][0]}\\\\n\\ \\ \\ \\ \\ ${commandMap[file][1]}' ./k8s/${file}
+                            cat ./k8s/${file}
+                        """
                     }
 
                     sh """
