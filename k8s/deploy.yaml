@@ -271,7 +271,7 @@ spec:
 
           volumeMounts:
             - name: document-volume
-              mountPath: /app/data
+              mountPath: /data
       volumes:
         - name: document-volume
           persistentVolumeClaim:
@@ -411,7 +411,7 @@ spec:
 
           volumeMounts:
             - name: document-volume
-              mountPath: /app/data
+              mountPath: /data
 
       volumes:
         - name: document-volume
