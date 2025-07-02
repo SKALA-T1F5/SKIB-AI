@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sk-team-09-ai
+  name: sk-team-09-ai-test
   namespace: sk-team-09
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sk-team-09-ai
+      app: sk-team-09-ai-test
   template:
     metadata:
       annotations:
@@ -15,7 +15,7 @@ spec:
         prometheus.io/port: "8001"
         prometheus.io/path: "/actuator/prometheus"
       labels:
-        app: sk-team-09-ai
+        app: sk-team-09-ai-test
     spec:
       serviceAccountName: default
       imagePullSecrets:
