@@ -1,6 +1,7 @@
 import re
 import unicodedata
 from pathlib import Path
+from typing import List
 
 
 # collection 이름 정규화 (모두 소문자로 통일)
