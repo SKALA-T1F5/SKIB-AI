@@ -21,9 +21,19 @@ spec:
       imagePullSecrets:
         - name: amdp-registry
       containers:
-     command: ["uvicorn"]\n     args: ["main:app", "--host", "0.0.0.0", "--port", "8000", "--limit-max-requests", "200"]
         - name: sk-team-09-ai
-          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-87-897f96779796
+          command: ["uvicorn"]
+          args:
+            [
+              "main:app",
+              "--host",
+              "0.0.0.0",
+              "--port",
+              "8000",
+              "--limit-max-requests",
+              "200",
+            ]
+          image: amdp-registry.skala-ai.com/skala25a/sk-team-09-ai:1.0.0-82-c1d64f4fb1c0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000

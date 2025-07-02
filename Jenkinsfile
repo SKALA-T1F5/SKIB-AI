@@ -54,23 +54,13 @@ pipeline {
                 script {
                     def newImageLine = "          image: ${env.IMAGE_REGISTRY}/${env.IMAGE_NAME}:${env.FINAL_IMAGE_TAG}"
                     def gitRepoPath = env.GIT_URL.replaceFirst(/^https?:\/\//, '')
-                     // Set commands and args
-                    def commandMap = [
-                      'deploy.yaml'              : ['command: [\"uvicorn\"]', 'args: [\"main:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8000\", \"--limit-max-requests\", \"200\"]'],
-                      'document-deploy.yaml'     : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"preprocessing_queue\"]'],
-                      'test-deploy.yaml'         : ['command: [\"celery\"]', 'args: [\"-A\", \"config.tasks\", \"worker\", \"--loglevel=info\", \"--concurrency=4\", \"-Q\", \"generation_queue\"]']
-                    ]
-
                     def yamls = ['deploy.yaml', 'document-deploy.yaml', 'test-deploy.yaml']
+                    
                     yamls.each { file ->
                         sh """
                             sed -i 's|^[[:space:]]*image:.*\$|${newImageLine}|g' ./k8s/${file}
-                            sed -i '/^[[:space:]]*command:/d' ./k8s/${file}
-                            sed -i '/^[[:space:]]*args:/d' ./k8s/${file}
-                            sed -i '/containers:/a \\\\ \\ \\ \\ \\ ${commandMap[file][0]}\\\\n\\ \\ \\ \\ \\ ${commandMap[file][1]}' ./k8s/${file}
-                            cat ./k8s/${file}
                         """
-                    }
+                        }
 
                     sh """
                         git config user.name "$GIT_USER_NAME"
