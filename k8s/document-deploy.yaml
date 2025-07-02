@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sk-team-09-ai
+  name: sk-team-09-ai-document
   namespace: sk-team-09
 spec:
   replicas: 1
