@@ -570,7 +570,7 @@ class TestGenerationPipeline(BasePipeline[TestGenerationState]):
             return {
                 "status": final_state.get("processing_status", "completed"),
                 "pipeline_id": final_state["pipeline_id"],
-                "total_questions": final_state.get("completed_batches", 0) * 5,  # 추정
+                "total_questions": final_state.get("total_questions", 0),  # 정확한 값
                 "processing_time": self._calculate_processing_time(final_state),
                 "batch_results": final_state.get("batch_quality_scores", {}),
                 "state": final_state,
