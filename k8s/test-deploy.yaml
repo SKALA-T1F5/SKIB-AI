@@ -126,3 +126,12 @@ spec:
                 secretKeyRef:
                   name: skib-env
                   key: BACKEND_URL
+
+          volumeMounts:
+            - name: document-volume
+              mountPath: /data
+
+      volumes:
+        - name: document-volume
+          persistentVolumeClaim:
+            claimName: skib-documents-ai-pvc

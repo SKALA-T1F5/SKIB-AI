@@ -54,13 +54,11 @@ pipeline {
                 script {
                     def newImageLine = "          image: ${env.IMAGE_REGISTRY}/${env.IMAGE_NAME}:${env.FINAL_IMAGE_TAG}"
                     def gitRepoPath = env.GIT_URL.replaceFirst(/^https?:\/\//, '')
-                    def yamls = ['deploy.yaml', 'document-deploy.yaml', 'test-deploy.yaml']
-                    
-                    yamls.each { file ->
-                        sh """
-                            sed -i 's|^[[:space:]]*image:.*\$|${newImageLine}|g' ./k8s/${file}
-                        """
-                        }
+
+                    sh """
+                        sed -i 's|^[[:space:]]*image:.*\$|${newImageLine}|g' ./k8s/deploy.yaml
+                        cat ./k8s/deploy.yaml
+                    """
 
                     sh """
                         git config user.name "$GIT_USER_NAME"
