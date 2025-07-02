@@ -56,7 +56,7 @@ async def upload_document(
             status=DocumentProcessingStatus.UPLOAD_COMPLETED,
         )
 
-        process_document_task.delay(
+        process_document_task.delay(  # type: ignore
             task_id=task_id,
             file_path=str(result["project_path"]),
             documentId=metadata.documentId,

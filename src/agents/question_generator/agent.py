@@ -91,7 +91,7 @@ class QuestionGeneratorAgent:
 
         # 전체 테스트 계획에서 난이도 추출
         difficulty = total_plan.get("test_plan", {}).get("difficulty_level", "NORMAL")
-        
+
         # 2. 각 문서별로 문제 생성
         # TODO 문서별로 병렬 처리할 수 있도록 리팩토링 필요
         for doc_plan in document_plan.get("document_plans", []):
@@ -317,31 +317,193 @@ class QuestionGeneratorAgent:
 
         return used_keywords
 
+    def generate_questions_from_contexts(
+        self,
+        contexts: List[Dict[str, Any]],
+        target_questions: Dict[str, int],
+        document_metadata: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        배치 처리용 컨텍스트 기반 문제 생성
 
-# 편의 함수
-def generate_enhanced_questions_from_test_plans(
-    total_test_plan_path: str = None,
-    document_test_plan_path: str = None,
-    total_test_plan_data: Dict = None,
-    document_test_plan_data: Dict = None,
-) -> Dict[str, Any]:
-    """
-    테스트 계획을 기반으로 향상된 문제 생성 편의 함수
+        Args:
+            contexts: VectorDB 검색된 컨텍스트 목록
+            target_questions: {"objective": 3, "subjective": 2}
+            document_metadata: {
+                "document_name": "doc.pdf",
+                "document_id": 101,
+                "keywords": ["keyword1", "keyword2"],
+                "difficulty": "medium"
+            }
 
-    Args:
-        total_test_plan_path: 전체 테스트 계획 파일 경로 (선택사항)
-        document_test_plan_path: 문서별 테스트 계획 파일 경로 (선택사항)
-        total_test_plan_data: 전체 테스트 계획 데이터 딕셔너리 (선택사항)
-        document_test_plan_data: 문서별 테스트 계획 데이터 딕셔너리 (선택사항)
-        collection_name: VectorDB 컬렉션명
+        Returns:
+            Dict: {
+                "status": "success"|"failed",
+                "questions": List[Dict],
+                "metadata": Dict
+            }
+        """
+        print(f"🤖 배치 문제 생성 시작: {target_questions}")
 
-    Returns:
-        Dict: 향상된 문제 생성 결과
-    """
-    agent = QuestionGeneratorAgent()
-    return agent.generate_enhanced_questions_from_test_plans(
-        total_test_plan_path=total_test_plan_path,
-        document_test_plan_path=document_test_plan_path,
-        total_test_plan_data=total_test_plan_data,
-        document_test_plan_data=document_test_plan_data,
-    )
+        try:
+            # 1. 컨텍스트를 블록 형태로 변환
+            keywords = document_metadata.get("keywords", [])
+            blocks = self.vector_search_handler.convert_content_to_blocks(
+                contexts, keywords
+            )
+
+            if not blocks:
+                return {
+                    "status": "failed",
+                    "error": "컨텍스트를 블록으로 변환할 수 없습니다",
+                    "questions": [],
+                    "metadata": {"contexts_count": len(contexts)},
+                }
+
+            # 2. 문제 생성 설정
+            num_objective = target_questions.get("objective", 0)
+            num_subjective = target_questions.get("subjective", 0)
+            difficulty = document_metadata.get("difficulty", "NORMAL")
+
+            # 3. 기존 QuestionGenerator 활용
+            questions_blocks = self.question_generator.generate_questions_for_blocks(
+                blocks=blocks,
+                num_objective=num_objective,
+                num_subjective=num_subjective,
+                difficulty=difficulty.upper(),
+            )
+
+            # 4. 생성된 문제 추출 및 메타데이터 추가
+            all_questions = []
+            for block in questions_blocks:
+                if "questions" in block:
+                    for question in block["questions"]:
+                        # 배치 처리용 메타데이터 추가
+                        question["document_name"] = document_metadata.get(
+                            "document_name", ""
+                        )
+                        question["document_id"] = document_metadata.get(
+                            "document_id", 0
+                        )
+                        question["generated_at"] = datetime.now().isoformat()
+                        question["generation_type"] = "BATCH"
+                        question["source_keywords"] = self._extract_used_keywords(
+                            question, keywords
+                        )
+                        all_questions.append(question)
+
+            # 5. 품질 평가
+            quality_score = self.calculate_question_quality(all_questions)
+
+            # 6. 결과 반환
+            result = {
+                "status": "success",
+                "questions": all_questions,
+                "metadata": {
+                    "total_questions": len(all_questions),
+                    "objective_count": len(
+                        [q for q in all_questions if q.get("type") == "OBJECTIVE"]
+                    ),
+                    "subjective_count": len(
+                        [q for q in all_questions if q.get("type") == "SUBJECTIVE"]
+                    ),
+                    "quality_score": quality_score,
+                    "contexts_used": len(contexts),
+                    "keywords_used": keywords,
+                    "difficulty": difficulty,
+                },
+            }
+
+            print(
+                f"✅ 배치 문제 생성 완료: {len(all_questions)}개, 품질: {quality_score:.3f}"
+            )
+            return result
+
+        except Exception as e:
+            print(f"❌ 배치 문제 생성 실패: {e}")
+            return {
+                "status": "failed",
+                "error": str(e),
+                "questions": [],
+                "metadata": {"contexts_count": len(contexts)},
+            }
+
+    def calculate_question_quality(self, questions: List[Dict[str, Any]]) -> float:
+        """
+        생성된 문제의 품질 점수 계산 (LangGraph 분기용)
+
+        Args:
+            questions: 생성된 문제 목록
+
+        Returns:
+            float: 품질 점수 (0.0-1.0)
+        """
+        if not questions:
+            return 0.0
+
+        total_score = 0.0
+        valid_questions = 0
+
+        for question in questions:
+            question_score = 0.0
+
+            # 1. 기본 필드 완성도 (40%)
+            required_fields = ["type", "question", "answer"]
+            completed_fields = sum(
+                1 for field in required_fields if question.get(field)
+            )
+            completeness_score = completed_fields / len(required_fields)
+
+            # 2. 타입별 추가 검증 (30%)
+            type_score = 0.0
+            question_type = question.get("type", "")
+
+            if question_type == "OBJECTIVE":
+                # 객관식: 선택지와 정답이 있어야 함
+                options = question.get("options", [])
+                answer = question.get("answer", "")
+                if options and len(options) >= 2 and answer:
+                    type_score = 1.0
+                elif options and answer:
+                    type_score = 0.7
+                elif options or answer:
+                    type_score = 0.3
+
+            elif question_type == "SUBJECTIVE":
+                # 주관식: 문제와 예시 답안이 있어야 함
+                answer = question.get("answer", "")
+                question.get("explanation", "")
+                if answer and len(answer) > 10:
+                    type_score = 1.0
+                elif answer:
+                    type_score = 0.6
+
+            # 3. 내용 품질 (30%)
+            content_score = 0.0
+            question_text = question.get("question", "")
+
+            if question_text:
+                # 문제 길이 적절성
+                if 10 <= len(question_text) <= 500:
+                    content_score += 0.5
+                elif len(question_text) > 5:
+                    content_score += 0.3
+
+                # 키워드 사용 여부
+                used_keywords = question.get("source_keywords", [])
+                if used_keywords:
+                    content_score += 0.5
+                elif question.get("keywords"):  # fallback
+                    content_score += 0.3
+
+            # 종합 점수 계산
+            question_score = (
+                completeness_score * 0.4 + type_score * 0.3 + content_score * 0.3
+            )
+
+            total_score += question_score
+            valid_questions += 1
+
+        # 전체 평균 점수
+        average_score = total_score / valid_questions if valid_questions > 0 else 0.0
+        return round(average_score, 3)

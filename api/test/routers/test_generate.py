@@ -1,19 +1,18 @@
+import logging
+from uuid import uuid4
+
 from fastapi import APIRouter, HTTPException
 
-from api.question.schemas.question import (
-    DifficultyLevel,
-    GenerationType,
-    GradingCriterion,
-    QuestionResponse,
-    QuestionType,
-)
 from api.test.schemas.test_generate import (
     TestGenerationRequest,
     TestGenerationResponse,
 )
-from src.agents.question_generator.agent import QuestionGeneratorAgent
+from api.test.schemas.test_generation_status import TestGenerationStatus
+from api.websocket.services.springboot_notifier import notify_test_generation_progress
+from config.tasks import generate_test_task
 
 router = APIRouter(prefix="/api/test", tags=["Test"])
+logger = logging.getLogger(__name__)
 
 
 @router.post(
@@ -24,120 +23,52 @@ router = APIRouter(prefix="/api/test", tags=["Test"])
 )
 async def generate_test_questions(request: TestGenerationRequest):
     """
-    QuestionGeneratorAgent를 사용한 문제 생성
+    비동기 테스트 생성 - 즉시 task_id 반환, 백그라운드에서 처리
     """
     try:
-        # 1. QuestionGeneratorAgent 초기화
-        agent = QuestionGeneratorAgent()
+        # Task ID와 Test ID 생성
+        task_id = str(uuid4())
 
-        # TODO 해당 부분 Initialize를 통해서 할 수 있도록 리팩토링
-        # 2. 요청 데이터를 agent에 필요한 형태로 변환
-        # 문서별 설정을 document_test_plan_data 형태로 변환
-        document_plans = []
-        for doc_config in request.document_configs:
-            # 각 문서별 키워드는 별도로 관리되어야 하므로
-            # 실제로는 문서 ID를 통해 키워드를 조회해야 합니다
-            document_plan = {
-                "document_name": doc_config.document_name,
-                "document_id": doc_config.documentId,
-                "keywords": doc_config.keywords,
-                "recommended_questions": {
-                    "objective": doc_config.configured_objective_count,
-                    "subjective": doc_config.configured_subjective_count,
-                },
-            }
-            document_plans.append(document_plan)
+        logger.info(f"테스트 생성 요청: test_id={request.test_id}, task_id={task_id}")
 
-        # 3. test_plan 데이터 구성
-        # TODO 제한시간, 통과점수, 재응시 여부 고려 필요
-        total_test_plan_data = {
-            "test_summary": request.summary,
-            "difficulty": request.difficulty_level.value.lower(),
-            "total_objective": sum(
-                doc.configured_objective_count for doc in request.document_configs
-            ),
-            "total_subjective": sum(
-                doc.configured_subjective_count for doc in request.document_configs
-            ),
-        }
-
-        document_test_plan_data = {"document_plans": document_plans}
-
-        # 4. Agent를 통한 문제 생성
-        result = agent.generate_enhanced_questions_from_test_plans(
-            total_test_plan_data=total_test_plan_data,
-            document_test_plan_data=document_test_plan_data,
+        # 초기 상태 알림
+        await notify_test_generation_progress(
+            task_id=task_id,
+            test_id=request.test_id,
+            status=TestGenerationStatus.TEST_GENERATION_STARTED,
         )
 
-        if result.get("status") == "failed":
-            raise HTTPException(
-                status_code=500, detail=result.get("error", "문제 생성 실패")
-            )
+        # 요청 데이터를 dictionary로 변환
+        request_data = {
+            "test_id": request.test_id,
+            "name": request.name,
+            "summary": request.summary,
+            "difficulty_level": request.difficulty_level.value,
+            "limited_time": request.limited_time,
+            "pass_score": request.pass_score,
+            "is_retake": request.is_retake,
+            "document_configs": [
+                {
+                    "documentId": doc.documentId,
+                    "document_name": doc.document_name,
+                    "keywords": doc.keywords,
+                    "configured_objective_count": doc.configured_objective_count,
+                    "configured_subjective_count": doc.configured_subjective_count,
+                }
+                for doc in request.document_configs
+            ],
+        }
 
-        # 5. 생성된 문제를 QuestionResponse 형태로 변환
-        questions = []
-        generated_questions = result.get("questions", [])
-
-        print(generated_questions)
-
-        for q in generated_questions:
-
-            question_type = QuestionType(q.get("type"))
-
-            # 난이도 매핑
-            difficulty_map = {
-                "easy": DifficultyLevel.easy,
-                "medium": DifficultyLevel.normal,
-                "hard": DifficultyLevel.hard,
-            }
-            difficulty = difficulty_map.get(
-                q.get("difficulty", "medium"), DifficultyLevel.normal
-            )
-
-            valid_criteria_fields = {"score", "criteria", "example", "note"}
-            raw_criteria = q.get("grading_criteria", [])
-
-            grading_criteria = [
-                GradingCriterion(
-                    **{k: v for k, v in criterion.items() if k in valid_criteria_fields}
-                )
-                for criterion in raw_criteria
-                if isinstance(criterion, dict)
-            ]
-
-            question_response = QuestionResponse(
-                type=question_type,
-                generationType=GenerationType(q.get("generation_type").upper()),
-                difficulty_level=difficulty,
-                question=q.get("question", ""),
-                options=(
-                    q.get("options")
-                    if question_type == QuestionType.objective
-                    else None
-                ),
-                answer=q.get("answer", ""),
-                explanation=q.get("explanation"),
-                grading_criteria=(
-                    grading_criteria
-                    if question_type == QuestionType.subjective
-                    else None
-                ),
-                documentId=q.get("document_id", 0),  # 실제 문서 ID 매핑 필요
-                document_name=q.get("document_name", ""),
-                keywords=q.get("source_keywords", []),
-                tags=q.get("tags", []),
-            )
-            print(question_response)
-
-            questions.append(question_response)
-
-        from fastapi.encoders import jsonable_encoder
-
-        print(jsonable_encoder(questions, by_alias=True, exclude_none=False))
+        # Celery 백그라운드 작업 실행
+        generate_test_task.delay(  # type: ignore
+            task_id=task_id, test_id=request_data["test_id"], request_data=request_data
+        )
 
         return TestGenerationResponse(
-            questions=questions,
+            testId=request_data["test_id"],
+            message="테스트 생성이 시작되었습니다. 진행률을 확인하세요.",
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"문제 생성 실패: {str(e)}")
+        logger.error(f"❌ 테스트 생성 요청 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"테스트 생성 요청 실패: {str(e)}")

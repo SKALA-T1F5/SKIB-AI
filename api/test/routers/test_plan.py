@@ -55,22 +55,21 @@ async def generate_test_plan(request: TestPlanRequest):
         test_title = test_summary_data.get("name", "")
         test_summary_text = test_summary_data.get("test_summary", "")
 
-        # 난이도 매핑 (test_summary에서 가져오기)
-        difficulty_mapping = {
-            "EASY": DifficultyLevel.easy,
-            "NORMAL": DifficultyLevel.normal,
-            "HARD": DifficultyLevel.hard,
-        }
-
         # Gemini가 반환한 difficulty_level 사용
         gemini_difficulty = test_summary_data.get("difficulty_level", "NORMAL")
-        difficulty_level = difficulty_mapping.get(gemini_difficulty, DifficultyLevel.normal)
+        difficulty_level = DifficultyLevel(gemini_difficulty.upper())
 
         # Gemini가 추천한 문제 수 사용 (document_configs에서 추출)
         document_configs_from_gemini = test_summary_data.get("document_configs", [])
-        total_objective = sum(config.get("recommended_objective", 0) for config in document_configs_from_gemini)
-        total_subjective = sum(config.get("recommended_subjective", 0) for config in document_configs_from_gemini)
-        
+        total_objective = sum(
+            config.get("recommended_objective", 0)
+            for config in document_configs_from_gemini
+        )
+        total_subjective = sum(
+            config.get("recommended_subjective", 0)
+            for config in document_configs_from_gemini
+        )
+
         # 기본값 설정 (Gemini 추천이 없을 경우)
         if total_objective == 0:
             total_objective = test_config.get("num_objective", 5)
