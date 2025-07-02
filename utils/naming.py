@@ -200,3 +200,103 @@ def _korean_to_roman(text: str) -> str:
             result.append(char)
 
     return "".join(result)
+
+
+def find_best_collection_match(
+    document_name: str, available_collections: List[str]
+) -> str:
+    """
+    문서명과 가장 일치하는 컬렉션 찾기
+
+    Args:
+        document_name: 원본 문서명
+        available_collections: 사용 가능한 컬렉션 목록
+
+    Returns:
+        str: 가장 적합한 컬렉션명
+    """
+    if not available_collections:
+        return filename_to_collection(document_name)
+
+    # 1. 정규화된 컬렉션명 생성
+    normalized_name = filename_to_collection(document_name)
+
+    # 2. 정확히 일치하는 컬렉션 찾기
+    if normalized_name in available_collections:
+        return normalized_name
+
+    # 3. doc_ 접두사 버전 확인
+    doc_prefixed = f"doc_{normalized_name}"
+    if doc_prefixed in available_collections:
+        return doc_prefixed
+
+    # 4. 부분 일치 검색 (양방향)
+    partial_matches = []
+    for collection in available_collections:
+        if (
+            normalized_name in collection
+            or collection in normalized_name
+            or _similarity_score(normalized_name, collection) > 0.6
+        ):
+            partial_matches.append(collection)
+
+    if partial_matches:
+        # 가장 유사한 것 선택 (길이가 비슷한 것 우선)
+        best_match = min(
+            partial_matches, key=lambda x: abs(len(x) - len(normalized_name))
+        )
+        return best_match
+
+    # 5. 기본 fallback 컬렉션들 중 존재하는 것
+    fallback_collections = ["unified_collection", "document_chunks", "skib_documents"]
+
+    for fallback in fallback_collections:
+        if fallback in available_collections:
+            return fallback
+
+    # 6. 모든 시도 실패시 첫 번째 컬렉션 반환
+    return available_collections[0] if available_collections else normalized_name
+
+
+def _similarity_score(str1: str, str2: str) -> float:
+    """간단한 문자열 유사도 계산 (Jaccard 유사도)"""
+    if not str1 or not str2:
+        return 0.0
+
+    # 언더스코어로 분할하여 토큰화
+    tokens1 = set(str1.lower().split("_"))
+    tokens2 = set(str2.lower().split("_"))
+
+    # Jaccard 유사도: 교집합 / 합집합
+    intersection = len(tokens1 & tokens2)
+    union = len(tokens1 | tokens2)
+
+    return intersection / union if union > 0 else 0.0
+
+
+def get_collection_name_variants(document_name: str) -> List[str]:
+    """
+    문서명에서 가능한 컬렉션명 변형들 생성
+
+    Args:
+        document_name: 원본 문서명
+
+    Returns:
+        List[str]: 시도해볼 컬렉션명들 (우선순위 순)
+    """
+    base_name = filename_to_collection(document_name)
+
+    variants = [
+        base_name,  # 기본 정규화된 이름
+        f"doc_{base_name}",  # doc_ 접두사 버전
+        document_name.lower(),  # 원본 소문자
+        document_name.replace(" ", "_").lower(),  # 공백을 언더스코어로
+    ]
+
+    # 중복 제거하면서 순서 유지
+    unique_variants = []
+    for variant in variants:
+        if variant not in unique_variants:
+            unique_variants.append(variant)
+
+    return unique_variants
