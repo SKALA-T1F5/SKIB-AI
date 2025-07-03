@@ -30,7 +30,6 @@ et-xmlfile==2.0.0                # 엑셀 내부 XML 처리용
 
 # ✅ AI / LLM / 벡터 검색 관련
 openai==1.82.1                   # OpenAI API
-google-generativeai==0.8.3       # Google Gemini API
 Pillow==11.1.0                   # 이미지 처리 (PIL)
 chromadb==0.5.18                 # ChromaDB 벡터 데이터베이스
 langchain==0.3.25                # LLM 파이프라인 구축
