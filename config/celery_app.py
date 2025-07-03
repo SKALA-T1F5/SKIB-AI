@@ -27,12 +27,13 @@ celery_app.conf.update(
         "process_document": {"queue": "preprocessing_queue"},
         "generate_test": {"queue": "generation_queue"},
         "test_generation.question_generation": {"queue": "generation_queue"},
-        "test_generation.vector_search": {"queue": "preprocessing_queue"},
+        "test_generation.vector_search": {"queue": "generation_queue"},
     },
     # 큐 정의 추가
     task_default_queue="default",
     worker_prefetch_multiplier=1,  # 메모리 효율성
     task_acks_late=True,  # 작업 완료 후 ACK
+    task_create_missing_queues=True,  # 큐가 없으면 자동 생성
 )
 
 # 모든 Task 모듈을 autodiscovery에 포함
