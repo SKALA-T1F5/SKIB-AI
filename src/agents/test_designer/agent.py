@@ -5,24 +5,22 @@
 """
 
 import json
-import os
 from typing import Any, Dict, List
 
 import google.generativeai as genai
-from dotenv import load_dotenv
 from langsmith import traceable
 from pydantic import BaseModel
+
+from config.settings import settings
+from src.utils.gemini_monitoring import GeminiMonitor
 
 from ..base.agent import BaseAgent
 from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
-from src.utils.gemini_monitoring import GeminiMonitor
 
 # 환경 변수 로드
-load_dotenv(override=True)
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=gemini_api_key)
+genai.configure(api_key=settings.gemini_api_key)
 
 
 class TestGoal(BaseModel):
