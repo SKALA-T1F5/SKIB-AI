@@ -11,6 +11,7 @@ from api.trainee_assistant.schemas.trainee_assistant import Question
 from config.settings import settings
 from db.redisDB.session_manager import append_message, load_message_history
 from db.vectorDB.chromaDB.search import search_similar
+from src.agents.trainee_assistant.agent import answer_based_on_question_data
 from src.agents.trainee_assistant.prompt_1 import (
     build_prompt_from_docs,
     system_prompt_no_context,
@@ -77,23 +78,6 @@ def vector_search_node(state: ChatState) -> ChatState:
     return {"chroma_docs": filtered_docs, "document_name": document_name}
 
 
-async def classify_question_intent(user_question: str) -> str:
-    """LLM에게 의도를 물어봐서 'answer' / 'explanation' / 'general' 중 하나로 분류"""
-    response = await openai_client.chat.completions.create(
-        model="gpt-4o",
-        messages=[
-            {
-                "role": "system",
-                "content": "당신은 사용자의 질문이 어떤 의도인지 분류하는 도우미입니다. "
-                "질문이 정답을 물어보는 경우 'answer', 해설을 물어보는 경우 'explanation', 일반적인 질문은 'general'이라고만 대답하세요.",
-            },
-            {"role": "user", "content": user_question},
-        ],
-        temperature=0,
-    )
-    return response.choices[0].message.content.strip().lower()
-
-
 def generate_direct_answer_or_explanation(intent: str, question_data: Question) -> str:
     if intent == "answer":
         return f"📌 해당 문제의 정답은 다음과 같습니다:\n\n{question_data.answer}"
@@ -120,14 +104,10 @@ async def generate_answer_node(state: ChatState) -> ChatState:
     )
 
     if question_data:
-        intent = await classify_question_intent(state["question"])
-        logger.info(f"🧠 분류된 질문 의도: {intent}")
-
-        answer = generate_direct_answer_or_explanation(intent, question_data)
-        if answer:
-            await append_message(state["user_id"], "user", state["question"])
-            await append_message(state["user_id"], "assistant", answer)
-            return {"answer": answer}
+        answer = await answer_based_on_question_data(state["question"], question_data)
+        await append_message(state["user_id"], "user", state["question"])
+        await append_message(state["user_id"], "assistant", answer)
+        return {"answer": answer}
 
     if state.get("chroma_docs"):
         prompt = build_prompt_from_docs(state["question"], state["chroma_docs"])
