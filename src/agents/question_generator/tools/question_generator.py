@@ -10,18 +10,18 @@ import json
 import os
 from typing import Dict, List
 
-import google.generativeai as genai
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
-
-from config.settings import settings
-from src.utils.gemini_monitoring import GeminiMonitor
 
 from .prompt import get_enhanced_vision_prompt, get_vision_prompt
 
-genai.configure(api_key=settings.gemini_api_key)
+# from src.utils.gemini_monitoring import GeminiMonitor
+
 
 # Gemini 모니터링 인스턴스
-gemini_monitor = GeminiMonitor()
+# gemini_monitor = GeminiMonitor()
 
 
 @traceable(
@@ -49,173 +49,139 @@ def _generate_gemini_questions(
     """
     try:
         print(
-            f"  🤖 Gemini 2.5 Pro 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
+            f"  🤖 Gemini 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
         )
 
-        # Gemini 2.5 Pro 모델 초기화 (안전 설정 완전 해제)
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
-
-        model = genai.GenerativeModel(
-            "gemini-2.0-flash-exp", safety_settings=safety_settings
+        # ChatGoogleGenerativeAI 모델 초기화
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            temperature=0.3,
+            max_tokens=3000,
+            max_retries=2,
+            timeout=60,
         )
 
-        # Gemini용 메시지 구성
-        gemini_parts = [system_prompt]
+        # 메시지를 LangChain 형식으로 변환
+        langchain_messages = []
 
+        # 시스템 메시지 추가
+        langchain_messages.append(SystemMessage(content=system_prompt))
+
+        # 기존 메시지들을 HumanMessage로 변환
         for message in messages:
             if message.get("type") == "text":
-                gemini_parts.append(message["text"])
+                langchain_messages.append(HumanMessage(content=message["text"]))
             elif message.get("type") == "image_url":
-                import io
-
-                from PIL import Image
-
                 image_url = message["image_url"]["url"]
                 if image_url.startswith("data:image"):
-                    base64_data = image_url.split(",")[1]
-                    image_data = base64.b64decode(base64_data)
-                    image = Image.open(io.BytesIO(image_data))
-                    gemini_parts.append(image)
+                    # Base64 이미지 처리
+                    langchain_messages.append(
+                        HumanMessage(
+                            content=[
+                                {"type": "image_url", "image_url": {"url": image_url}}
+                            ]
+                        )
+                    )
 
-        # Gemini API 호출 (안전 필터 우회를 위한 설정)
-        response = model.generate_content(
-            gemini_parts,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.3,  # 낮은 온도로 안정적인 응답 유도
-                max_output_tokens=3000,  # 더 많은 토큰 허용
-                top_p=0.8,  # 다양성 조절
-                top_k=40,  # 상위 토큰 제한
-                candidate_count=1,  # 하나의 후보만 생성
-                stop_sequences=[],  # 중단 시퀀스 없음
-            ),
-        )
+        # ChatPromptTemplate 사용하여 프롬프트 관리
+        prompt_template = ChatPromptTemplate.from_messages(langchain_messages)
 
-        # 첫 번째 API 호출 모니터링
-        model_name = "gemini-2.0-flash-exp"
-        if hasattr(response, "usage_metadata"):
-            gemini_monitor.print_usage_summary(model_name, response.usage_metadata)
-            gemini_monitor.log_usage(
-                model_name,
-                response.usage_metadata,
-                function_name="question_generator_gemini",
-                additional_metadata={
-                    "agent_type": "question_generator",
-                    "num_objective": num_objective,
-                    "num_subjective": num_subjective,
-                    "attempt": "primary",
-                },
-            )
+        # 체인 생성 및 실행
+        chain = prompt_template | llm
 
         # 안전한 응답 처리 및 재시도 로직
         max_retries = 2
         retry_count = 0
 
         while retry_count < max_retries:
-            if response.candidates and response.candidates[0].content.parts:
-                raw_content = response.text.strip()
+
+            try:
+                # LLM 호출
+                response = chain.invoke({})
+
+                # 응답 처리
+                raw_content = response.content.strip()
                 print(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
-                break
-            else:
-                finish_reason = (
-                    response.candidates[0].finish_reason
-                    if response.candidates
-                    else "N/A"
-                )
-                print(f"  ⚠️ Gemini 응답이 차단됨 (finish_reason: {finish_reason})")
 
-                # finish_reason이 2(SAFETY)인 경우 재시도
-                if finish_reason == 2 and retry_count < max_retries - 1:
+                # JSON 파싱 (기존 로직 유지)
+                questions = _parse_json_response(raw_content)
+
+                if questions:
+                    print(f"  ✅ {len(questions)}개 질문 파싱 성공")
+                    return questions
+                else:
+                    print(f"  ⚠️ 질문 파싱 실패, 재시도 중...")
                     retry_count += 1
-                    print(f"  🔄 재시도 {retry_count}/{max_retries}...")
+                    continue
 
-                    # 더 보수적인 설정으로 재시도
-                    response = model.generate_content(
-                        gemini_parts,
-                        generation_config=genai.types.GenerationConfig(
-                            temperature=0.1,  # 더 낮은 온도
-                            max_output_tokens=2000,
-                            top_p=0.6,
-                            top_k=20,
-                            candidate_count=1,
-                        ),
-                    )
-
-                    # 재시도 API 호출 모니터링
-                    if hasattr(response, "usage_metadata"):
-                        gemini_monitor.print_usage_summary(
-                            model_name, response.usage_metadata
-                        )
-                        gemini_monitor.log_usage(
-                            model_name,
-                            response.usage_metadata,
-                            function_name="question_generator_gemini_retry",
-                            additional_metadata={
-                                "agent_type": "question_generator",
-                                "num_objective": num_objective,
-                                "num_subjective": num_subjective,
-                                "attempt": f"retry_{retry_count}",
-                            },
-                        )
-                else:
-                    print(f"  ❌ 최대 재시도 횟수 초과 또는 다른 에러")
+            except Exception as e:
+                print(f"  ❌ 시도 {retry_count + 1} 실패: {e}")
+                retry_count += 1
+                if retry_count >= max_retries:
+                    print(f"  ❌ 최대 재시도 횟수 초과")
                     return []
-
-        # JSON 파싱
-        try:
-            # 코드 블록 제거
-            if "```json" in raw_content:
-                raw_content = raw_content.split("```json")[1].split("```")[0].strip()
-            elif "```" in raw_content:
-                raw_content = raw_content.split("```")[1].split("```")[0].strip()
-
-            # JSON이 잘린 경우 복구 시도
-            if not raw_content.strip().endswith("]"):
-                # 배열이 완료되지 않은 경우, 마지막 객체 제거
-                if raw_content.strip().endswith(","):
-                    raw_content = raw_content.strip()[:-1]
-
-                # 불완전한 마지막 객체 제거
-                bracket_count = 0
-                valid_end = -1
-                for i, char in enumerate(raw_content):
-                    if char == "{":
-                        bracket_count += 1
-                    elif char == "}":
-                        bracket_count -= 1
-                        if bracket_count == 0:
-                            valid_end = i
-
-                if valid_end > 0:
-                    raw_content = raw_content[: valid_end + 1] + "]"
-                else:
-                    raw_content += "]"
-
-            questions = json.loads(raw_content)
-
-            # 리스트인지 확인
-            if not isinstance(questions, list):
-                print(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
-                return []
-
-            print(f"  ✅ {len(questions)}개 질문 파싱 성공")
-            return questions
-
-        except json.JSONDecodeError as e:
-            print(f"  ❌ JSON 파싱 실패: {e}")
-            print(f"  원본 응답 길이: {len(raw_content)} 문자")
-            print(f"  응답 마지막 100자: ...{raw_content[-100:]}")
-            return []
+                continue
 
     except Exception as e:
         print(f"  ❌ 질문 생성 실패: {e}")
         import traceback
 
         print(f"  📄 상세 오류: {traceback.format_exc()}")
+        return []
+
+
+def _parse_json_response(raw_content: str) -> List[Dict]:
+    """
+    JSON 응답 파싱 (기존 로직 유지)
+
+    Args:
+        raw_content: 원시 응답 내용
+
+    Returns:
+        파싱된 질문 리스트
+    """
+    try:
+        # 코드 블록 제거
+        if "```json" in raw_content:
+            raw_content = raw_content.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_content:
+            raw_content = raw_content.split("```")[1].split("```")[0].strip()
+
+        # JSON이 잘린 경우 복구 시도
+        if not raw_content.strip().endswith("]"):
+            # 배열이 완료되지 않은 경우, 마지막 객체 제거
+            if raw_content.strip().endswith(","):
+                raw_content = raw_content.strip()[:-1]
+
+            # 불완전한 마지막 객체 제거
+            bracket_count = 0
+            valid_end = -1
+            for i, char in enumerate(raw_content):
+                if char == "{":
+                    bracket_count += 1
+                elif char == "}":
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        valid_end = i
+
+            if valid_end > 0:
+                raw_content = raw_content[: valid_end + 1] + "]"
+            else:
+                raw_content += "]"
+
+        questions = json.loads(raw_content)
+
+        # 리스트인지 확인
+        if not isinstance(questions, list):
+            print(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
+            return []
+
+        return questions
+
+    except json.JSONDecodeError as e:
+        print(f"  ❌ JSON 파싱 실패: {e}")
+        print(f"  원본 응답 길이: {len(raw_content)} 문자")
+        print(f"  응답 마지막 100자: ...{raw_content[-100:]}")
         return []
 
 
@@ -291,67 +257,6 @@ def generate_question(
     return _generate_gemini_questions(
         messages, system_prompt, num_objective, num_subjective
     )
-
-
-# 기존 Gemini 버전 (주석 처리)
-"""
-def generate_question_gemini(
-    messages: List[Dict], 
-    source: str, 
-    page: str, 
-    num_objective: int = 1, 
-    num_subjective: int = 1,
-    difficulty: str = "NORMAL"
-) -> List[Dict]:
-    try:
-        system_prompt = get_vision_prompt(source, page, difficulty, num_objective, num_subjective)
-
-        print(f"  🤖 Gemini 2.5 Flash 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})")
-
-        model = genai.GenerativeModel('gemini-2.0-flash-exp')
-
-        gemini_parts = []
-        gemini_parts.append(system_prompt)
-
-        for message in messages:
-            if message.get("type") == "text":
-                gemini_parts.append(message["text"])
-            elif message.get("type") == "image_url":
-                import io
-                from PIL import Image
-
-                image_url = message["image_url"]["url"]
-                if image_url.startswith("data:image"):
-                    base64_data = image_url.split(",")[1]
-                    image_data = base64.b64decode(base64_data)
-                    image = Image.open(io.BytesIO(image_data))
-                    gemini_parts.append(image)
-
-        response = model.generate_content(
-            gemini_parts,
-            generation_config=genai.types.GenerationConfig(
-                temperature=0.7,
-                max_output_tokens=2000,
-            )
-        )
-
-        raw_content = response.text.strip()
-
-        if "```json" in raw_content:
-            raw_content = raw_content.split("```json")[1].split("```")[0].strip()
-        elif "```" in raw_content:
-            raw_content = raw_content.split("```")[1].split("```")[0].strip()
-
-        questions = json.loads(raw_content)
-
-        if not isinstance(questions, list):
-            return []
-
-        return questions
-    except Exception as e:
-        print(f"  ❌ 질문 생성 실패: {e}")
-        return []
-"""
 
 
 class QuestionGenerator:
