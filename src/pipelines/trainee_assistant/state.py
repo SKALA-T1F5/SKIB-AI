@@ -9,5 +9,6 @@ class ChatState(TypedDict):
     question_id: str
     document_name: Optional[str]
     test_questions: List[Question]
+    question_data: Optional[Question]  # 추가
     chroma_docs: Optional[List[dict]]
     answer: Optional[str]
