@@ -1,13 +1,13 @@
-import asyncio
-import logging
 import json
+import logging
 from typing import List
 
 from konlpy.tag import Okt
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
 
-from api.trainee_assistant.schemas.trainee_assistant import Question
 from config.settings import settings
 from db.redisDB.session_manager import append_message, load_message_history
 from db.vectorDB.chromaDB.search import search_similar
@@ -19,11 +19,24 @@ from src.pipelines.trainee_assistant.state import ChatState
 
 logger = logging.getLogger(__name__)
 
-openai_client = AsyncOpenAI(api_key=settings.api_key)
 okt = Okt()
 
-# --- Helper Functions ---
 
+def get_openai_client():
+    api_key = settings.api_key
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY is not set.")
+    return wrap_openai(AsyncOpenAI(api_key=api_key))
+
+
+openai_client = get_openai_client()
+
+
+@traceable(
+    run_type="tool",
+    name="Extract Keywords",
+    metadata={"tool_type": "keyword_extraction"},
+)
 def extract_keywords(text: str, top_k: int = 5) -> List[str]:
     words = [
         word
@@ -31,9 +44,12 @@ def extract_keywords(text: str, top_k: int = 5) -> List[str]:
         if pos in ["Noun", "Alpha", "Verb"] and len(word) > 1
     ]
     from collections import Counter
+
     return [word for word, _ in Counter(words).most_common(top_k)]
 
+
 # --- Graph Nodes ---
+
 
 async def route_question(state: ChatState) -> str:
     """사용자의 질문 의도를 파악하여 다음 단계를 결정하는 라우터 노드"""
@@ -44,7 +60,7 @@ async def route_question(state: ChatState) -> str:
 
     if not question_data:
         logger.warning("❌ 질문 ID에 해당하는 테스트 문제를 찾을 수 없습니다.")
-        return "end" # or some error handling state
+        return "end"  # or some error handling state
 
     # Update state with the found question_data
     state["question_data"] = question_data
@@ -77,6 +93,7 @@ async def route_question(state: ChatState) -> str:
     logger.info(f"🚦 라우팅 결정: {route}")
     return route
 
+
 async def generate_direct_answer_node(state: ChatState) -> ChatState:
     """문제 데이터(question_data)를 기반으로 직접 답변을 생성하는 노드"""
     user_question = state["question"]
@@ -105,6 +122,7 @@ async def generate_direct_answer_node(state: ChatState) -> ChatState:
 
     return {"answer": answer}
 
+
 def vector_search_node(state: ChatState) -> ChatState:
     """관련 문서를 벡터DB에서 검색하는 노드"""
     document_name = state["question_data"].documentName
@@ -123,6 +141,7 @@ def vector_search_node(state: ChatState) -> ChatState:
 
     return {"chroma_docs": filtered_docs, "document_name": document_name}
 
+
 async def generate_document_based_answer_node(state: ChatState) -> ChatState:
     """벡터DB 검색 결과를 바탕으로 답변을 생성하는 노드"""
     user_question = state["question"]
@@ -137,13 +156,20 @@ async def generate_document_based_answer_node(state: ChatState) -> ChatState:
         answer_prefix = ""
     else:
         warning = "⚠️ 관련 문서를 찾을 수 없어 일반적인 답변을 제공합니다."
-        prompt_role = {"role": "user", "content": f"{warning}\n\n[사용자 질문]\n{user_question}"}
+        prompt_role = {
+            "role": "user",
+            "content": f"{warning}\n\n[사용자 질문]\n{user_question}",
+        }
         answer_prefix = "관련 정보를 찾지 못해 LLM이 일반적인 지식으로 답변합니다.\n\n"
 
     logger.info("🤖 (Doc-Based) GPT 호출 시작")
     response = await openai_client.chat.completions.create(
         model="gpt-4o",
-        messages=[{"role": "system", "content": system_prompt_no_context.strip()}, *history, prompt_role],
+        messages=[
+            {"role": "system", "content": system_prompt_no_context.strip()},
+            *history,
+            prompt_role,
+        ],
     )
     answer = response.choices[0].message.content
     logger.info("💬 (Doc-Based) GPT 응답 수신 완료")
@@ -158,7 +184,9 @@ async def generate_document_based_answer_node(state: ChatState) -> ChatState:
 
     return {"answer": answer}
 
+
 # --- Graph Builder ---
+
 
 def build_langgraph():
     builder = StateGraph(ChatState)
@@ -166,7 +194,9 @@ def build_langgraph():
     builder.add_node("route_question", route_question)
     builder.add_node("generate_direct_answer_node", generate_direct_answer_node)
     builder.add_node("vector_search_node", vector_search_node)
-    builder.add_node("generate_document_based_answer_node", generate_document_based_answer_node)
+    builder.add_node(
+        "generate_document_based_answer_node", generate_document_based_answer_node
+    )
 
     builder.set_entry_point("route_question")
 
@@ -178,7 +208,7 @@ def build_langgraph():
             "document_search": "vector_search_node",
         },
     )
-    
+
     builder.add_edge("vector_search_node", "generate_document_based_answer_node")
     builder.add_edge("generate_direct_answer_node", END)
     builder.add_edge("generate_document_based_answer_node", END)

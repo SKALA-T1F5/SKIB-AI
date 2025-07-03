@@ -1,10 +1,5 @@
 # agents/trainee_assistant/agent.py
-import json
-import os
-import re
-from typing import Any, Dict, List, Optional
 
-import openai
 from langsmith import traceable
 from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
@@ -22,7 +17,7 @@ AGENT_MODEL = settings.subjective_grader_model
 @traceable(
     run_type="chain",
     name="Trainee Assistant Chat",
-    metadata={"agent_type": "trainee_assistant"}
+    metadata={"agent_type": "trainee_assistant"},
 )
 async def trainee_assistant_chat(
     user_question: str, question_info: dict, message_history: list
@@ -48,7 +43,7 @@ async def trainee_assistant_chat(
         ########################################################
 
         response = await openai_client.chat.completions.create(
-            model=AGENT_MODEL,
+            model="AGENT_MODEL",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": USER_PROMPT},
@@ -68,7 +63,7 @@ async def trainee_assistant_chat(
 @traceable(
     run_type="chain",
     name="Get Chat Response",
-    metadata={"agent_type": "trainee_assistant"}
+    metadata={"agent_type": "trainee_assistant"},
 )
 async def get_chat_response(
     user_id: str, user_question: str, question_info: dict
