@@ -100,16 +100,22 @@ async def notify_test_generation_progress(
     try:
         # 상태 업데이트 DTO 생성
         status_update = TestStatusResponse(
-            test_id=test_id,
+            testId=test_id,
             status=status,
         )
 
-        url = f"{settings.backend_url}/api/test/progress/"
+        import json
+
+        logger.info(
+            "🔍 전송할 JSON:\n%s", json.dumps(status_update.model_dump(), indent=2)
+        )
+
+        url = f"{settings.backend_url}/api/test/progress"
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.put(
                 url,
-                json=status_update.model_dump(),
+                json=status_update.model_dump(by_alias=True),
                 headers={"Content-Type": "application/json"},
             )
 
@@ -130,7 +136,7 @@ async def notify_test_generation_result(
 ) -> bool:
     """테스트 생성 최종 결과 전송"""
     try:
-        url = f"{settings.backend_url}/api/test/result/"
+        url = f"{settings.backend_url}/api/test/result"
 
         result = TestGenerationResultResponse(
             testId=result_data.get("test_id"),  # type: ignore
@@ -162,7 +168,6 @@ async def notify_test_generation_result(
 
 
 async def retry_failed_notifications():
-    """실패한 알림들을 재시도"""
     try:
         retry_items = await get_retry_queue_items(limit=5)
 
