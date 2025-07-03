@@ -146,7 +146,7 @@ async def notify_test_generation_result(
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 url,
-                json=result.model_dump(mode="json", exclude_none=True),
+                json=result.model_dump(exclude_none=True),
                 headers={"Content-Type": "application/json"},
             )
 

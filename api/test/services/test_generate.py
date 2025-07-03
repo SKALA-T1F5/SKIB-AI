@@ -7,9 +7,7 @@ from api.question.schemas.question import (
     QuestionResponse,
     QuestionType,
 )
-from api.test.schemas.test_generation_status import (
-    TestGenerationStatus,
-)
+from api.test.schemas.test_generation_status import TestGenerationStatus
 from api.websocket.services.springboot_notifier import (
     notify_test_generation_progress,
     notify_test_generation_result,
@@ -189,7 +187,11 @@ async def test_generation_background(
 
         logger.info(f"✅ 테스트 생성 완료: test_id={test_id}")
 
-        return {"status": "success", "test_id": test_id, "questions": questions}
+        return {
+            "status": "success",
+            "test_id": test_id,
+            "questions": final_result.get("questions"),
+        }
 
     except Exception as e:
         logger.error(f"❌ 테스트 생성 실패: test_id={test_id}, error={str(e)}")
