@@ -65,13 +65,13 @@ pipeline {
                     sh """
                         git config user.name "$GIT_USER_NAME"
                         git config user.email "$GIT_USER_EMAIL"
-                        git add ./k8s/deploy.yaml || true
+                        git add ./k8s/deploy.yaml ./k8s/document-deploy.yaml ./k8s/test-deploy.yaml || true
                     """
 
                     withCredentials([usernamePassword(credentialsId: "${env.GIT_ID}", usernameVariable: 'GIT_PUSH_USER', passwordVariable: 'GIT_PUSH_PASSWORD')]) {
                         sh """
                             if ! git diff --cached --quiet; then
-                                git commit -m "[AUTO] Update deploy.yaml with image ${env.FINAL_IMAGE_TAG}"
+                                git commit -m "[AUTO] Update deployment images with image ${env.FINAL_IMAGE_TAG}"
                                 git remote set-url origin https://${GIT_PUSH_USER}:${GIT_PUSH_PASSWORD}@${gitRepoPath}
                                 git push origin ${env.GIT_BRANCH}
                             else
