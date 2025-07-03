@@ -143,10 +143,14 @@ async def notify_test_generation_result(
             questions=result_data.get("questions"),  # type: ignore
         )
 
+        logger.info(
+            "🔍 전송할 JSON:\n%s", result.model_dump(exclude_none=True, by_alias=True)
+        )
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 url,
-                json=result.model_dump(exclude_none=True),
+                json=result.model_dump(exclude_none=True, by_alias=True),
                 headers={"Content-Type": "application/json"},
             )
 
