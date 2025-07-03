@@ -10,12 +10,14 @@ from typing import Any, Dict, List
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from langsmith import traceable
 from pydantic import BaseModel
 
 from ..base.agent import BaseAgent
 from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
+from src.utils.gemini_monitoring import GeminiMonitor
 
 # 환경 변수 로드
 load_dotenv(override=True)
@@ -40,6 +42,8 @@ class TestDesignerAgent(BaseAgent):
                 "config_generator": TestConfigGenerator(),
             },
         )
+        # Gemini 모니터링 초기화
+        self.gemini_monitor = GeminiMonitor()
 
     async def plan(
         self, input_data: Dict[str, Any], state: TestDesignerState
@@ -151,6 +155,11 @@ class TestDesignerAgent(BaseAgent):
             "time_limit": input_data.get("time_limit", 60),
         }
 
+    @traceable(
+        run_type="chain",
+        name="Generate Test Summary",
+        metadata={"agent_type": "test_designer"}
+    )
     async def _generate_test_summary(
         self, requirements: Dict[str, Any], input_data: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -220,7 +229,14 @@ class TestDesignerAgent(BaseAgent):
 """
 
         try:
-            print("🤖 Gemini 2.5 Pro로 테스트 계획 생성 중...")
+            model_name = "gemini-2.5-flash"
+            print(f"🤖 {model_name}로 테스트 계획 생성 중...")
+
+            # 요청 전 토큰 수 예측
+            estimated_tokens = self.gemini_monitor.count_tokens_before_request(
+                model_name, user_prompt
+            )
+            print(f"📝 예상 입력 토큰: {estimated_tokens:,}")
 
             # 안전 설정
             safety_settings = [
@@ -237,7 +253,7 @@ class TestDesignerAgent(BaseAgent):
             ]
 
             model = genai.GenerativeModel(
-                "gemini-2.5-flash", safety_settings=safety_settings
+                model_name, safety_settings=safety_settings
             )
 
             response = model.generate_content(
@@ -250,6 +266,20 @@ class TestDesignerAgent(BaseAgent):
 
             # 안전한 응답 처리
             if response.candidates and response.candidates[0].content.parts:
+                # 사용량 및 비용 모니터링
+                if hasattr(response, 'usage_metadata'):
+                    self.gemini_monitor.print_usage_summary(model_name, response.usage_metadata)
+                    self.gemini_monitor.log_usage(
+                        model_name, 
+                        response.usage_metadata, 
+                        function_name="test_designer_generate_test_summary",
+                        additional_metadata={
+                            "agent_type": "test_designer",
+                            "document_count": len(input_data.get("documents", [])),
+                            "user_prompt_length": len(requirements.get('user_prompt', ''))
+                        }
+                    )
+
                 raw_content = response.text.strip()
                 print(f"📄 응답 내용 미리보기: {raw_content[:200]}...")
 
@@ -262,7 +292,7 @@ class TestDesignerAgent(BaseAgent):
                     raw_content = raw_content.split("```")[1].split("```")[0].strip()
 
                 test_plan_data = json.loads(raw_content)
-                print("✅ Gemini 2.5 Pro 테스트 계획 생성 완료")
+                print(f"✅ {model_name} 테스트 계획 생성 완료")
                 return test_plan_data
             else:
                 print(f"⚠️ Gemini 응답이 차단됨")

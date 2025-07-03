@@ -12,12 +12,14 @@ import os
 from typing import Dict, List
 
 from dotenv import load_dotenv
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
 from openai import OpenAI
 
 # 환경 변수 로드
 load_dotenv(override=True)
 api_key = os.getenv("OPENAI_API_KEY")
-openai_client = OpenAI(api_key=api_key)
+openai_client = wrap_openai(OpenAI(api_key=api_key))
 
 
 def extract_keywords_and_summary(blocks: List[Dict], source_file: str) -> Dict:
@@ -72,6 +74,11 @@ def extract_keywords_and_summary(blocks: List[Dict], source_file: str) -> Dict:
     return result
 
 
+@traceable(
+    run_type="chain",
+    name="Extract Keywords Summary with LLM",
+    metadata={"agent_type": "document_analyzer"}
+)
 def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
     """
     GPT-4를 사용하여 텍스트에서 키워드 추출 및 요약 수행
