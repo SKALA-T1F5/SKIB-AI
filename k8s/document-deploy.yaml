@@ -29,7 +29,7 @@ spec:
           command: ["celery"]
           args:
             - "-A"
-            - "config.tasks"
+            - "config.celery_app"
             - "worker"
             - "--loglevel=info"
             - "-Q"
