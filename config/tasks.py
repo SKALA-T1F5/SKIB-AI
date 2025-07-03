@@ -43,10 +43,12 @@ def generate_test_task(
         logger.info(f"테스트 문제 생성 시작: task_id={task_id}, test_id={test_id}")
 
         # 초기 상태 알림
-        await notify_test_generation_progress(
-            task_id=task_id,
-            test_id=test_id,
-            status=TestGenerationStatus.TEST_GENERATION_STARTED,
+        loop.run_until_complete(
+            notify_test_generation_progress(
+                task_id=task_id,
+                test_id=test_id,
+                status=TestGenerationStatus.TEST_GENERATION_STARTED,
+            )
         )
 
         result = loop.run_until_complete(
