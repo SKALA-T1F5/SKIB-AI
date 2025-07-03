@@ -106,14 +106,7 @@ async def test_generation_background(
             question_type = QuestionType(q.get("type"))
 
             # 난이도 매핑
-            difficulty_map = {
-                "easy": DifficultyLevel.easy,
-                "medium": DifficultyLevel.normal,
-                "hard": DifficultyLevel.hard,
-            }
-            difficulty = difficulty_map.get(
-                q.get("difficulty", "medium"), DifficultyLevel.normal
-            )
+            difficulty = DifficultyLevel(q.get("difficulty_level").upper())
 
             valid_criteria_fields = {"score", "criteria", "example", "note"}
             raw_criteria = q.get("grading_criteria", [])
@@ -144,7 +137,7 @@ async def test_generation_background(
                     else None
                 ),
                 documentId=q.get("document_id", 0),
-                document_name=q.get("document_name", ""),
+                documentName=q.get("document_name", ""),
                 keywords=q.get("source_keywords", []),
                 tags=q.get("tags", []),
             )
@@ -175,6 +168,11 @@ async def test_generation_background(
         logger.info(f"🧪 Test ID: {final_result.get('test_id')}")
         logger.info(f"📊 Total Questions: {final_result.get('total_questions')}")
         logger.info(f"📝 Metadata: {final_result.get('metadata')}")
+        questions_list = final_result.get("questions")
+        if questions_list and len(questions_list) > 0:
+            logger.info(f"🔍 Questions: {questions_list[0]} 생성됨")
+        else:
+            logger.info("🔍 No questions generated.")
 
         await notify_test_generation_result(
             task_id=task_id, test_id=test_id, result_data=final_result

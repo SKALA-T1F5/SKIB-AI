@@ -3,7 +3,9 @@ import logging
 from typing import Any, Dict
 
 from api.document.services.document_summary import process_document_background
+from api.test.schemas.test_generation_status import TestGenerationStatus
 from api.test.services.test_generate import test_generation_background
+from api.websocket.services.springboot_notifier import notify_test_generation_progress
 from config.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
@@ -38,6 +40,15 @@ def generate_test_task(
     asyncio.set_event_loop(loop)
 
     try:
+        logger.info(f"테스트 문제 생성 시작: task_id={task_id}, test_id={test_id}")
+
+        # 초기 상태 알림
+        await notify_test_generation_progress(
+            task_id=task_id,
+            test_id=test_id,
+            status=TestGenerationStatus.TEST_GENERATION_STARTED,
+        )
+
         result = loop.run_until_complete(
             test_generation_background(task_id, test_id, request_data)
         )
