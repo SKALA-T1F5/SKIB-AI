@@ -36,6 +36,7 @@ openai_client = get_openai_client()
     run_type="tool",
     name="Extract Keywords",
     metadata={"tool_type": "keyword_extraction"},
+    metadata={"tool_type": "keyword_extraction"},
 )
 def extract_keywords(text: str, top_k: int = 5) -> List[str]:
     words = [
@@ -186,8 +187,11 @@ async def generate_document_based_answer_node(state: ChatState) -> ChatState:
 
 
 # --- Graph Builder ---
-
-
+@traceable(
+    run_type="chain",
+    name="Build Trainee Assistant Pipeline",
+    metadata={"pipeline": "trainee_assistant", "graph_type": "langgraph"},
+)
 def build_langgraph():
     builder = StateGraph(ChatState)
 

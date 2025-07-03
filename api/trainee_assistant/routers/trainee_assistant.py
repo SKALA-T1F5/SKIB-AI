@@ -28,21 +28,24 @@ async def initialize_test_context(payload: InitializeTestRequest):
     return {"msg": "테스트 문항 초기화 완료"}
 
 
+from api.trainee_assistant.schemas.trainee_assistant import Question
+
+
 @router.post("/ask-graph")
 async def ask_with_langgraph(payload: QuestionPayload):
-    # 1. 사용자 ID로 초기화된 테스트 문항 불러오기
-    test_questions = await load_test_questions(payload.userId)
+    test_questions_raw = await load_test_questions(payload.userId)
+    question_data = next(
+            (q for q in test_questions_raw if q.id == payload.id), None
+    )
 
-    # 2. LangGraph 실행
     result = await chat_graph.ainvoke(
         {
             "user_id": payload.userId,
             "question": payload.question,
             "question_id": payload.id,
-            "test_questions": test_questions,
+            "test_questions": test_questions_raw,
         }
     )
-
     return {"answer": result["answer"]}
 
 
