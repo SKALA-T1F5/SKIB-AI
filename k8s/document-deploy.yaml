@@ -28,6 +28,8 @@ spec:
             - containerPort: 8000
           command: ["celery"]
           args:
+            - python
+            - "-m"
             - "-A"
             - "config.celery_app"
             - "worker"
