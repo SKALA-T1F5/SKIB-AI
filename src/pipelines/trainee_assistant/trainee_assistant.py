@@ -4,6 +4,7 @@ from typing import List
 
 from konlpy.tag import Okt
 from langgraph.graph import StateGraph
+from langsmith import traceable
 from openai import AsyncOpenAI
 
 from api.trainee_assistant.schemas.trainee_assistant import Question
@@ -24,6 +25,11 @@ openai_client = AsyncOpenAI(api_key=settings.api_key)
 okt = Okt()
 
 
+@traceable(
+    run_type="tool",
+    name="Extract Keywords",
+    metadata={"tool_type": "keyword_extraction"}
+)
 def extract_keywords(text: str, top_k: int = 5) -> List[str]:
     words = [
         word
@@ -35,6 +41,11 @@ def extract_keywords(text: str, top_k: int = 5) -> List[str]:
     return [word for word, _ in Counter(words).most_common(top_k)]
 
 
+@traceable(
+    run_type="chain",
+    name="Vector Search Node",
+    metadata={"pipeline": "trainee_assistant", "node_type": "vector_search"}
+)
 def vector_search_node(state: ChatState) -> ChatState:
     question_data = next(
         (q for q in state["test_questions"] if q.id == state["question_id"]), None
@@ -67,6 +78,11 @@ def vector_search_node(state: ChatState) -> ChatState:
     return {"chroma_docs": filtered_docs, "document_name": document_name}
 
 
+@traceable(
+    run_type="chain",
+    name="Generate Answer Node",
+    metadata={"pipeline": "trainee_assistant", "node_type": "answer_generation", "model": "gpt-4o"}
+)
 async def generate_answer_node(state: ChatState) -> ChatState:
     history = await load_message_history(state["user_id"])
     history.append({"role": "user", "content": state["question"]})
@@ -107,6 +123,11 @@ async def generate_answer_node(state: ChatState) -> ChatState:
     return {"answer": answer}
 
 
+@traceable(
+    run_type="chain",
+    name="Build Trainee Assistant Pipeline",
+    metadata={"pipeline": "trainee_assistant", "graph_type": "langgraph"}
+)
 def build_langgraph():
     builder = StateGraph(ChatState)
 

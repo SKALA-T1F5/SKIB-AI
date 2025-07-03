@@ -12,15 +12,25 @@ from typing import Dict, List
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from langsmith import traceable
 
 from .prompt import get_vision_prompt, get_enhanced_vision_prompt
+from src.utils.gemini_monitoring import GeminiMonitor
 
 # 환경 변수 로드
 load_dotenv(override=True)
 gemini_api_key = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=gemini_api_key)
 
+# Gemini 모니터링 인스턴스
+gemini_monitor = GeminiMonitor()
 
+
+@traceable(
+    run_type="chain",
+    name="Gemini Question Generator",
+    metadata={"agent_type": "question_generator"}
+)
 def _generate_gemini_questions(
     messages: List[Dict],
     system_prompt: str,
@@ -82,6 +92,22 @@ def _generate_gemini_questions(
             ),
         )
 
+        # 첫 번째 API 호출 모니터링
+        model_name = "gemini-2.0-flash-exp"
+        if hasattr(response, 'usage_metadata'):
+            gemini_monitor.print_usage_summary(model_name, response.usage_metadata)
+            gemini_monitor.log_usage(
+                model_name, 
+                response.usage_metadata, 
+                function_name="question_generator_gemini",
+                additional_metadata={
+                    "agent_type": "question_generator",
+                    "num_objective": num_objective,
+                    "num_subjective": num_subjective,
+                    "attempt": "primary"
+                }
+            )
+
         # 안전한 응답 처리 및 재시도 로직
         max_retries = 2
         retry_count = 0
@@ -111,6 +137,21 @@ def _generate_gemini_questions(
                             candidate_count=1
                         ),
                     )
+                    
+                    # 재시도 API 호출 모니터링
+                    if hasattr(response, 'usage_metadata'):
+                        gemini_monitor.print_usage_summary(model_name, response.usage_metadata)
+                        gemini_monitor.log_usage(
+                            model_name, 
+                            response.usage_metadata, 
+                            function_name="question_generator_gemini_retry",
+                            additional_metadata={
+                                "agent_type": "question_generator",
+                                "num_objective": num_objective,
+                                "num_subjective": num_subjective,
+                                "attempt": f"retry_{retry_count}"
+                            }
+                        )
                 else:
                     print(f"  ❌ 최대 재시도 횟수 초과 또는 다른 에러")
                     return []

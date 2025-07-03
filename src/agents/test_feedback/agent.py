@@ -6,6 +6,7 @@ from typing import Any, Dict, List
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from langsmith import traceable
 
 from src.agents.test_feedback.prompt import SYSTEM_PROMPT, build_user_prompt
 from src.agents.test_feedback.tools.document_performance import (
@@ -22,6 +23,11 @@ GEMINI_MODEL = os.getenv(
 )  # .env에 모델명 저장 (GEMINI_AGENT_TEST_FEEDBACK_MODEL=gemini-2.5-flash-lite-preview-06-17)✅
 
 
+@traceable(
+    run_type="chain",
+    name="Test Feedback",
+    metadata={"agent_type": "test_feedback"}
+)
 async def test_feedback(
     exam_goal: str, question_results: List[Dict[str, Any]]
 ) -> Dict[str, Any]:

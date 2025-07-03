@@ -5,6 +5,8 @@ import re
 from typing import Any, Dict, List, Optional
 
 import openai
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
 
 from agents.trainee_assistant.v1.prompt import SYSTEM_PROMPT, build_user_prompt
@@ -13,10 +15,15 @@ from db.redisDB.session_manager import append_message, load_message_history
 
 # OpenAI 로드
 api_key = settings.api_key
-openai_client = AsyncOpenAI(api_key=api_key)
+openai_client = wrap_openai(AsyncOpenAI(api_key=api_key))
 AGENT_MODEL = settings.subjective_grader_model
 
 
+@traceable(
+    run_type="chain",
+    name="Trainee Assistant Chat",
+    metadata={"agent_type": "trainee_assistant"}
+)
 async def trainee_assistant_chat(
     user_question: str, question_info: dict, message_history: list
 ) -> str:
@@ -58,6 +65,11 @@ async def trainee_assistant_chat(
 
 
 # FastAPI 라우터용 함수
+@traceable(
+    run_type="chain",
+    name="Get Chat Response",
+    metadata={"agent_type": "trainee_assistant"}
+)
 async def get_chat_response(
     user_id: str, user_question: str, question_info: dict
 ) -> str:

@@ -4,8 +4,15 @@ conda activate skib
 # 텍스트 파일에 있는 모든 패키지 한 번에 설치
 pip install -r requirements.txt
 
+# fastAPI Server Swagger 실행
+uvicorn main:app --reload
+
 # gemini key 사용 패키지 설치
 pip install google-generativeai==0.8.3 Pillow==11.1.0
+
+# question_checker 실행
+cd src/agents/question_checker
+python unified_question_checker.py
 
 ### 각 에이전트 테스트 (Pytest) ###
 

@@ -10,12 +10,14 @@ from typing import Any, Dict, List
 
 import google.generativeai as genai
 from dotenv import load_dotenv
+from langsmith import traceable
 from pydantic import BaseModel
 
 from ..base.agent import BaseAgent
 from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
+from src.utils.gemini_monitoring import GeminiMonitor
 
 # 환경 변수 로드
 load_dotenv(override=True)
@@ -40,6 +42,8 @@ class TestDesignerAgent(BaseAgent):
                 "config_generator": TestConfigGenerator(),
             },
         )
+        # Gemini 모니터링 초기화
+        self.gemini_monitor = GeminiMonitor()
 
     async def plan(
         self, input_data: Dict[str, Any], state: TestDesignerState
@@ -151,6 +155,11 @@ class TestDesignerAgent(BaseAgent):
             "time_limit": input_data.get("time_limit", 60),
         }
 
+    @traceable(
+        run_type="chain",
+        name="Generate Test Summary",
+        metadata={"agent_type": "test_designer"},
+    )
     async def _generate_test_summary(
         self, requirements: Dict[str, Any], input_data: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -181,7 +190,7 @@ class TestDesignerAgent(BaseAgent):
 
 ```json
 {{
-    "name": "전체 테스트의 적절한 이름",
+    "name": "전체 테스트의 적절한 이름", 
     "test_summary": "이 테스트의 목적과 평가 범위를 설명하는 요약 (200자 이내)",
     "difficulty_level": "NORMAL",
     "limited_time": 90,
@@ -220,7 +229,14 @@ class TestDesignerAgent(BaseAgent):
 """
 
         try:
-            print("🤖 Gemini 2.5 Pro로 테스트 계획 생성 중...")
+            model_name = "gemini-2.5-flash"
+            print(f"🤖 {model_name}로 테스트 계획 생성 중...")
+
+            # 요청 전 토큰 수 예측
+            estimated_tokens = self.gemini_monitor.count_tokens_before_request(
+                model_name, user_prompt
+            )
+            print(f"📝 예상 입력 토큰: {estimated_tokens:,}")
 
             # 안전 설정
             safety_settings = [
@@ -236,9 +252,7 @@ class TestDesignerAgent(BaseAgent):
                 },
             ]
 
-            model = genai.GenerativeModel(
-                "gemini-2.5-flash", safety_settings=safety_settings
-            )
+            model = genai.GenerativeModel(model_name, safety_settings=safety_settings)
 
             response = model.generate_content(
                 user_prompt,
@@ -250,6 +264,24 @@ class TestDesignerAgent(BaseAgent):
 
             # 안전한 응답 처리
             if response.candidates and response.candidates[0].content.parts:
+                # 사용량 및 비용 모니터링
+                if hasattr(response, "usage_metadata"):
+                    self.gemini_monitor.print_usage_summary(
+                        model_name, response.usage_metadata
+                    )
+                    self.gemini_monitor.log_usage(
+                        model_name,
+                        response.usage_metadata,
+                        function_name="test_designer_generate_test_summary",
+                        additional_metadata={
+                            "agent_type": "test_designer",
+                            "document_count": len(input_data.get("documents", [])),
+                            "user_prompt_length": len(
+                                requirements.get("user_prompt", "")
+                            ),
+                        },
+                    )
+
                 raw_content = response.text.strip()
                 print(f"📄 응답 내용 미리보기: {raw_content[:200]}...")
 
@@ -262,7 +294,7 @@ class TestDesignerAgent(BaseAgent):
                     raw_content = raw_content.split("```")[1].split("```")[0].strip()
 
                 test_plan_data = json.loads(raw_content)
-                print("✅ Gemini 2.5 Pro 테스트 계획 생성 완료")
+                print(f"✅ {model_name} 테스트 계획 생성 완료")
                 return test_plan_data
             else:
                 print(f"⚠️ Gemini 응답이 차단됨")
@@ -367,36 +399,40 @@ class TestDesignerAgent(BaseAgent):
 
         return config
 
+
 def _convert_document_name_to_collection(document_name: str) -> str:
     """문서명을 VectorDB collection명으로 변환"""
     try:
         from utils.naming import filename_to_collection
+
         # 문서명에서 .pdf 제거 후 collection명으로 변환
-        clean_name = document_name.replace('.pdf', '').replace('.PDF', '')
+        clean_name = document_name.replace(".pdf", "").replace(".PDF", "")
         collection_name = filename_to_collection(clean_name)
-        
+
         # 특정 패턴 보정 (실제 VectorDB collection명과 일치하도록)
-        if collection_name.startswith('c_2_ags'):
-            collection_name = collection_name.replace('c_2_ags', 'doc_2_ags')
-        elif collection_name.startswith('2_ags'):
-            collection_name = 'doc_' + collection_name
-        
+        if collection_name.startswith("c_2_ags"):
+            collection_name = collection_name.replace("c_2_ags", "doc_2_ags")
+        elif collection_name.startswith("2_ags"):
+            collection_name = "doc_" + collection_name
+
         return collection_name
     except ImportError:
         # utils.naming이 없으면 기본 변환 로직 사용
-        clean_name = document_name.replace('.pdf', '').replace('.PDF', '')
+        clean_name = document_name.replace(".pdf", "").replace(".PDF", "")
         # 간단한 변환: 공백을 언더스코어로, 특수문자 제거
-        collection_name = clean_name.replace(' ', '_').replace('-', '_')
-        collection_name = ''.join(c.lower() if c.isalnum() or c == '_' else '_' for c in collection_name)
+        collection_name = clean_name.replace(" ", "_").replace("-", "_")
+        collection_name = "".join(
+            c.lower() if c.isalnum() or c == "_" else "_" for c in collection_name
+        )
         # 연속된 언더스코어 제거
-        while '__' in collection_name:
-            collection_name = collection_name.replace('__', '_')
-        
+        while "__" in collection_name:
+            collection_name = collection_name.replace("__", "_")
+
         # 특정 패턴 보정
-        if collection_name.startswith('2_ags'):
-            collection_name = 'doc_' + collection_name
-            
-        return collection_name.strip('_')
+        if collection_name.startswith("2_ags"):
+            collection_name = "doc_" + collection_name
+
+        return collection_name.strip("_")
 
 
 def design_test_from_documents(
@@ -529,9 +565,13 @@ def _save_test_plans(result: Dict[str, Any], documents: List[Dict[str, Any]]):
                 original_doc = {}
 
             # 원본 문서명을 collection명으로 변환
-            original_document_name = original_doc.get("document_name", f"문서_{config.get('document_id', i+1)}")
-            collection_name = _convert_document_name_to_collection(original_document_name)
-            
+            original_document_name = original_doc.get(
+                "document_name", f"문서_{config.get('document_id', i+1)}"
+            )
+            collection_name = _convert_document_name_to_collection(
+                original_document_name
+            )
+
             doc_plan = {
                 "document_id": config.get("document_id"),
                 "document_name": collection_name,  # collection명으로 저장
