@@ -5,7 +5,6 @@ from fastapi import APIRouter, HTTPException
 
 from api.test.schemas.test_generate import (
     TestGenerationRequest,
-    TestGenerationResponse,
 )
 from api.test.schemas.test_generation_status import TestGenerationStatus
 from api.websocket.services.springboot_notifier import notify_test_generation_progress
@@ -17,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 @router.post(
     "/generate",
-    response_model=TestGenerationResponse,
-    response_model_by_alias=True,
-    response_model_exclude_none=False,
+    # response_model=TestGenerationResponse,
+    # response_model_by_alias=True,
+    # response_model_exclude_none=False,
 )
 async def generate_test_questions(request: TestGenerationRequest):
     """
@@ -63,11 +62,11 @@ async def generate_test_questions(request: TestGenerationRequest):
         generate_test_task.delay(  # type: ignore
             task_id=task_id, test_id=request_data["test_id"], request_data=request_data
         )
-
-        return TestGenerationResponse(
-            testId=request_data["test_id"],
-            message="테스트 생성이 시작되었습니다. 진행률을 확인하세요.",
-        )
+        return
+        # return TestGenerationResponse(
+        #     testId=request_data["test_id"],
+        #     message="테스트 생성이 시작되었습니다. 진행률을 확인하세요.",
+        # )
 
     except Exception as e:
         logger.error(f"❌ 테스트 생성 요청 실패: {str(e)}")

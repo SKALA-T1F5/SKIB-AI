@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TestGenerationStatus(str, Enum):
@@ -17,10 +17,15 @@ class TestGenerationStatus(str, Enum):
     )
     FINALIZING_RESULTS = "FINALIZING_RESULTS"  # 테스트 세트로 저장
     COMPLETED = "COMPLETED"  # 문제 생성 전체 완료
+    FAILED = "FAILED"  # 문제 생성 실패
 
 
 class TestStatusResponse(BaseModel):
     """테스트 생성 상태 응답"""
 
-    test_id: int
+    model_config = ConfigDict(use_enum_values=True)
+
+    testId: int = Field(..., alias="testId", description="테스트 ID")
     status: TestGenerationStatus
+
+    model_config = {"populate_by_name": True}

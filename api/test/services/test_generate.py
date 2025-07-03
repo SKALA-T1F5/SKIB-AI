@@ -10,7 +10,10 @@ from api.question.schemas.question import (
 from api.test.schemas.test_generation_status import (
     TestGenerationStatus,
 )
-from api.websocket.services.springboot_notifier import notify_test_generation_progress
+from api.websocket.services.springboot_notifier import (
+    notify_test_generation_progress,
+    notify_test_generation_result,
+)
 from src.agents.question_generator.agent import QuestionGeneratorAgent
 
 logger = logging.getLogger(__name__)
@@ -174,11 +177,6 @@ async def test_generation_background(
         logger.info(f"🧪 Test ID: {final_result.get('test_id')}")
         logger.info(f"📊 Total Questions: {final_result.get('total_questions')}")
         logger.info(f"📝 Metadata: {final_result.get('metadata')}")
-
-        # SpringBoot에 최종 결과 전송
-        from api.websocket.services.springboot_notifier import (
-            notify_test_generation_result,
-        )
 
         await notify_test_generation_result(
             task_id=task_id, test_id=test_id, result_data=final_result

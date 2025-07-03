@@ -40,7 +40,7 @@ class TestGenerationRequest(BaseModel):
 class TestGenerationResponse(BaseModel):
     """테스트 생성 응답 (문제 목록만 반환)"""
 
-    test_id: int = Field(..., alias="testId", description="생성된 테스트 ID")
+    testId: int = Field(..., alias="testId", description="생성된 테스트 ID")
     message: str = Field(..., description="상태 메시지")
 
     model_config = {"populate_by_name": True}
@@ -49,7 +49,7 @@ class TestGenerationResponse(BaseModel):
 class TestGenerationResultResponse(BaseModel):
     """테스트 생성 응답 (문제 목록만 반환)"""
 
-    test_id: int = Field(..., alias="testId", description="생성된 테스트 ID")
+    testId: int = Field(..., alias="testId", description="생성된 테스트 ID")
     questions: List[QuestionResponse] = Field(..., description="생성된 문제 목록")
 
     model_config = {"populate_by_name": True}
