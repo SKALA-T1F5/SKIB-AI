@@ -16,6 +16,7 @@ class Settings:
 
         # OpenAI API 키 (Kubernetes Secret 또는 .env)
         self.api_key = os.getenv("OPENAI_API_KEY")
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
 
         self.subjective_grader_model = os.getenv("AGENT_SUBJECTIVE_GRADER_MODEL")
 
