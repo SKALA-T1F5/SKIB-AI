@@ -13,13 +13,18 @@ from typing import Dict, List
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
 
-from .prompt import get_vision_prompt, get_enhanced_vision_prompt
-from src.utils.gemini_monitoring import GeminiMonitor
+from .prompt import get_enhanced_vision_prompt, get_vision_prompt
+
+# from src.utils.gemini_monitoring import GeminiMonitor
 
 
 # Gemini 모니터링 인스턴스
+# gemini_monitor = GeminiMonitor()
 # gemini_monitor = GeminiMonitor()
 
 
@@ -49,8 +54,25 @@ def _generate_gemini_questions(
     try:
         print(
             f"  🤖 Gemini 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
+            f"  🤖 Gemini 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
         )
 
+        # ChatGoogleGenerativeAI 모델 초기화
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            temperature=0.3,
+            max_tokens=3000,
+            max_retries=2,
+            timeout=60,
+        )
+
+        # 메시지를 LangChain 형식으로 변환
+        langchain_messages = []
+
+        # 시스템 메시지 추가
+        langchain_messages.append(SystemMessage(content=system_prompt))
+
+        # 기존 메시지들을 HumanMessage로 변환
         # ChatGoogleGenerativeAI 모델 초기화
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.0-flash-exp",
@@ -70,9 +92,24 @@ def _generate_gemini_questions(
         for message in messages:
             if message.get("type") == "text":
                 langchain_messages.append(HumanMessage(content=message["text"]))
+                langchain_messages.append(HumanMessage(content=message["text"]))
             elif message.get("type") == "image_url":
                 image_url = message["image_url"]["url"]
                 if image_url.startswith("data:image"):
+                    # Base64 이미지 처리
+                    langchain_messages.append(
+                        HumanMessage(
+                            content=[
+                                {"type": "image_url", "image_url": {"url": image_url}}
+                            ]
+                        )
+                    )
+
+        # ChatPromptTemplate 사용하여 프롬프트 관리
+        prompt_template = ChatPromptTemplate.from_messages(langchain_messages)
+
+        # 체인 생성 및 실행
+        chain = prompt_template | llm
                     # Base64 이미지 처리
                     langchain_messages.append(
                         HumanMessage(
@@ -100,7 +137,40 @@ def _generate_gemini_questions(
 
                 # 응답 처리
                 raw_content = response.content.strip()
+
+            try:
+                # LLM 호출
+                response = chain.invoke({})
+
+                # 응답 처리
+                raw_content = response.content.strip()
                 print(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
+
+                # JSON 파싱 (기존 로직 유지)
+                questions = _parse_json_response(raw_content)
+
+                if questions:
+                    print(f"  ✅ {len(questions)}개 질문 파싱 성공")
+                    return questions
+                else:
+                    print(f"  ⚠️ 질문 파싱 실패, 재시도 중...")
+                    retry_count += 1
+                    continue
+
+            except Exception as e:
+                print(f"  ❌ 시도 {retry_count + 1} 실패: {e}")
+                retry_count += 1
+                if retry_count >= max_retries:
+                    print(f"  ❌ 최대 재시도 횟수 초과")
+                    return []
+                continue
+
+    except Exception as e:
+        print(f"  ❌ 질문 생성 실패: {e}")
+        import traceback
+
+        print(f"  📄 상세 오류: {traceback.format_exc()}")
+        return []
 
                 # JSON 파싱 (기존 로직 유지)
                 questions = _parse_json_response(raw_content)
@@ -146,6 +216,28 @@ def _parse_json_response(raw_content: str) -> List[Dict]:
         elif "```" in raw_content:
             raw_content = raw_content.split("```")[1].split("```")[0].strip()
 
+def _parse_json_response(raw_content: str) -> List[Dict]:
+    """
+    JSON 응답 파싱 (기존 로직 유지)
+
+    Args:
+        raw_content: 원시 응답 내용
+
+    Returns:
+        파싱된 질문 리스트
+    """
+    try:
+        # 코드 블록 제거
+        if "```json" in raw_content:
+            raw_content = raw_content.split("```json")[1].split("```")[0].strip()
+        elif "```" in raw_content:
+            raw_content = raw_content.split("```")[1].split("```")[0].strip()
+
+        # JSON이 잘린 경우 복구 시도
+        if not raw_content.strip().endswith("]"):
+            # 배열이 완료되지 않은 경우, 마지막 객체 제거
+            if raw_content.strip().endswith(","):
+                raw_content = raw_content.strip()[:-1]
         # JSON이 잘린 경우 복구 시도
         if not raw_content.strip().endswith("]"):
             # 배열이 완료되지 않은 경우, 마지막 객체 제거
@@ -162,21 +254,45 @@ def _parse_json_response(raw_content: str) -> List[Dict]:
                     bracket_count -= 1
                     if bracket_count == 0:
                         valid_end = i
+            # 불완전한 마지막 객체 제거
+            bracket_count = 0
+            valid_end = -1
+            for i, char in enumerate(raw_content):
+                if char == "{":
+                    bracket_count += 1
+                elif char == "}":
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        valid_end = i
 
+            if valid_end > 0:
+                raw_content = raw_content[: valid_end + 1] + "]"
+            else:
+                raw_content += "]"
             if valid_end > 0:
                 raw_content = raw_content[: valid_end + 1] + "]"
             else:
                 raw_content += "]"
 
         questions = json.loads(raw_content)
+        questions = json.loads(raw_content)
 
+        # 리스트인지 확인
+        if not isinstance(questions, list):
+            print(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
+            return []
         # 리스트인지 확인
         if not isinstance(questions, list):
             print(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
             return []
 
         return questions
+        return questions
 
+    except json.JSONDecodeError as e:
+        print(f"  ❌ JSON 파싱 실패: {e}")
+        print(f"  원본 응답 길이: {len(raw_content)} 문자")
+        print(f"  응답 마지막 100자: ...{raw_content[-100:]}")
     except json.JSONDecodeError as e:
         print(f"  ❌ JSON 파싱 실패: {e}")
         print(f"  원본 응답 길이: {len(raw_content)} 문자")
