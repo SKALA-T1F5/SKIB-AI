@@ -11,6 +11,7 @@ from openai import AsyncOpenAI
 from config.settings import settings
 from db.redisDB.session_manager import append_message, load_message_history
 from db.vectorDB.chromaDB.search import search_similar
+from src.agents.trainee_assistant.agent import answer_based_on_question_data
 from src.agents.trainee_assistant.prompt_1 import (
     build_prompt_from_docs,
     system_prompt_no_context,
@@ -142,11 +143,36 @@ def vector_search_node(state: ChatState) -> ChatState:
     return {"chroma_docs": filtered_docs, "document_name": document_name}
 
 
-async def generate_document_based_answer_node(state: ChatState) -> ChatState:
-    """벡터DB 검색 결과를 바탕으로 답변을 생성하는 노드"""
-    user_question = state["question"]
+def generate_direct_answer_or_explanation(intent: str, question_data: Question) -> str:
+    if intent == "answer":
+        return f"📌 해당 문제의 정답은 다음과 같습니다:\n\n{question_data.answer}"
+    elif intent == "explanation" and question_data.explanation:
+        return f"💡 해당 문제의 해설은 다음과 같습니다:\n\n{question_data.explanation}"
+    return None
+
+
+@traceable(
+    run_type="chain",
+    name="Generate Answer Node",
+    metadata={
+        "pipeline": "trainee_assistant",
+        "node_type": "answer_generation",
+        "model": "gpt-4o",
+    },
+)
+async def generate_answer_node(state: ChatState) -> ChatState:
     history = await load_message_history(state["user_id"])
-    history.append({"role": "user", "content": user_question})
+    history.append({"role": "user", "content": state["question"]})
+
+    question_data = next(
+        (q for q in state["test_questions"] if q.id == state["question_id"]), None
+    )
+
+    if question_data:
+        answer = await answer_based_on_question_data(state["question"], question_data)
+        await append_message(state["user_id"], "user", state["question"])
+        await append_message(state["user_id"], "assistant", answer)
+        return {"answer": answer}
 
     if state.get("chroma_docs"):
         prompt = build_prompt_from_docs(
