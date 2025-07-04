@@ -1,4 +1,4 @@
-FROM amdp-registry.skala-ai.com/skala25a/sk-team-09-ai-base:1.0.0
+FROM docker.io/yoonalim2003/sk-team-09-ai-base:1.0.0
 
 # ✅ Java 설치
 RUN apt-get update && apt-get install -y     openjdk-17-jdk     && apt-get clean && rm -rf /var/lib/apt/lists/*
