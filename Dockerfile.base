@@ -9,5 +9,5 @@ RUN apt-get update && apt-get install -y \
 # pip 최신 버전으로 업그레이드
 RUN python3 -m pip install --upgrade pip
 # requirements 설치 (캐시 비활성화)
-COPY requirements.txt ./
+COPY requirements_final.txt ./
 RUN pip install --no-cache-dir -r requirements_final.txt
