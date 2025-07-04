@@ -74,5 +74,5 @@ jobs:
       - name: Deploy to Kubernetes
         run: |
           for FILE in deploy.yaml document-deploy.yaml test-deploy.yaml; do
-            kubectl apply -f ./k8s/$FILE -n default
+            kubectl apply -f ./k8s/$FILE -n sk-team-09 
           done
