@@ -18,7 +18,6 @@ from src.agents.trainee_assistant.prompt_1 import (
 from src.pipelines.trainee_assistant.state import ChatState
 
 logger = logging.getLogger(__name__)
-
 okt = Okt()
 
 
@@ -51,7 +50,7 @@ def extract_keywords(text: str, top_k: int = 5) -> List[str]:
 # --- Graph Nodes ---
 
 
-async def route_question(state: ChatState) -> str:
+async def route_question(state: ChatState) -> dict:
     """사용자의 질문 의도를 파악하여 다음 단계를 결정하는 라우터 노드"""
     user_question = state["question"]
     question_data = next(
@@ -60,9 +59,8 @@ async def route_question(state: ChatState) -> str:
 
     if not question_data:
         logger.warning("❌ 질문 ID에 해당하는 테스트 문제를 찾을 수 없습니다.")
-        return "end"  # or some error handling state
+        return {"route": "end"}
 
-    # Update state with the found question_data
     state["question_data"] = question_data
 
     prompt = f"""당신은 질문의 의도를 파악하는 라우팅 전문가입니다. 주어진 [문제 정보]와 [사용자 질문]을 보고, 질문의 의도를 다음 두 가지 중 하나로 분류하세요.
@@ -78,9 +76,7 @@ async def route_question(state: ChatState) -> str:
 
 [분류]
 1. `direct_answer`: 사용자가 문제의 정답, 보기, 해설, 유형 등 제공된 [문제 정보]에 대해 직접적으로 묻고 있습니다.
-   (예: "정답이 뭐야?", "해설 보여줘", "이 문제 무슨 유형이야?")
-2. `document_search`: 사용자가 문제의 배경, 개념, 이유 등 [문제 정보]에 직접적으로 명시되지 않은, 더 깊은 내용을 묻고 있습니다. 이 경우 관련 문서를 찾아봐야 합니다.
-   (예: "왜 이게 정답이야?", "AGS Trouble shooting 가이드가 뭐야?", "탄소배출권이 뭐야?")
+2. `document_search`: 사용자가 문제의 배경, 개념, 이유 등 [문제 정보]에 직접적으로 명시되지 않은, 더 깊은 내용을 묻고 있습니다.
 
 오직 `direct_answer` 또는 `document_search` 둘 중 하나로만 답변하세요."""
 
@@ -91,11 +87,10 @@ async def route_question(state: ChatState) -> str:
     )
     route = response.choices[0].message.content.strip()
     logger.info(f"🚦 라우팅 결정: {route}")
-    return route
+    return {"route": route}
 
 
 async def generate_direct_answer_node(state: ChatState) -> ChatState:
-    """문제 데이터(question_data)를 기반으로 직접 답변을 생성하는 노드"""
     user_question = state["question"]
     question_data = state["question_data"]
 
@@ -124,7 +119,6 @@ async def generate_direct_answer_node(state: ChatState) -> ChatState:
 
 
 def vector_search_node(state: ChatState) -> ChatState:
-    """관련 문서를 벡터DB에서 검색하는 노드"""
     document_name = state["question_data"].documentName
     logger.info(f"🔍 ChromaDB에서 검색 수행: document_name={document_name}")
     docs = search_similar(
@@ -143,7 +137,6 @@ def vector_search_node(state: ChatState) -> ChatState:
 
 
 async def generate_document_based_answer_node(state: ChatState) -> ChatState:
-    """벡터DB 검색 결과를 바탕으로 답변을 생성하는 노드"""
     user_question = state["question"]
     history = await load_message_history(state["user_id"])
     history.append({"role": "user", "content": user_question})
@@ -186,6 +179,8 @@ async def generate_document_based_answer_node(state: ChatState) -> ChatState:
 
 
 # --- Graph Builder ---
+
+
 @traceable(
     run_type="chain",
     name="Build Trainee Assistant Pipeline",
@@ -205,7 +200,7 @@ def build_langgraph():
 
     builder.add_conditional_edges(
         "route_question",
-        lambda x: x,
+        lambda x: x["route"],  # 🔥 중요: route key로 추출
         {
             "direct_answer": "generate_direct_answer_node",
             "document_search": "vector_search_node",

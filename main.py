@@ -11,7 +11,9 @@ from api.feedback.routers.trainer import router as document_grading_router
 from api.grading.routers.subjective_grading import router as grading_router
 from api.test.routers.test_generate import router as test_generate_router
 from api.test.routers.test_plan import router as test_plan_router
-from api.trainee_assistant.routers import trainee_assistant
+from api.trainee_assistant.routers.trainee_assistant import (
+    router as trainee_assistant_router,
+)
 
 # 백그라운드 워커
 from services.middleware import LoggingMiddleware
@@ -63,4 +65,4 @@ app.include_router(document_router)
 app.include_router(document_summary_router)
 app.include_router(test_plan_router)
 app.include_router(document_grading_router)
-app.include_router(trainee_assistant.router)
+app.include_router(trainee_assistant_router)
