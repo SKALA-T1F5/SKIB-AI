@@ -1,0 +1,52 @@
+# SKIB-AI 프로젝트 필수 패키지만 선별
+
+# ✅ 웹 프레임워크 (핵심)
+fastapi==0.115.14
+uvicorn==0.35.0
+starlette==0.46.2
+httpx==0.28.1
+
+# ✅ AI/LLM 스택 (핵심)
+openai==1.93.0
+langchain==0.3.26
+langchain-core==0.3.68
+langchain-openai==0.3.27
+langchain-google-genai==2.0.10
+langsmith==0.3.45                
+langgraph==0.5.0                 
+google-generativeai==0.8.5
+
+# ✅ 벡터 데이터베이스 (핵심)
+chromadb==1.0.15
+
+# ✅ 문서 처리 (핵심)
+docling==2.39.0
+docling-core==2.40.0
+docling-parse==4.1.0
+pymupdf==1.26.3
+pdfplumber==0.11.7
+pillow==11.3.0
+
+# ✅ 한국어 NLP (프로젝트 특성상 필수)
+konlpy==0.6.0
+
+# ✅ 머신러닝/임베딩 (핵심)
+sentence-transformers==5.0.0
+torch==2.7.1
+torchvision==0.22.1
+numpy==2.2.6
+
+# ✅ 데이터베이스/캐시 (아키텍처상 필수)
+redis==6.2.0
+
+# ✅ 비동기 작업 처리 (필수)
+celery==5.5.3
+
+# ✅ 기본 유틸리티 (필수)
+python-dotenv==1.1.1
+pydantic==2.11.7
+psutil==7.0.0
+colorlog==6.9.0
+
+# ✅ 테스트 (개발 필수)
+pytest==8.4.1

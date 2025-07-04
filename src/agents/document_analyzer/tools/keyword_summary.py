@@ -8,18 +8,15 @@ Docling으로 파싱된 블록들을 분석하여 문서의 핵심 내용을 추
 """
 
 import json
-import os
 from typing import Dict, List
 
-from dotenv import load_dotenv
 from langsmith import traceable
 from langsmith.wrappers import wrap_openai
 from openai import OpenAI
 
-# 환경 변수 로드
-load_dotenv(override=True)
-api_key = os.getenv("OPENAI_API_KEY")
-openai_client = wrap_openai(OpenAI(api_key=api_key))
+from config.settings import settings
+
+openai_client = wrap_openai(OpenAI(api_key=settings.api_key))
 
 
 def extract_keywords_and_summary(blocks: List[Dict], source_file: str) -> Dict:
@@ -77,7 +74,7 @@ def extract_keywords_and_summary(blocks: List[Dict], source_file: str) -> Dict:
 @traceable(
     run_type="chain",
     name="Extract Keywords Summary with LLM",
-    metadata={"agent_type": "document_analyzer"}
+    metadata={"agent_type": "document_analyzer"},
 )
 def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
     """

@@ -30,12 +30,14 @@ et-xmlfile==2.0.0                # 엑셀 내부 XML 처리용
 
 # ✅ AI / LLM / 벡터 검색 관련
 openai==1.82.1                   # OpenAI API
-google-generativeai==0.8.3       # Google Gemini API
 Pillow==11.1.0                   # 이미지 처리 (PIL)
 chromadb==0.5.18                 # ChromaDB 벡터 데이터베이스
 langchain==0.3.25                # LLM 파이프라인 구축
 langchain-core==0.3.65           # LangChain의 핵심 기능 모듈
 langchain-openai==0.3.22         # LangChain과 OpenAI 연동
+google-ai-generativelanguage==0.6.15
+google-generativeai==0.8.5
+langchain-google-genai==2.0.10
 langchain-text-splitters==0.3.8
 langchain-chroma==0.2.0          # LangChain ChromaDB 연동
 langsmith==0.3.45                # LangChain 실험 추적 도구

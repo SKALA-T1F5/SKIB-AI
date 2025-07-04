@@ -22,7 +22,7 @@ async def generate_feedback(request: FeedbackGenerationRequest):
         logger.info(f"피드백 생성 시작")
 
         # 입력 데이터 유효성 검사
-        if not request.questions:
+        if not request.feedbacks:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="문제 데이터가 없습니다.",
@@ -31,7 +31,7 @@ async def generate_feedback(request: FeedbackGenerationRequest):
         # AI 에이전트를 통한 피드백 생성
         feedback_response = await test_feedback(
             exam_goal=request.test_summary,
-            question_results=[q.model_dump(by_alias=True) for q in request.questions],
+            question_results=[q.model_dump(by_alias=True) for q in request.feedbacks],
         )
 
         logger.info(f"피드백 생성 완료")

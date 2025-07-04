@@ -47,7 +47,9 @@ class QuestionResponse(BaseModel):
         None, description="주관식 문제 채점 기준"
     )
     documentId: int = Field(..., description="문제가 속한 문서의 고유 ID")
-    document_name: str = Field(..., description="문제가 속한 문서의 이름")
+    document_name: str = Field(
+        ..., alias="documentName", description="문제가 속한 문서의 이름"
+    )
     keywords: Optional[List[str]] = Field(None, description="문제와 관련된 키워드 목록")
     tags: Optional[List[str]] = Field(
         None, description="문제 관련 태그 목록 (예: 문해력, 논리력)"

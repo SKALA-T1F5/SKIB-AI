@@ -1,13 +1,12 @@
 # agents/test_feedback/agent.py
 import json
-import os
 import re
 from typing import Any, Dict, List
 
 import google.generativeai as genai
-from dotenv import load_dotenv
 from langsmith import traceable
 
+from config.settings import settings
 from src.agents.test_feedback.prompt import SYSTEM_PROMPT, build_user_prompt
 from src.agents.test_feedback.tools.document_performance import (
     calc_performance_by_document,
@@ -15,12 +14,7 @@ from src.agents.test_feedback.tools.document_performance import (
 from src.agents.test_feedback.tools.question_selector import select_top_bottom_questions
 
 # model 로드
-load_dotenv(override=True)
-gemini_api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=gemini_api_key)
-GEMINI_MODEL = os.getenv(
-    "GEMINI_AGENT_TEST_FEEDBACK_MODEL"
-)  # .env에 모델명 저장 (GEMINI_AGENT_TEST_FEEDBACK_MODEL=gemini-2.5-flash-lite-preview-06-17)✅
+genai.configure(api_key=settings.gemini_api_key)
 
 
 @traceable(

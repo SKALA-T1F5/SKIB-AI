@@ -6,8 +6,6 @@ from fastapi import APIRouter, HTTPException
 from api.test.schemas.test_generate import (
     TestGenerationRequest,
 )
-from api.test.schemas.test_generation_status import TestGenerationStatus
-from api.websocket.services.springboot_notifier import notify_test_generation_progress
 from config.tasks import generate_test_task
 
 router = APIRouter(prefix="/api/test", tags=["Test"])
@@ -29,13 +27,6 @@ async def generate_test_questions(request: TestGenerationRequest):
         task_id = str(uuid4())
 
         logger.info(f"테스트 생성 요청: test_id={request.test_id}, task_id={task_id}")
-
-        # 초기 상태 알림
-        await notify_test_generation_progress(
-            task_id=task_id,
-            test_id=request.test_id,
-            status=TestGenerationStatus.TEST_GENERATION_STARTED,
-        )
 
         # 요청 데이터를 dictionary로 변환
         request_data = {
