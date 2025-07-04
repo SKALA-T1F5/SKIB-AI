@@ -24,9 +24,7 @@ GEMINI_MODEL = os.getenv(
 
 
 @traceable(
-    run_type="chain",
-    name="Test Feedback",
-    metadata={"agent_type": "test_feedback"}
+    run_type="chain", name="Test Feedback", metadata={"agent_type": "test_feedback"}
 )
 async def test_feedback(
     exam_goal: str, question_results: List[Dict[str, Any]]
