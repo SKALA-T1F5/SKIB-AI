@@ -69,7 +69,7 @@ async def route_question(state: ChatState) -> str:
 
 [문제 정보]
 - 문제: {question_data.question}
-- 유형: {question_data.type.value}
+- 유형: {question_data.type}
 - 정답: {question_data.answer}
 - 해설: {question_data.explanation}
 

@@ -45,7 +45,9 @@ app = FastAPI(
 # CORS 먼저 등록!
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 실제 서비스 도메인만 명시하는 게 안전합니다
+    allow_origins=[
+        "https://skib-frontend.skala25a.project.skala-ai.com"
+    ],  # 실제 서비스 도메인만 명시하는 게 안전합니다
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
