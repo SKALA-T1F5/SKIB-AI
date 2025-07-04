@@ -13,6 +13,7 @@ pip install google-generativeai==0.8.3 Pillow==11.1.0
 # question_checker 실행
 cd src/agents/question_checker
 python unified_question_checker.py
+python src/agents/question_checker/unified_question_checker.py data/outputs/generated_questions/[문서명]
 
 ### 각 에이전트 테스트 (Pytest) ###
 
