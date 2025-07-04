@@ -34,7 +34,7 @@ spec:
               "--limit-max-requests",
               "200",
             ]
-          image: docker.io/yoonalim2003/sk-team-09-ai:1.0.0-1-f764f11533cc
+          image: docker.io/yoonalim2003/sk-team-09-ai:1.0.0-3-2e95a798461f
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
