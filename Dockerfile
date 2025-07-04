@@ -10,8 +10,6 @@ ENV PATH=$JAVA_HOME/bin:$PATH
 # ✅ PYTHONPATH 설정
 ENV PYTHONPATH=/app
 
-RUN pip install --no-cache-dir python-multipart
-
 # ✅ 애플리케이션 복사 및 설정
 COPY . /app
 WORKDIR /app
