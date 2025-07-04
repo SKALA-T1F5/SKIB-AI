@@ -1,5 +1,6 @@
 # src/agents/trainee_assistant/prompt_1.py
 from typing import Optional
+
 from api.trainee_assistant.schemas.trainee_assistant import Question
 
 # 벡터DB가 없을 때 사용할 system prompt
@@ -15,7 +16,9 @@ system_prompt_no_context = """
 
 
 # 벡터DB에 기반한 프롬프트 생성 함수
-def build_prompt_from_docs(user_question: str, docs: list, question_data: Optional[Question]) -> str:
+def build_prompt_from_docs(
+    user_question: str, docs: list, question_data: Optional[Question]
+) -> str:
     context_str = "\n\n".join(
         [f"📄 문서 발췌 {i+1}:\n{doc['content']}" for i, doc in enumerate(docs)]
     )
@@ -42,5 +45,4 @@ def build_prompt_from_docs(user_question: str, docs: list, question_data: Option
 ✍️ 위 참고 문서 내용을 반드시 기반으로 답변하세요.
 - 반드시 문서의 문장을 그대로 **인용**하여 작성하세요.
 - 문서에 없는 내용은 절대로 지어내지 마세요.
-- 답변 마지막에 반드시 출처 문서를 명시하세요. (예: 📝 출처: 문서 'doc_2_ags_trouble_shooting_v1_1')
 """
