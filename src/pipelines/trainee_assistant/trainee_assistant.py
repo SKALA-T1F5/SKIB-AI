@@ -3,7 +3,7 @@ import logging
 from typing import List
 
 from konlpy.tag import Okt
-from langgraph.graph import StateGraph
+from langgraph.graph import END, StateGraph
 from langsmith import traceable
 from langsmith.wrappers import wrap_openai
 from openai import AsyncOpenAI
@@ -35,7 +35,6 @@ openai_client = get_openai_client()
 @traceable(
     run_type="tool",
     name="Extract Keywords",
-    metadata={"tool_type": "keyword_extraction"},
     metadata={"tool_type": "keyword_extraction"},
 )
 def extract_keywords(text: str, top_k: int = 5) -> List[str]:
