@@ -14,7 +14,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from langsmith import traceable
 
-from .prompt import get_vision_prompt, get_enhanced_vision_prompt
+from .prompt3 import get_vision_prompt
+from .prompt import get_enhanced_vision_prompt
 from src.utils.gemini_monitoring import GeminiMonitor
 
 # 환경 변수 로드
