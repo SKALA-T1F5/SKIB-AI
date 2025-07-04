@@ -2,6 +2,7 @@
 import os
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # 기존 라우터들
 from api.document.routers.document_summary import router as document_summary_router
@@ -39,6 +40,15 @@ app = FastAPI(
     title="SKIB-AI FastAPI Server",
     version="1.0.0",
     # lifespan=lifespan,  # 라이프사이클 관리 추가
+)
+
+# CORS 먼저 등록!
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # 실제 서비스 도메인만 명시하는 게 안전합니다
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 미들웨어 및 라우터 등록
