@@ -61,8 +61,6 @@ async def route_question(state: ChatState) -> dict:
         logger.warning("❌ 질문 ID에 해당하는 테스트 문제를 찾을 수 없습니다.")
         return {"route": "end"}
 
-    state["question_data"] = question_data
-
     prompt = f"""당신은 질문의 의도를 파악하는 라우팅 전문가입니다. 주어진 [문제 정보]와 [사용자 질문]을 보고, 질문의 의도를 다음 두 가지 중 하나로 분류하세요.
 
 [문제 정보]
@@ -87,7 +85,7 @@ async def route_question(state: ChatState) -> dict:
     )
     route = response.choices[0].message.content.strip()
     logger.info(f"🚦 라우팅 결정: {route}")
-    return {"route": route}
+    return {"route": route, "question_data": question_data}
 
 
 async def generate_direct_answer_node(state: ChatState) -> ChatState:
