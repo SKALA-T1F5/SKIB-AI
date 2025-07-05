@@ -21,3 +21,6 @@ data/
 # Deployment files
 /k8s/secrets/** 
 chroma.sqlite3
+
+output/
+/src/agents/question_checker/output/
