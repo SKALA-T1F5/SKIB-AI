@@ -61,6 +61,7 @@ def _generate_gemini_questions(
             max_tokens=3000,
             max_retries=2,
             timeout=60,
+            google_api_key=os.environ.get("GEMINI_API_KEY"),
         )
 
         # 메시지를 LangChain 형식으로 변환
