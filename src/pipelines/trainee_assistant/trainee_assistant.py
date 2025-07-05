@@ -83,7 +83,7 @@ async def route_question(state: ChatState) -> dict:
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
     )
-    route = response.choices[0].message.content.strip()
+    route = response.choices[0].message.content.strip().replace('`', '')
     logger.info(f"🚦 라우팅 결정: {route}")
     return {"route": route, "question_data": question_data}
 
