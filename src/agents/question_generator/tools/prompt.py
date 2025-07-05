@@ -1,6 +1,7 @@
 """
 Question Generator Prompts
 """
+
 from typing import Dict, List, Optional
 
 
@@ -56,37 +57,70 @@ def get_vision_prompt(
 - 서술형 문제 ({num_subjective}개)
 
 **문제 태그별 생성 조건**:
-문제는 다음 태그 중 하나씩을 반드시 포함하여 생성해 주세요:
+문제는 다음 태그 중 하나를 반드시 포함하여 생성하세요. 각 태그별 예시도 참고하세요.
 
-1. **"이해력"** - 기본 개념과 정의 파악
-   - 용어 정의, 기본 개념 설명, 단순 암기형 문제
-   - 예: "ServiceFLOW의 주요 목적은 무엇인가?", "AGS 인력의 역할을 설명하시오"
+교육 목표를 인지적 복잡성 수준에 따라 6단계로 나눈 체계로, 단계가 높을수록 사고의 수준이 높아짐을 의미합니다.
 
-2. **"분석력"** - 정보 분해 및 관계 파악  
-   - 구성요소 분석, 프로세스 단계별 분석, 비교/대조 문제
-   - 예: "프로세스의 각 단계별 특징을 분석하시오", "두 시스템의 차이점을 분석하시오"
+1. Remember (기억): 사실, 개념, 정의 등을 단순히 회상
+2. Understand (이해): 정보를 해석, 요약, 설명
+3. Apply (적용): 지식을 새로운 상황에 사용
+4. Analyze (분석): 정보의 구성요소를 구별, 관계 분석
+5. Evaluate (평가): 판단 기준으로 평가, 비판적 사고
+6. Create (창조): 새로운 구조, 아이디어, 제품을 생성
 
-3. **"문제해결력"** - 실무 상황 해결 방안 제시
-   - 트러블슈팅, 해결방안 제시, 실무 적용 문제
-   - 예: "로그인 오류 발생 시 해결 절차는?", "문의 접수 시 필요한 조치를 제시하시오"
+태그별 문제 예시
+1. Remember
+“이 개념의 정의는 무엇인가요?”
+“문서에서 언급한 3가지 주요 요소는 무엇인가요?”
 
-4. **"추론력"** - 주어진 정보로부터 결론 도출
-   - 원인 추론, 결과 예측, 패턴 파악 문제
-   - 예: "이 오류가 발생한 원인을 추론하시오", "다음 단계에서 예상되는 결과는?"
+2. Understand
+“이 개념을 자신의 말로 설명해보세요.”
+“이 프로세스가 어떻게 작동하는지 요약하세요.”
 
-5. **"논리력"** - 논리적 사고와 순서 정립
-   - 절차 순서, 논리적 관계, 조건부 사고 문제
-   - 예: "올바른 절차 순서를 나열하시오", "조건에 따른 처리 방식을 논리적으로 설명하시오"
+3. Apply
+“이 공식을 사용해 다음 사례를 계산해보세요.”
+“이 방법론을 사용해 A 문제를 해결하는 절차를 작성해보세요.”
 
-각 태그별로 **최소 1개 이상의 문제가 반드시 포함**되어야 하며, 전체 문제 수를 이 다섯 개 태그에 대해 **가능한 한 균등하게 분배**해 주세요.
-(예: 10문제라면 각 태그별 2문제씩, 7문제라면 각 태그별 1문제씩 배분 후 남은 2문제는 임의 태그에 할당)
+4. Analyze
+“이 사례의 핵심 원인을 찾아보세요.”
+“이 데이터의 패턴을 분석해 보고 추세를 설명하세요.”
 
-생성되는 각 문제의 tags 필드에는 위의 태그 중 해당 문제에 맞는 태그 1개만 기입하세요.
+5. Evaluate
+“이 두 가지 접근 방식을 비교하고 더 적합한 것을 선택해 이유를 설명하세요.”
+“이 프로젝트 제안서의 장단점을 평가하세요.”
 
-**문제 생성 시 주의사항**:
-- 위의 중요 키워드들을 활용하여 문제를 구성하세요
-- 주요 주제와 관련된 실무적 내용을 포함하세요
-- 이미지가 있다면 이미지 내용과 연계한 문제를 만드세요
+6. Create
+“이 개념을 활용해 새로운 문제 해결 방안을 제안해보세요.”
+“이 데이터를 기반으로 시각화 대시보드를 설계해보세요.”
+
+각 태그별 최소 1개 이상 포함하고, 전체 문제 수를 다섯 개 태그에 균등하게 분배하세요.
+모든 문제는 **이해→적용→분석→평가** Bloom’s Taxonomy 단계를 고려해 구성하세요.
+
+**📝 문제 생성 가이드라인**:
+1. **전체 테스트 계획과의 일관성**: 위에 제시된 전체 테스트의 목적과 주제에 부합하는 문제를 생성하세요
+2. **키워드 활용**: 전체 핵심 키워드와 문서별 키워드를 적절히 조합하여 문제에 포함하세요
+3. **주제 연계**: 전체 주요 주제와 문서별 주제를 연결하는 종합적 사고를 요구하는 문제를 만드세요
+4. **실무 적용성**: 제시된 테스트 목적에 맞는 실무 적용 능력을 평가할 수 있는 문제를 구성하세요
+5. **이미지 연계**: 이미지가 포함되면 이미지 내용 연계 문제 최소 1개 이상 생성하세요
+6. **출처 문제 제외**: 단순 문제 출처 확인 문제는 제외해주세요
+7. 출력 시 마크다운 형식은 사용하지 마세요. 일반 텍스트로 문제를 작성해주세요.
+
+
+**🎯 특별 요구사항**:
+- 단순 암기보다는 **이해와 적용**을 평가하는 문제 우선
+- 여러 문서의 내용을 **종합적으로 연결**하는 사고를 요구하는 문제 포함
+- 전체 테스트 맥락에서 **중요도가 높은** 개념을 중심으로 문제 구성
+- **실무 시나리오**를 활용한 문제 생성 권장
+
+필수 조건:
+1. 응답은 반드시 유효한 JSON 배열 형식이어야 합니다.
+2. type 필드는 "OBJECTIVE" 또는 "SUBJECTIVE" 중 하나여야 합니다.
+3. difficulty_level 필드는 반드시 '{difficulty}'를 사용해야 합니다.
+4. 객관식 문제는 options 필드를 가져야 합니다.
+5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
+6. tags는 ["기억", "이해", "적용", "분석", "평가", "창조"] 중에서 1개만 선택해주세요.
+7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
+8. test_context 필드를 모든 문제에 포함하여 메타데이터를 제공해주세요.
 
 총 {num_objective + num_subjective}개의 문제를 **반드시 다음 명세에 따른 JSON 리스트 형식**으로 생성해주세요.
 다른 어떤 설명이나 추가 텍스트 없이, 순수한 JSON 배열 문자열만 응답해야 합니다.
@@ -100,7 +134,7 @@ def get_vision_prompt(
     "options": ["선택지 1번", "선택지 2번", "선택지 3번", "선택지 4번"],
     "answer": "문제의 정답입니다.",
     "explanation": "문제에 대한 해설입니다.",
-    "tags": ["이해력"]
+    "tags": ["이해"]
 }},
 {{
     "type": "SUBJECTIVE",
@@ -108,7 +142,7 @@ def get_vision_prompt(
     "question": "주관식 문제 내용",
     "answer": "모범답안",
     "explanation": "해설",
-    "tags": ["분석력"],
+    "tags": ["분석"],
     "grading_criteria": [
         {{
             "score": 5,
@@ -134,7 +168,7 @@ def get_vision_prompt(
 3. difficulty_level 필드는 반드시 '{difficulty}'를 사용해야 합니다.
 4. 객관식 문제는 options 필드를 가져야 합니다.
 5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
-6. tags는 ["분석력", "문제해결력", "추론력", "이해력", "논리력"] 중에서 1개 선택해주세요.
+6. tags는 ["기억", "이해", "적용", "분석", "평가", "창조"] 중에서 1개만 선택해주세요.
 7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
 """
 
@@ -169,7 +203,7 @@ def get_enhanced_vision_prompt(
         metadata = total_test_plan.get("metadata", {})
         test_plan = total_test_plan.get("test_plan", {})
         aggregated_info = total_test_plan.get("aggregated_info", {})
-        
+
         total_test_info += f"\n\n**📋 전체 테스트 계획 정보**:"
         if test_plan.get("name"):
             total_test_info += f"\n• 테스트명: {test_plan['name']}"
@@ -179,37 +213,39 @@ def get_enhanced_vision_prompt(
             total_test_info += f"\n• 전체 난이도: {test_plan['difficulty_level']}"
         if test_plan.get("limited_time"):
             total_test_info += f"\n• 제한시간: {test_plan['limited_time']}분"
-        
+
         # 통합된 키워드와 주제 정보
         if aggregated_info.get("all_keywords"):
             keywords = aggregated_info["all_keywords"][:15]  # 상위 15개
             total_test_info += f"\n• 전체 핵심 키워드: {', '.join(keywords)}"
-        
+
         if aggregated_info.get("all_topics"):
             topics = aggregated_info["all_topics"][:10]  # 상위 10개
             total_test_info += f"\n• 전체 주요 주제: {', '.join(topics)}"
 
         if metadata.get("document_names"):
-            total_test_info += f"\n• 관련 문서: {', '.join(metadata['document_names'][:3])}"
+            total_test_info += (
+                f"\n• 관련 문서: {', '.join(metadata['document_names'][:3])}"
+            )
 
     # 문서별 테스트 계획 정보 구성
     doc_test_info = ""
     if document_test_plan:
         doc_info = document_test_plan.get("document_info", {})
         content_analysis = document_test_plan.get("content_analysis", {})
-        
+
         doc_test_info += f"\n\n**📄 현재 문서 특화 정보**:"
         if doc_info.get("source_file"):
             doc_test_info += f"\n• 문서명: {doc_info['source_file']}"
-        
+
         if content_analysis.get("keywords"):
             doc_keywords = content_analysis["keywords"][:10]
             doc_test_info += f"\n• 문서 핵심 키워드: {', '.join(doc_keywords)}"
-        
+
         if content_analysis.get("main_topics"):
             doc_topics = content_analysis["main_topics"][:5]
             doc_test_info += f"\n• 문서 주요 주제: {', '.join(doc_topics)}"
-        
+
         if content_analysis.get("summary"):
             summary = content_analysis["summary"][:300]
             doc_test_info += f"\n• 문서 요약: {summary}..."
@@ -224,18 +260,29 @@ def get_enhanced_vision_prompt(
 - 객관식 문제 ({num_objective}개)
 - 서술형 문제 ({num_subjective}개)
 
-**📝 문제 생성 가이드라인**:
-1. **전체 테스트 계획과의 일관성**: 위에 제시된 전체 테스트의 목적과 주제에 부합하는 문제를 생성하세요
-2. **키워드 활용**: 전체 핵심 키워드와 문서별 키워드를 적절히 조합하여 문제에 포함하세요
-3. **주제 연계**: 전체 주요 주제와 문서별 주제를 연결하는 종합적 사고를 요구하는 문제를 만드세요
-4. **실무 적용성**: 제시된 테스트 목적에 맞는 실무 적용 능력을 평가할 수 있는 문제를 구성하세요
-5. **이미지 연계**: 이미지가 있다면 문서의 핵심 내용과 연계하여 문제를 생성하세요
+**문제 태그별 생성 조건**:
+문제는 다음 Bloom's Taxonomy 태그 중 하나를 반드시 포함하여 생성하세요.
 
-**🎯 특별 요구사항**:
-- 단순 암기보다는 **이해와 적용**을 평가하는 문제 우선
-- 여러 문서의 내용을 **종합적으로 연결**하는 사고를 요구하는 문제 포함
-- 전체 테스트 맥락에서 **중요도가 높은** 개념을 중심으로 문제 구성
-- **실무 시나리오**를 활용한 문제 생성 권장
+교육 목표를 인지적 복잡성 수준에 따라 6단계로 나눈 체계로, 단계가 높을수록 사고의 수준이 높아짐을 의미합니다.
+
+1. 기억: 사실, 개념, 정의 등을 단순히 회상
+2. 이해: 정보를 해석, 요약, 설명
+3. 적용: 지식을 새로운 상황에 사용
+4. 분석: 정보의 구성요소를 구별, 관계 분석
+5. 평가: 판단 기준으로 평가, 비판적 사고
+6. 창조: 새로운 구조, 아이디어, 제품을 생성
+
+각 태그별 최소 1개 이상 포함하고, 전체 문제 수를 6개 태그에 균등하게 분배하세요.
+
+**필수 조건**:
+1. 응답은 반드시 유효한 JSON 배열 형식이어야 합니다.
+2. type 필드는 "OBJECTIVE" 또는 "SUBJECTIVE" 중 하나여야 합니다.
+3. difficulty_level 필드는 반드시 '{difficulty}'를 사용해야 합니다.
+4. 객관식 문제는 options 필드를 가져야 합니다.
+5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
+6. tags는 ["기억", "이해", "적용", "분석", "평가", "창조"] 중에서 1개만 선택해주세요.
+7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
+8. test_context 필드를 모든 문제에 포함하여 메타데이터를 제공해주세요.
 
 총 {num_objective + num_subjective}개의 문제를 **반드시 다음 명세에 따른 JSON 리스트 형식**으로 생성해주세요.
 다른 어떤 설명이나 추가 텍스트 없이, 순수한 JSON 배열 문자열만 응답해야 합니다.
@@ -249,7 +296,7 @@ def get_enhanced_vision_prompt(
     "options": ["선택지 1번", "선택지 2번", "선택지 3번", "선택지 4번"],
     "answer": "문제의 정답입니다.",
     "explanation": "문제에 대한 해설입니다.",
-    "tags": ["이해력"],
+    "tags": ["이해"],
     "test_context": {{
         "related_keywords": ["키워드1", "키워드2"],
         "related_topics": ["주제1"],
@@ -263,7 +310,7 @@ def get_enhanced_vision_prompt(
     "question": "주관식 문제 내용",
     "answer": "모범답안",
     "explanation": "해설",
-    "tags": ["분석력"],
+    "tags": ["분석"],
     "test_context": {{
         "related_keywords": ["키워드1", "키워드2"],
         "related_topics": ["주제1"],
@@ -289,13 +336,5 @@ def get_enhanced_vision_prompt(
 }}
 ]
 
-필수 조건:
-1. 응답은 반드시 유효한 JSON 배열 형식이어야 합니다.
-2. type 필드는 "OBJECTIVE" 또는 "SUBJECTIVE" 중 하나여야 합니다.
-3. difficulty_level 필드는 반드시 '{difficulty}'를 사용해야 합니다.
-4. 객관식 문제는 options 필드를 가져야 합니다.
-5. 주관식 문제는 options 필드를 포함하지 않아야 합니다.
-6. tags는 ["분석력", "문제해결력", "추론력", "이해력", "논리력"] 중에서 1개 선택해주세요.
-7. 주관식 문제는 grading_criteria 필드를 반드시 포함해야 합니다.
-8. test_context 필드를 모든 문제에 포함하여 메타데이터를 제공해주세요.
+
 """
