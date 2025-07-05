@@ -3,6 +3,7 @@ conda activate skib
 
 # 텍스트 파일에 있는 모든 패키지 한 번에 설치
 pip install -r requirements.txt
+pip install -r requirements_final.txt
 
 # fastAPI Server Swagger 실행
 uvicorn main:app --reload
