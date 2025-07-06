@@ -51,7 +51,6 @@ def extract_keywords(text: str, top_k: int = 5) -> List[str]:
 
 
 async def route_question(state: ChatState) -> dict:
-    """사용자의 질문 의도를 파악하여 다음 단계를 결정하는 라우터 노드"""
     user_question = state["question"]
     question_data = next(
         (q for q in state["test_questions"] if q.id == state["question_id"]), None
@@ -83,7 +82,7 @@ async def route_question(state: ChatState) -> dict:
         messages=[{"role": "user", "content": prompt}],
         temperature=0,
     )
-    route = response.choices[0].message.content.strip().replace('`', '')
+    route = response.choices[0].message.content.strip().replace("`", "")
     logger.info(f"🚦 라우팅 결정: {route}")
     return {"route": route, "question_data": question_data}
 
@@ -118,12 +117,19 @@ async def generate_direct_answer_node(state: ChatState) -> ChatState:
 
 def vector_search_node(state: ChatState) -> ChatState:
     document_name = state["question_data"].documentName
+
+    # ✅ 키워드 기반 query 구성
+    keywords = extract_keywords(state["question"])
+    keyword_query = f"{state['question']} 관련 키워드: {' '.join(keywords)}"
+
     logger.info(f"🔍 ChromaDB에서 검색 수행: document_name={document_name}")
+    logger.debug(f"🔑 검색 키워드 기반 쿼리: {keyword_query}")
+
     docs = search_similar(
-        query=state["question"], collection_name=document_name, n_results=5
+        query=keyword_query, collection_name=document_name, n_results=5
     )
 
-    MIN_SIMILARITY = 0.75
+    MIN_SIMILARITY = 0.7
     filtered_docs = [doc for doc in docs if doc["similarity"] >= MIN_SIMILARITY]
 
     if filtered_docs:
@@ -198,7 +204,7 @@ def build_langgraph():
 
     builder.add_conditional_edges(
         "route_question",
-        lambda x: x["route"],  # 🔥 중요: route key로 추출
+        lambda x: x["route"],
         {
             "direct_answer": "generate_direct_answer_node",
             "document_search": "vector_search_node",
