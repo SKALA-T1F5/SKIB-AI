@@ -16,8 +16,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
 
 
-from .prompt3 import get_vision_prompt
-from .prompt import get_enhanced_vision_prompt
+from .prompt import get_vision_prompt, get_enhanced_vision_prompt
 from src.utils.gemini_monitoring import GeminiMonitor
 
 
