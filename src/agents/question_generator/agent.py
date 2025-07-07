@@ -5,6 +5,7 @@
 - 문제 결과 저장 및 관리
 """
 
+import logging
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -13,15 +14,16 @@ from .tools.result_saver import ResultSaver
 from .tools.test_plan_handler import TestPlanHandler
 from .tools.vector_search import VectorSearchHandler
 
+logger = logging.getLogger(__name__)
+
 
 class QuestionGeneratorAgent:
     """문제 생성 전문 Agent"""
 
-    def __init__(self, collection_name: str = None):
+    def __init__(self, collection_name: str | None = None):
         self.collection_name = collection_name
         # 이미지 저장 디렉토리 설정
-        # TODO 이미지 저장은 여기서 안 하는데?
-        if collection_name:
+        if not collection_name:
             from utils.naming import filename_to_collection
 
             normalized_name = filename_to_collection(collection_name)
@@ -37,10 +39,10 @@ class QuestionGeneratorAgent:
 
     def generate_enhanced_questions_from_test_plans(
         self,
-        total_test_plan_path: str = None,
-        document_test_plan_path: str = None,
-        total_test_plan_data: Dict = None,
-        document_test_plan_data: Dict = None,
+        total_test_plan_path: str | None = None,
+        document_test_plan_path: str | None = None,
+        total_test_plan_data: Dict | None = None,
+        document_test_plan_data: Dict | None = None,
     ) -> Dict[str, Any]:
         """
         테스트 계획을 기반으로 향상된 문제 생성
@@ -53,7 +55,7 @@ class QuestionGeneratorAgent:
         Returns:
             Dict: 문제 생성 결과
         """
-        print("🚀 향상된 문제 생성기 시작")
+        logger.info("🚀 향상된 문제 생성기 시작")
 
         # 1. Test Plan 로드 (우선순위: 데이터 > 경로 > 자동 검색)
         total_plan = None
@@ -63,7 +65,7 @@ class QuestionGeneratorAgent:
             # 직접 딕셔너리 데이터 사용
             total_plan = total_test_plan_data
             document_plan = document_test_plan_data
-            print("📋 Test Plan 데이터를 직접 딕셔너리로 받음")
+            logger.info("📋 Test Plan 데이터를 직접 딕셔너리로 받음")
         elif total_test_plan_path and document_test_plan_path:
             # 지정된 경로에서 로드 -> Local Test용
             total_plan, document_plan = self.test_plan_handler.load_specific_test_plans(
@@ -93,19 +95,18 @@ class QuestionGeneratorAgent:
         difficulty = total_plan.get("test_plan", {}).get("difficulty_level", "NORMAL")
 
         # 2. 각 문서별로 문제 생성
-        # TODO 문서별로 병렬 처리할 수 있도록 리팩토링 필요
         for doc_plan in document_plan.get("document_plans", []):
             document_name = doc_plan.get("document_name", "Unknown")
             document_id = doc_plan.get("document_id", None)
             keywords = doc_plan.get("keywords", [])
             recommended = doc_plan.get("recommended_questions", {})
 
-            print(f"\n📄 문서 처리: {document_name}")
-            print(f"🔑 키워드: {', '.join(keywords)}")
-            print(
+            logger.info(f"\n📄 문서 처리: {document_name}")
+            logger.info(f"🔑 키워드: {', '.join(keywords)}")
+            logger.info(
                 f"📊 추천 문제수: 객관식 {recommended.get('objective', 0)}개, 주관식 {recommended.get('subjective', 0)}개"
             )
-            print(f"🎯 난이도: {difficulty}")
+            logger.info(f"🎯 난이도: {difficulty}")
 
             # VectorDB에서 키워드 관련 콘텐츠 검색 (문서명을 자동으로 collection명으로 변환)
             if document_name:
@@ -118,7 +119,7 @@ class QuestionGeneratorAgent:
                 # 문서명이 없는 경우 fallback 컬렉션들에서 검색
                 related_content = (
                     self.vector_search_handler.search_with_fallback_collections(
-                        keywords=keywords, primary_document_name=None
+                        keywords=keywords, primary_document_name=""
                     )
                 )
 
@@ -145,7 +146,7 @@ class QuestionGeneratorAgent:
             )
 
             if extra_objective > 0 or extra_subjective > 0:
-                print(
+                logger.info(
                     f"  🎯 여분 문제 생성: 객관식 {extra_objective}개, 주관식 {extra_subjective}개"
                 )
 
@@ -182,7 +183,7 @@ class QuestionGeneratorAgent:
 
             all_generated_questions.extend(doc_questions)
 
-            print(
+            logger.info(
                 f"  ✅ '{document_name}' 문제 생성 완료: 기본 {basic_count}개 + 여분 {extra_count}개 = 총 {len(doc_questions)}개"
             )
 
@@ -208,8 +209,8 @@ class QuestionGeneratorAgent:
         num_subjective: int,
         question_type: str = "BASIC",
         difficulty: str = "NORMAL",
-        total_test_plan: Dict = None,
-        document_test_plan: Dict = None,
+        total_test_plan: Dict | None = None,
+        document_test_plan: Dict | None = None,
     ) -> List[Dict]:
         """콘텍스트를 활용한 문제 생성 (기존 QuestionGenerator 활용)"""
         if num_objective == 0 and num_subjective == 0:
@@ -221,7 +222,7 @@ class QuestionGeneratorAgent:
 
             # TODO: ChromaDB 연결 되면 이거 하기
             # if not context_blocks:
-            #     print(f"  ⚠️ 콘텍스트 블록을 생성할 수 없습니다.")
+            #     logger.warning(f"  ⚠️ 콘텍스트 블록을 생성할 수 없습니다.")
             #     return []
 
             # 기존 QuestionGenerator 활용
@@ -231,8 +232,8 @@ class QuestionGeneratorAgent:
                 num_objective=num_objective,
                 num_subjective=num_subjective,
                 difficulty=difficulty,
-                total_test_plan=total_test_plan,
-                document_test_plan=document_test_plan,
+                total_test_plan=total_test_plan or {},
+                document_test_plan=document_test_plan or {},
             )
 
             # 생성된 문제 추출 및 메타데이터 추가
@@ -251,11 +252,11 @@ class QuestionGeneratorAgent:
                         question["source_keywords"] = used_keywords
                         questions.append(question)
 
-            print(f"  ✅ {len(questions)}개 {question_type} 문제 생성 완료")
+            logger.info(f"  ✅ {len(questions)}개 {question_type} 문제 생성 완료")
             return questions
 
         except Exception as e:
-            print(f"  ❌ {question_type} 문제 생성 실패: {e}")
+            logger.error(f"  ❌ {question_type} 문제 생성 실패: {e}")
             return []
 
     def _convert_content_to_blocks(
@@ -343,7 +344,7 @@ class QuestionGeneratorAgent:
                 "metadata": Dict
             }
         """
-        print(f"🤖 배치 문제 생성 시작: {target_questions}")
+        logger.info(f"🤖 배치 문제 생성 시작: {target_questions}")
 
         try:
             # 1. 컨텍스트를 블록 형태로 변환
@@ -414,13 +415,13 @@ class QuestionGeneratorAgent:
                 },
             }
 
-            print(
+            logger.info(
                 f"✅ 배치 문제 생성 완료: {len(all_questions)}개, 품질: {quality_score:.3f}"
             )
             return result
 
         except Exception as e:
-            print(f"❌ 배치 문제 생성 실패: {e}")
+            logger.error(f"❌ 배치 문제 생성 실패: {e}")
             return {
                 "status": "failed",
                 "error": str(e),
