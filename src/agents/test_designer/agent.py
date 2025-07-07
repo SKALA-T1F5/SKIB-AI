@@ -40,6 +40,8 @@ class TestDesignerAgent(BaseAgent):
                 "config_generator": TestConfigGenerator(),
             },
         )
+        # Gemini 모니터링 초기화
+        self.gemini_monitor = GeminiMonitor()
 
     async def plan(
         self, input_data: Dict[str, Any], state: TestDesignerState
