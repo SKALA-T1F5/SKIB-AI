@@ -1,7 +1,5 @@
 import logging
 
-logging.basicConfig(level=logging.INFO)
-
 """
 각 문서에 대해 주요 키워드 추출 및 요약을 수행하고 JSON 형태로 출력하는 모듈입니다.
 Docling으로 파싱된 블록들을 분석하여 문서의 핵심 내용을 추출합니다.
@@ -17,6 +15,7 @@ from openai import OpenAI
 from config.settings import settings
 
 openai_client = wrap_openai(OpenAI(api_key=settings.api_key))
+logger = logging.getLogger(__name__)
 
 
 def extract_keywords_and_summary(blocks: List[Dict], source_file: str) -> Dict:
@@ -82,7 +81,7 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
     """
     # 텍스트 길이 확인 및 제한
     if not text or len(text.strip()) < 50:
-        print("⚠️ 텍스트가 너무 짧거나 비어있습니다.")
+        logger.warning("⚠️ 텍스트가 너무 짧거나 비어있습니다.")
         return {
             "summary": "텍스트가 부족하여 요약할 수 없습니다.",
             "main_topics": [],
@@ -97,7 +96,7 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
         front_part = text[: max_length // 2]
         back_part = text[-(max_length // 2) :]
         text = front_part + "\n\n[중간 내용 생략...]\n\n" + back_part
-        print(f"📝 텍스트 길이 조정: 원본 {len(text)}자 → 압축 {len(text)}자")
+        logger.info(f"📝 텍스트 길이 조정: 원본 {len(text)}자 → 압축 {len(text)}자")
 
     prompt = f"""
 문서 "{filename}"의 내용을 분석하여 다음 정보를 JSON 형식으로 추출해주세요:
@@ -121,7 +120,7 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
 """
 
     try:
-        print(f"🤖 GPT-4 분석 시작... (텍스트 길이: {len(text)}자)")
+        logger.info(f"🤖 GPT-4 분석 시작... (텍스트 길이: {len(text)}자)")
         response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=[{"role": "user", "content": prompt}],
@@ -129,13 +128,23 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
             max_tokens=1000,  # 토큰 수 줄임
             timeout=30,  # 30초 타임아웃 설정
         )
-        print("✅ GPT-4 분석 완료")
+        logger.info("✅ GPT-4 분석 완료")
 
-        raw_content = response.choices[0].message.content.strip()
+        raw_content = response.choices[0].message.content
+        if raw_content is None:
+            logger.error("❌ GPT-4 응답 내용이 비어있습니다")
+            return {
+                "summary": "GPT-4 응답 오류",
+                "main_topics": [],
+                "key_concepts": [],
+                "technical_terms": [],
+            }
+
+        raw_content = raw_content.strip()
 
         # JSON 파싱
         try:
-            print(f"📄 응답 내용 미리보기: {raw_content[:100]}...")
+            logger.debug(f"📄 응답 내용 미리보기: {raw_content[:100]}...")
 
             # 코드 블록 제거
             if "```json" in raw_content:
@@ -144,12 +153,12 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
                 raw_content = raw_content.split("```")[1].split("```")[0].strip()
 
             result = json.loads(raw_content)
-            print("✅ JSON 파싱 성공")
+            logger.info("✅ JSON 파싱 성공")
             return result
 
         except json.JSONDecodeError as e:
-            print(f"❌ LLM JSON 파싱 실패: {e}")
-            print(f"원본 응답: {raw_content}")
+            logger.error(f"❌ LLM JSON 파싱 실패: {e}")
+            logger.debug(f"원본 응답: {raw_content}")
             return {
                 "summary": "JSON 파싱 실패로 요약 생성 불가",
                 "main_topics": [],
@@ -158,7 +167,7 @@ def _extract_keywords_summary_with_llm(text: str, filename: str) -> Dict:
             }
 
     except Exception as e:
-        print(f"LLM 키워드 추출 실패: {e}")
+        logger.error(f"LLM 키워드 추출 실패: {e}")
         return {
             "summary": "요약 생성 실패",
             "main_topics": [],

@@ -6,6 +6,7 @@
 - GPT-4 Vision: 자동 질문 생성
 """
 
+import logging
 import os
 from typing import Dict, List
 
@@ -17,6 +18,8 @@ from utils.naming import filename_to_collection
 from .image_extractor import _extract_quality_images
 from .table_extractor import _extract_tables
 from .text_extractor import _extract_structured_text_with_docling
+
+logger = logging.getLogger(__name__)
 
 
 def parse_pdf_unified(
@@ -46,24 +49,26 @@ def parse_pdf_unified(
     else:
         IMAGE_SAVE_DIR = "data/images/unified"
     os.makedirs(IMAGE_SAVE_DIR, exist_ok=True)
-    print(f"📄 통합 파서로 PDF 처리 중: {pdf_path}")
+    logger.info(f"📄 통합 파서로 PDF 처리 중: {pdf_path}")
     # 1. Docling으로 구조화된 텍스트 추출
-    print("📝 Docling으로 텍스트 구조 추출 중...")
+    logger.info("📝 Docling으로 텍스트 구조 추출 중...")
     text_blocks = _extract_structured_text_with_docling(pdf_path)
     # 2. 선택적 요소 추출 (표, 이미지, 차트)
-    print("🎯 선택적 요소 추출 중...")
+    logger.info("🎯 선택적 요소 추출 중...")
     visual_blocks = _extract_visual_elements(pdf_path, IMAGE_SAVE_DIR)
     # 3. 결합 및 정렬
     all_blocks = text_blocks + visual_blocks
     # 페이지별로 정렬
     all_blocks.sort(key=lambda x: x.get("metadata", {}).get("page", 0))
-    print(f"✅ 통합 파서 완료:")
-    print(f"  - 총 블록: {len(all_blocks)}개")
-    print(
+    logger.info(f"✅ 통합 파서 완료:")
+    logger.info(f"  - 총 블록: {len(all_blocks)}개")
+    logger.info(
         f"  - 텍스트 블록: {len([b for b in all_blocks if b.get('type') in ['paragraph', 'section', 'heading']])}개"
     )
-    print(f"  - 표: {len([b for b in all_blocks if b.get('type') == 'table'])}개")
-    print(f"  - 이미지: {len([b for b in all_blocks if b.get('type') == 'image'])}개")
+    logger.info(f"  - 표: {len([b for b in all_blocks if b.get('type') == 'table'])}개")
+    logger.info(
+        f"  - 이미지: {len([b for b in all_blocks if b.get('type') == 'image'])}개"
+    )
 
     return all_blocks
 
@@ -77,7 +82,7 @@ def _extract_visual_elements(pdf_path: str, image_save_dir: str) -> List[Dict]:
             zip(pdf.pages, pymupdf_doc)
         ):
             page_no = page_num + 1
-            print(f"  📄 페이지 {page_no} 시각적 요소 추출 중...")
+            logger.debug(f"  📄 페이지 {page_no} 시각적 요소 추출 중...")
             # 표 추출
             table_blocks = _extract_tables(
                 plumber_page, pymupdf_page, page_no, image_save_dir
