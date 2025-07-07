@@ -7,6 +7,7 @@
 
 import base64
 import json
+import logging
 import os
 from typing import Dict, List
 
@@ -15,10 +16,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
 
+from .prompt import get_enhanced_vision_prompt, get_vision_prompt
 
-from .prompt import get_vision_prompt, get_enhanced_vision_prompt
-from src.utils.gemini_monitoring import GeminiMonitor
-
+logger = logging.getLogger(__name__)
 
 
 # Gemini 모니터링 인스턴스
@@ -49,7 +49,7 @@ def _generate_gemini_questions(
         List[Dict]: 생성된 질문 목록
     """
     try:
-        print(
+        logger.info(
             f"  🤖 Gemini 호출 중... (객관식: {num_objective}, 주관식: {num_subjective})"
         )
 
@@ -103,32 +103,32 @@ def _generate_gemini_questions(
 
                 # 응답 처리
                 raw_content = response.content.strip()
-                print(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
+                logger.debug(f"  📄 응답 내용 미리보기: {raw_content[:100]}...")
 
                 # JSON 파싱 (기존 로직 유지)
                 questions = _parse_json_response(raw_content)
 
                 if questions:
-                    print(f"  ✅ {len(questions)}개 질문 파싱 성공")
+                    logger.info(f"  ✅ {len(questions)}개 질문 파싱 성공")
                     return questions
                 else:
-                    print(f"  ⚠️ 질문 파싱 실패, 재시도 중...")
+                    logger.warning(f"  ⚠️ 질문 파싱 실패, 재시도 중...")
                     retry_count += 1
                     continue
 
             except Exception as e:
-                print(f"  ❌ 시도 {retry_count + 1} 실패: {e}")
+                logger.error(f"  ❌ 시도 {retry_count + 1} 실패: {e}")
                 retry_count += 1
                 if retry_count >= max_retries:
-                    print(f"  ❌ 최대 재시도 횟수 초과")
+                    logger.error(f"  ❌ 최대 재시도 횟수 초과")
                     return []
                 continue
 
     except Exception as e:
-        print(f"  ❌ 질문 생성 실패: {e}")
+        logger.error(f"  ❌ 질문 생성 실패: {e}")
         import traceback
 
-        print(f"  📄 상세 오류: {traceback.format_exc()}")
+        logger.debug(f"  📄 상세 오류: {traceback.format_exc()}")
         return []
 
 
@@ -175,15 +175,15 @@ def _parse_json_response(raw_content: str) -> List[Dict]:
 
         # 리스트인지 확인
         if not isinstance(questions, list):
-            print(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
+            logger.warning(f"⚠️ 응답이 리스트가 아닙니다: {type(questions)}")
             return []
 
         return questions
 
     except json.JSONDecodeError as e:
-        print(f"  ❌ JSON 파싱 실패: {e}")
-        print(f"  원본 응답 길이: {len(raw_content)} 문자")
-        print(f"  응답 마지막 100자: ...{raw_content[-100:]}")
+        logger.error(f"  ❌ JSON 파싱 실패: {e}")
+        logger.debug(f"  원본 응답 길이: {len(raw_content)} 문자")
+        logger.debug(f"  응답 마지막 100자: ...{raw_content[-100:]}")
         return []
 
 
@@ -296,7 +296,7 @@ class QuestionGenerator:
         Returns:
             List[Dict]: 질문이 추가된 블록들
         """
-        print("🤖 Test Plan 기반 Gemini 2.5 Pro 질문 생성 중...")
+        logger.info("🤖 Test Plan 기반 Gemini 2.5 Pro 질문 생성 중...")
 
         # Test Plan 파일 로드
         total_test_plan = (
@@ -315,18 +315,18 @@ class QuestionGenerator:
 
         if total_test_plan:
             test_name = total_test_plan.get("test_plan", {}).get("name", "알 수 없음")
-            print(f"📋 전체 테스트 계획 로드: {test_name}")
+            logger.info(f"📋 전체 테스트 계획 로드: {test_name}")
 
         if document_test_plan:
             doc_name = document_test_plan.get("document_name", "알 수 없음")
-            print(f"📄 문서별 계획 로드: {doc_name}")
+            logger.info(f"📄 문서별 계획 로드: {doc_name}")
 
             # document_test_plan의 추천 문제 수 사용
             recommended = document_test_plan.get("recommended_questions", {})
             if recommended:
                 num_objective = recommended.get("objective", num_objective)
                 num_subjective = recommended.get("subjective", num_subjective)
-                print(
+                logger.info(
                     f"📊 추천 문제 수 적용 - 객관식: {num_objective}, 주관식: {num_subjective}"
                 )
 
@@ -335,7 +335,7 @@ class QuestionGenerator:
             vision_chunks = self._blocks_to_vision_chunks(blocks)
             total_questions_target = num_objective + num_subjective
 
-            print(
+            logger.info(
                 f"📝 목표 문제 수: {total_questions_target}개 (객관식: {num_objective}, 주관식: {num_subjective})"
             )
 
@@ -367,13 +367,13 @@ class QuestionGenerator:
                         if "questions" not in blocks[first_block_idx]:
                             blocks[first_block_idx]["questions"] = []
                         blocks[first_block_idx]["questions"].extend(extra_questions)
-                        print(f"    ➕ {len(extra_questions)}개 여분 문제 추가")
+                        logger.info(f"    ➕ {len(extra_questions)}개 여분 문제 추가")
 
             total_generated = sum(len(b.get("questions", [])) for b in blocks)
-            print(f"✅ 총 {total_generated}개 질문 생성 완료")
+            logger.info(f"✅ 총 {total_generated}개 질문 생성 완료")
 
         except Exception as e:
-            print(f"❌ 질문 생성 중 오류: {e}")
+            logger.error(f"❌ 질문 생성 중 오류: {e}")
 
         return blocks
 
@@ -404,7 +404,7 @@ class QuestionGenerator:
         questions_generated = 0
 
         for i, chunk in enumerate(vision_chunks):
-            print(f"  📝 청크 {i+1}/{len(vision_chunks)} 기본 문제 생성 중...")
+            logger.info(f"  📝 청크 {i+1}/{len(vision_chunks)} 기본 문제 생성 중...")
 
             # 청크별 문제 수 분배 (단순하게)
             chunk_obj = num_objective // len(vision_chunks)
@@ -438,10 +438,10 @@ class QuestionGenerator:
                     blocks[first_block_idx]["questions"].extend(questions)
                     questions_generated += len(questions)
 
-                    print(f"    ✅ {len(questions)}개 기본 문제 생성")
+                    logger.info(f"    ✅ {len(questions)}개 기본 문제 생성")
 
             except Exception as e:
-                print(f"    ⚠️ 청크 {i+1} 기본 문제 생성 실패: {e}")
+                logger.warning(f"    ⚠️ 청크 {i+1} 기본 문제 생성 실패: {e}")
                 continue
 
         return questions_generated
@@ -458,7 +458,7 @@ class QuestionGenerator:
         if not chunk or not document_test_plan:
             return []
 
-        print(
+        logger.info(
             f"  🎯 여분 문제 생성 중... (객관식: {extra_objective}, 주관식: {extra_subjective})"
         )
 
@@ -489,7 +489,7 @@ class QuestionGenerator:
             return extra_questions
 
         except Exception as e:
-            print(f"    ⚠️ 여분 문제 생성 실패: {e}")
+            logger.warning(f"    ⚠️ 여분 문제 생성 실패: {e}")
             return []
 
     def _load_test_plan(self, file_path: str) -> Dict:
@@ -500,7 +500,7 @@ class QuestionGenerator:
             with open(file_path, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception as e:
-            print(f"⚠️ Test Plan 로드 실패 ({file_path}): {e}")
+            logger.warning(f"⚠️ Test Plan 로드 실패 ({file_path}): {e}")
             return {}
 
     def generate_questions_for_blocks(
@@ -523,7 +523,7 @@ class QuestionGenerator:
         Returns:
             List[Dict]: 질문이 추가된 블록들
         """
-        print("🤖 Gemini 2.5 Pro 질문 생성 중...")
+        logger.info("🤖 Gemini 2.5 Pro 질문 생성 중...")
 
         try:
             # 블록들을 청킹하여 Gemini 2.5 Pro 메시지 생성
@@ -536,7 +536,7 @@ class QuestionGenerator:
                 if questions_generated >= total_questions_target:
                     break
 
-                print(f"  📝 청크 {i+1}/{len(vision_chunks)} 질문 생성 중...")
+                logger.info(f"  📝 청크 {i+1}/{len(vision_chunks)} 질문 생성 중...")
 
                 # 남은 질문 수 계산
                 remaining_obj = max(
@@ -624,17 +624,17 @@ class QuestionGenerator:
                         blocks[first_block_idx]["questions"].extend(questions)
                         questions_generated += len(questions)
 
-                        print(f"    ✅ {len(questions)}개 질문 생성")
+                        logger.info(f"    ✅ {len(questions)}개 질문 생성")
 
                 except Exception as e:
-                    print(f"    ⚠️ 청크 {i+1} 질문 생성 실패: {e}")
+                    logger.warning(f"    ⚠️ 청크 {i+1} 질문 생성 실패: {e}")
                     continue
 
             total_generated = sum(len(b.get("questions", [])) for b in blocks)
-            print(f"✅ 총 {total_generated}개 질문 생성 완료")
+            logger.info(f"✅ 총 {total_generated}개 질문 생성 완료")
 
         except Exception as e:
-            print(f"❌ 질문 생성 중 오류: {e}")
+            logger.error(f"❌ 질문 생성 중 오류: {e}")
 
         return blocks
 
@@ -712,7 +712,7 @@ class QuestionGenerator:
                         }
                         text_length = 1000  # 이미지는 고정 길이로 계산
                     except Exception as e:
-                        print(f"이미지 읽기 실패 {image_path}: {e}")
+                        logger.warning(f"이미지 읽기 실패 {image_path}: {e}")
                         continue
 
             # 청크 크기 확인 및 저장
