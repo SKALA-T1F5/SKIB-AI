@@ -3,18 +3,17 @@ import json
 import re
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+# import google.generativeai as genai
 from langsmith import traceable
 
-from config.settings import settings
 from src.agents.test_feedback.prompt import SYSTEM_PROMPT, build_user_prompt
 from src.agents.test_feedback.tools.document_performance import (
     calc_performance_by_document,
 )
 from src.agents.test_feedback.tools.question_selector import select_top_bottom_questions
-
-# model 로드
-genai.configure(api_key=settings.gemini_api_key)
 
 
 @traceable(
@@ -38,28 +37,52 @@ async def test_feedback(
         exam_goal, selected_questions, performance_by_document, project_readiness_result
     )
 
-    model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-06-17")
+    # GENAI ver.
+    # model = genai.GenerativeModel("gemini-2.5-flash-lite-preview-06-17")
 
-    # 3. MODEL 호출
+    # 3. ChatGoogleGenerativeAI 초기화
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash-lite-preview-06-17",
+        temperature=0.3,
+        max_output_tokens=3000,
+        max_retries=2,
+        timeout=60,
+    )
+
+    # 4. ChatPromptTemplate 사용
+    prompt_template = ChatPromptTemplate.from_messages(
+        [("system", "{system_prompt}"), ("human", "{user_prompt}")]
+    )
+
     try:
-        response = model.generate_content(
-            contents=[
-                {"role": "model", "parts": [{"text": SYSTEM_PROMPT}]},
-                {"role": "user", "parts": [{"text": USER_PROMPT}]},
-            ],
+        # GENAI ver.
+        # response = model.generate_content(
+        #     contents=[
+        #         {"role": "model", "parts": [{"text": SYSTEM_PROMPT}]},
+        #         {"role": "user", "parts": [{"text": USER_PROMPT}]},
+        #     ],
+        # )
+        # content = response.text.strip()
+
+        # 5. 체인 생성 및 실행
+        chain = prompt_template | llm
+        response = await chain.ainvoke(
+            {"system_prompt": SYSTEM_PROMPT, "user_prompt": USER_PROMPT}
         )
-        content = response.text.strip()
+
+        # 6. 응답 처리
+        content = response.content.strip()
         if content.startswith("```"):
             content = re.sub(r"^```(?:json)?\s*", "", content)
             content = re.sub(r"\s*```$", "", content)
 
         result = json.loads(content)
 
-        # 4. AI 결과 후처리
-        # 4-1. projectReadiness를 문서별 최소 정답률 기준으로 계산하여 결과에 추가
+        # 7. AI 결과 후처리
+        # 7-1. projectReadiness를 문서별 최소 정답률 기준으로 계산하여 결과에 추가
         result["projectReadiness"] = project_readiness_result
 
-        # 4-2. averageCorrectRate만 실제 값으로 덮어쓰기
+        # 7-2. averageCorrectRate만 실제 값으로 덮어쓰기
         doc_rate_map = {
             doc["documentName"]: doc["averageCorrectRate"]
             for doc in performance_by_document
