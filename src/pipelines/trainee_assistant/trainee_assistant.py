@@ -50,6 +50,11 @@ def extract_keywords(text: str, top_k: int = 5) -> List[str]:
 # --- Graph Nodes ---
 
 
+@traceable(
+    run_type="chain",
+    name="Route Question Node",
+    metadata={"node_type": "routing", "graph_position": "entry"},
+)
 async def route_question(state: ChatState) -> dict:
     user_question = state["question"]
     question_data = next(
@@ -87,6 +92,11 @@ async def route_question(state: ChatState) -> dict:
     return {"route": route, "question_data": question_data}
 
 
+@traceable(
+    run_type="llm",
+    name="Generate Direct Answer",
+    metadata={"node_type": "generation", "answer_type": "direct"},
+)
 async def generate_direct_answer_node(state: ChatState) -> ChatState:
     user_question = state["question"]
     question_data = state["question_data"]
@@ -115,6 +125,11 @@ async def generate_direct_answer_node(state: ChatState) -> ChatState:
     return {"answer": answer}
 
 
+@traceable(
+    run_type="retriever",
+    name="Vector Search",
+    metadata={"node_type": "retrieval", "db_type": "chromadb"},
+)
 def vector_search_node(state: ChatState) -> ChatState:
     document_name = state["question_data"].documentName
 
@@ -140,6 +155,11 @@ def vector_search_node(state: ChatState) -> ChatState:
     return {"chroma_docs": filtered_docs, "document_name": document_name}
 
 
+@traceable(
+    run_type="retriever",
+    name="Vector Search",
+    metadata={"node_type": "retrieval", "db_type": "chromadb"},
+)
 async def generate_document_based_answer_node(state: ChatState) -> ChatState:
     user_question = state["question"]
     history = await load_message_history(state["user_id"])
