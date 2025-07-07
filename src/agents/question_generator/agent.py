@@ -23,7 +23,7 @@ class QuestionGeneratorAgent:
     def __init__(self, collection_name: str | None = None):
         self.collection_name = collection_name
         # 이미지 저장 디렉토리 설정
-        if not collection_name:
+        if collection_name is None:
             from utils.naming import filename_to_collection
 
             normalized_name = filename_to_collection(collection_name)
