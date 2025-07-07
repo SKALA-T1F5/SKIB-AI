@@ -15,6 +15,8 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
 from pydantic import BaseModel
 
+from src.utils.gemini_monitoring import GeminiMonitor
+
 from ..base.agent import BaseAgent
 from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
