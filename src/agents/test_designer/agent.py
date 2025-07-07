@@ -5,22 +5,22 @@
 """
 
 import json
+import logging
+import os
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from langchain_core.messages import HumanMessage
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langsmith import traceable
 from pydantic import BaseModel
-
-from config.settings import settings
-from src.utils.gemini_monitoring import GeminiMonitor
 
 from ..base.agent import BaseAgent
 from .state import TestDesignerState
 from .tools.requirement_analyzer import RequirementAnalyzer
 from .tools.test_config_generator import TestConfigGenerator
 
-# 환경 변수 로드
-genai.configure(api_key=settings.gemini_api_key)
+logger = logging.getLogger(__name__)
 
 
 class TestGoal(BaseModel):
@@ -40,8 +40,6 @@ class TestDesignerAgent(BaseAgent):
                 "config_generator": TestConfigGenerator(),
             },
         )
-        # Gemini 모니터링 초기화
-        self.gemini_monitor = GeminiMonitor()
 
     async def plan(
         self, input_data: Dict[str, Any], state: TestDesignerState
@@ -228,49 +226,39 @@ class TestDesignerAgent(BaseAgent):
 
         try:
             model_name = "gemini-2.5-flash"
-            print(f"🤖 {model_name}로 테스트 계획 생성 중...")
+            logger.info(f"🤖 {model_name}로 테스트 계획 생성 중...")
 
-            # 요청 전 토큰 수 예측
-            estimated_tokens = self.gemini_monitor.count_tokens_before_request(
-                model_name, user_prompt
-            )
-            print(f"📝 예상 입력 토큰: {estimated_tokens:,}")
-
-            # 안전 설정
-            safety_settings = [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {
-                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                    "threshold": "BLOCK_NONE",
-                },
-                {
-                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                    "threshold": "BLOCK_NONE",
-                },
-            ]
-
-            model = genai.GenerativeModel(model_name, safety_settings=safety_settings)
-
-            response = model.generate_content(
-                user_prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=3000,
-                ),
+            # LangChain 기반 Gemini 호출 (실제 실행)
+            llm = ChatGoogleGenerativeAI(
+                model=model_name,
+                temperature=0.3,
+                max_tokens=3000,
+                max_retries=2,
+                timeout=60,
+                api_key=os.environ.get("GOOGLE_API_KEY"),
             )
 
-            # 안전한 응답 처리
-            if response.candidates and response.candidates[0].content.parts:
-                # 사용량 및 비용 모니터링
-                if hasattr(response, "usage_metadata"):
+            # 메시지 생성
+            messages = [HumanMessage(content=user_prompt)]
+
+            # ChatPromptTemplate 사용
+            prompt_template = ChatPromptTemplate.from_messages([("human", "{content}")])
+
+            # 체인 생성 및 실행
+            chain = prompt_template | llm
+            response = chain.invoke({"content": user_prompt})
+
+            # 응답 처리
+            if response and response.content:
+                # 사용량 및 비용 모니터링 (LangChain 응답 메타데이터 활용)
+                if hasattr(response, "usage_metadata") and response.usage_metadata:
                     self.gemini_monitor.print_usage_summary(
                         model_name, response.usage_metadata
                     )
                     self.gemini_monitor.log_usage(
                         model_name,
                         response.usage_metadata,
-                        function_name="test_designer_generate_test_summary",
+                        function_name="test_designer_generate_test_summary_langchain",
                         additional_metadata={
                             "agent_type": "test_designer",
                             "document_count": len(input_data.get("documents", [])),
@@ -280,8 +268,8 @@ class TestDesignerAgent(BaseAgent):
                         },
                     )
 
-                raw_content = response.text.strip()
-                print(f"📄 응답 내용 미리보기: {raw_content[:200]}...")
+                raw_content = response.content.strip()
+                logger.debug(f"📄 응답 내용 미리보기: {raw_content[:200]}...")
 
                 # JSON 파싱
                 if "```json" in raw_content:
@@ -292,10 +280,10 @@ class TestDesignerAgent(BaseAgent):
                     raw_content = raw_content.split("```")[1].split("```")[0].strip()
 
                 test_plan_data = json.loads(raw_content)
-                print(f"✅ {model_name} 테스트 계획 생성 완료")
+                logger.info(f"✅ {model_name} 테스트 계획 생성 완료")
                 return test_plan_data
             else:
-                print(f"⚠️ Gemini 응답이 차단됨")
+                logger.warning(f"⚠️ Gemini 응답이 차단됨")
                 raise Exception("Gemini 응답이 차단되었습니다")
 
         except Exception as e:
@@ -540,7 +528,7 @@ def _save_test_plans(result: Dict[str, Any], documents: List[Dict[str, Any]]):
         with open(total_path, "w", encoding="utf-8") as f:
             json.dump(total_test_plan, f, ensure_ascii=False, indent=2)
 
-        print(f"✅ 전체 테스트 계획 저장: {total_path}")
+        logger.info(f"✅ 전체 테스트 계획 저장: {total_path}")
 
     # 2. 문서별 테스트 plan 저장 (document_id, keywords, 추천 문제수)
     if "test_summary" in result and "document_configs" in result["test_summary"]:
@@ -592,7 +580,7 @@ def _save_test_plans(result: Dict[str, Any], documents: List[Dict[str, Any]]):
         with open(document_path, "w", encoding="utf-8") as f:
             json.dump(document_test_plan, f, ensure_ascii=False, indent=2)
 
-        print(f"✅ 문서별 테스트 계획 저장: {document_path}")
+        logger.info(f"✅ 문서별 테스트 계획 저장: {document_path}")
 
 
 # 기존 함수 호환성 유지

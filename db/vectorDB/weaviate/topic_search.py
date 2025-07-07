@@ -3,12 +3,15 @@ JSON 파일의 main_topics 키워드를 기반으로 VectorDB에서 관련 문�
 """
 
 import json
+import logging
 import os
 from typing import Any, Dict, List
 
 from sentence_transformers import SentenceTransformer
 
 from .weaviate_utils import get_client
+
+logger = logging.getLogger(__name__)
 
 
 class TopicSearcher:
@@ -37,14 +40,14 @@ class TopicSearcher:
                 data = json.load(f)
 
             main_topics = data.get("content_analysis", {}).get("main_topics", [])
-            print(f"📊 추출된 주요 토픽: {len(main_topics)}개")
+            logger.info(f"📊 추출된 주요 토픽: {len(main_topics)}개")
             for i, topic in enumerate(main_topics, 1):
-                print(f"  {i}. {topic}")
+                logger.debug(f"  {i}. {topic}")
 
             return main_topics
 
         except Exception as e:
-            print(f"❌ JSON 파일 읽기 오류: {e}")
+            logger.error(f"❌ JSON 파일 읽기 오류: {e}")
             return []
 
     def search_by_keyword(
@@ -85,7 +88,7 @@ class TopicSearcher:
             return results
 
         except Exception as e:
-            print(f"❌ 키워드 '{keyword}' 검색 오류: {e}")
+            logger.error(f"❌ 키워드 '{keyword}' 검색 오류: {e}")
             return []
 
     def search_multiple_topics(
@@ -104,23 +107,27 @@ class TopicSearcher:
         """
         all_results = {}
 
-        print(f"\n🔍 VectorDB 검색 시작 (컬렉션: {collection_name})")
-        print(f"📝 검색할 토픽: {len(topics)}개")
+        logger.info(f"\n🔍 VectorDB 검색 시작 (컬렉션: {collection_name})")
+        logger.info(f"📝 검색할 토픽: {len(topics)}개")
 
         for i, topic in enumerate(topics, 1):
-            print(f"\n[{i}/{len(topics)}] 검색 중: '{topic}'")
+            logger.info(f"\n[{i}/{len(topics)}] 검색 중: '{topic}'")
 
             results = self.search_by_keyword(topic, collection_name, limit_per_topic)
             all_results[topic] = results
 
             if results:
-                print(f"  ✅ 찾은 결과: {len(results)}개")
+                logger.info(f"  ✅ 찾은 결과: {len(results)}개")
                 for j, result in enumerate(results, 1):
                     score = result.get("score", 0.0)
                     chunk_id = result.get("properties", {}).get("chunk_id", "N/A")
-                    print(f"    {j}. 점수: {score:.3f}, ID: {chunk_id}")
+                    logger.debug(f"    {j}. 점수: {score:.3f}, ID: {chunk_id}")
             else:
-                print(f"  ❌ 검색 결과 없음")
+                logger.debug(f"  ❌ 검색 결과 없음")
+
+        logger.info(
+            f"\n🔍 검색 완료! 총 {len(topics)}개 토픽에 대해 검색을 수행했습니다."
+        )
 
         return all_results
 
@@ -133,10 +140,10 @@ class TopicSearcher:
         """
         try:
             collections = list(self.client.collections.list_all().keys())
-            print(f"📚 사용 가능한 컬렉션: {collections}")
+            logger.info(f"📚 사용 가능한 컬렉션: {collections}")
             return collections
         except Exception as e:
-            print(f"❌ 컬렉션 목록 조회 오류: {e}")
+            logger.error(f"❌ 컬렉션 목록 조회 오류: {e}")
             return []
 
 
@@ -164,15 +171,14 @@ def search_topics_from_json(
 
     # 2. 컬렉션명 자동 추정 (파일명 기반)
     if collection_name is None:
-        pass
-
         filename = os.path.splitext(os.path.basename(json_file_path))[0]
         # "_complete_test" 같은 접미사 제거
         filename = filename.replace("_complete_test", "").replace(
             "_keywords_summary", ""
         )
-        collection_name = normalize_collection_name(filename)
-        print(f"🎯 자동 추정된 컬렉션명: {collection_name}")
+        # 간단한 정규화: 공백을 언더스코어로, 소문자 변환
+        collection_name = filename.replace(" ", "_").lower()
+        logger.info(f"🎯 자동 추정된 컬렉션명: {collection_name}")
 
     # 3. 사용 가능한 컬렉션 확인
     available_collections = searcher.get_available_collections()
@@ -207,10 +213,10 @@ def search_topics_from_json(
         },
     }
 
-    print(f"\n📊 검색 완료!")
-    print(f"  - 검색된 토픽: {len(topics)}개")
-    print(f"  - 결과가 있는 토픽: {len(successful_topics)}개")
-    print(f"  - 총 검색 결과: {total_results}개")
+    logger.info(f"\n📊 검색 완료!")
+    logger.info(f"  - 검색된 토픽: {len(topics)}개")
+    logger.info(f"  - 결과가 있는 토픽: {len(successful_topics)}개")
+    logger.info(f"  - 총 검색 결과: {total_results}개")
 
     return result_summary
 
@@ -221,7 +227,7 @@ if __name__ == "__main__":
     test_json_path = "data/outputs/자동차 리포트_complete_test.json"
 
     if os.path.exists(test_json_path):
-        print("🚀 테스트 시작")
+        logger.info("🚀 테스트 시작")
         results = search_topics_from_json(test_json_path)
 
         # 결과를 JSON 파일로 저장
@@ -229,6 +235,6 @@ if __name__ == "__main__":
         with open(output_path, "w", encoding="utf-8") as f:
             json.dump(results, f, ensure_ascii=False, indent=2)
 
-        print(f"💾 검색 결과 저장: {output_path}")
+        logger.info(f"💾 검색 결과 저장: {output_path}")
     else:
-        print(f"❌ 테스트 파일을 찾을 수 없습니다: {test_json_path}")
+        logger.error(f"❌ 테스트 파일을 찾을 수 없습니다: {test_json_path}")

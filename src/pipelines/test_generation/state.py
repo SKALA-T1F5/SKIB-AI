@@ -18,7 +18,7 @@ class TestGenerationState(BasePipelineState, total=False):
     # 예시: {
     #     "num_objective": 10,
     #     "num_subjective": 5,
-    #     "difficulty_level": "medium",
+    #     "difficulty_level": "normal",
     #     "total_questions": 15,
     #     "keywords": ["시스템 아키텍처", "데이터베이스"]
     # }
@@ -30,10 +30,9 @@ class TestGenerationState(BasePipelineState, total=False):
     total_test_plan: Optional[Dict[str, Any]]
     # 예시: {
     #     "test_summary": "시스템 운영 능력 평가 테스트",
-    #     "evaluation_criteria": ["기술 이해도", "문제 해결 능력"],
+    #     "difficulty": "normal",
     #     "total_objective": 10,
     #     "total_subjective": 5,
-    #     "estimated_duration": 60
     # }
 
     document_test_plan: Optional[Dict[str, Any]]
