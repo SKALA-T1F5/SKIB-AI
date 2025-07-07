@@ -44,5 +44,10 @@ class Settings:
         # ChromaDB 저장 경로
         self.CHROMA_DIR = os.path.join(self.DATA_DIR, "chroma_data")
 
+        # 로깅 설정
+        self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+        self.log_to_file = os.getenv("LOG_TO_FILE", "true").lower() == "true"
+        self.log_dir = os.path.join(self.ROOT_DIR, "logs")
+
 
 settings = Settings()
